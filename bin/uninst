@@ -11,4 +11,3 @@ sys.path[0:0] = [libdir]
 
 import reinteract
 import reinteract.main
-

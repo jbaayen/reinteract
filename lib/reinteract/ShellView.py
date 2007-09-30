@@ -132,15 +132,17 @@ class ShellBuffer(gtk.TextBuffer):
         rescan_start = start_line
         while rescan_start > 0:
             if rescan_start < start_line:
-                line_text = self.__lines[rescan_start]
+                new_text = old_text = self.__lines[rescan_start]
             else:
+                old_text = self.__lines[rescan_start]
                 i = self.get_iter_at_line(rescan_start)
                 i_end = i.copy()
                 if not i_end.ends_line():
                     i_end.forward_to_line_end()
-                line_text = self.get_slice(i, i_end)
+                new_text = self.get_slice(i, i_end)
 
-            if line_text == None or BLANK.match(line_text) or COMMENT.match(line_text) or CONTINUATION.match(line_text):
+            if old_text == None or BLANK.match(old_text) or COMMENT.match(old_text) or CONTINUATION.match(old_text) or \
+               new_text == None or BLANK.match(new_text) or COMMENT.match(new_text) or CONTINUATION.match(new_text):
                 rescan_start -= 1
             else:
                 break
@@ -300,6 +302,11 @@ class ShellBuffer(gtk.TextBuffer):
         state.result_before = None
         for i in xrange(first_modified_line - 1, -1, -1):
             if isinstance(self.__chunks[i], StatementChunk):
+                # If the statement before continues into the modified region, there can be
+                # no intervening Result chunk, and no fixup is needed
+                if self.__chunks[i].end >= first_modified_line:
+                    break
+                
                 state.statement_before = self.__chunks[i]
                 state.statement_before_text = self.__chunks[i].text
                 
@@ -324,7 +331,16 @@ class ShellBuffer(gtk.TextBuffer):
         
         # If the statement that had a result after the deleted segment is now gone
         # then we need to delete that result
-        delete_after = state.result_after != None and self.__chunks[state.first_modified_line] != state.last_statement
+        if state.last_statement != None:
+            if state.last_statement.end < state.first_modified_line:
+                test_line = state.last_statement.end
+            else:
+                test_line = state.first_modified_line
+
+            delete_after = self.__chunks[test_line] != state.last_statement
+        else:
+            delete_after = False
+                
         
         if not (delete_before or delete_after):
             return
@@ -373,7 +389,6 @@ class ShellBuffer(gtk.TextBuffer):
                 end_line -= 1
 
             if start.compare(end) == 0:
-                print "EMPTY"
                 return
                 
         if start.starts_line() and end.starts_line():
