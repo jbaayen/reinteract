@@ -37,7 +37,7 @@ class ResultChunk:
         self.end = end
         
     def __repr__(self):
-        return "ResultChunk(%d,%d)" % (self.start, self.end)
+        return "ResultChunk(%d,%d,'%s')" % (self.start, self.end, self.text)
     
 BLANK = re.compile(r'^\s*$')
 COMMENT = re.compile(r'^\s*#')
@@ -152,8 +152,11 @@ class ShellBuffer(gtk.TextBuffer):
         # If we end on a statement, then any line in that statement might get merged into a previous statement,
         # so we need to rescan all of it
         rescan_end = end_line
-        if isinstance(self.__chunks[rescan_end], StatementChunk):
-            rescan_end = self.__chunks[rescan_end].end
+        while rescan_end + 1 < len(self.__chunks):
+            if isinstance(self.__chunks[rescan_end + 1], StatementChunk) and self.__chunks[rescan_end + 1].end != rescan_end + 1:
+                rescan_end += 1
+            else:
+                break
 
         chunk_start = rescan_start
         statement_end = rescan_start - 1
@@ -504,3 +507,73 @@ class ShellBuffer(gtk.TextBuffer):
         for chunk in self.iterate_chunks(result_chunk.end + 1):
             chunk.start += n_inserted
             chunk.end += n_inserted
+
+if __name__ == '__main__':
+    S = StatementChunk
+    B = BlankChunk
+    C = CommentChunk
+    R = ResultChunk
+
+    def compare(l1, l2):
+        if len(l1) != len(l2):
+            return False
+
+        for i in xrange(0, len(l1)):
+            e1 = l1[i]
+            e2 = l2[i]
+
+            if type(e1) != type(e2) or e1.start != e2.start or e1.end != e2.end:
+                return False
+
+        return True
+
+    buffer = ShellBuffer()
+
+    def expect(expected):
+        chunks = [ x for x in buffer.iterate_chunks() ]
+        if not compare(chunks, expected):
+            print "Got:\n   %s\nExpected:\n   %s" % (chunks, expected)
+
+    def insert(line, offset, text):
+        i = buffer.get_iter_at_line(line)
+        i.set_line_offset(offset)
+        buffer.insert(i, text)
+
+    def delete(start_line, start_offset, end_line, end_offset):
+        i = buffer.get_iter_at_line(start_line)
+        i.set_line_offset(start_offset)
+        j = buffer.get_iter_at_line(end_line)
+        j.set_line_offset(end_offset)
+        buffer.delete_interactive(i, j, True)
+
+    # This is actually working pretty much coincidentally, since the Delete
+    # code wasn't really written with non-interactive deletes in mind, and
+    # when there are ResultChunk present, a non-interactive delete will
+    # use ranges including them. But the logic happens to work out.
+    def clear():
+        buffer.delete(buffer.get_start_iter(), buffer.get_end_iter())
+
+    # Basic operation
+    insert(0, 0, "A\n\n#B\nC\n  C")
+    expect([S(0,0), B(1,1), C(2,2), S(3,4)])
+
+    clear()
+    expect([B(0,0)])
+
+    # Turning a statement into a continuation line
+    insert(0, 0, "A\nB\n")
+    insert(1, 0, " ")
+    expect([S(0,1), B(2,2)])
+
+    # Calculation resulting in result chunks
+    insert(2, 0, "C\n")
+    buffer.calculate()
+    expect([S(0,1), R(2,2), S(3,3), R(4,4), B(5,5)])
+
+    # Check that splitting a statement with an insert results in the
+    # result chunk being moved to the last line of the first half
+    delete(1, 0, 1, 1)
+    expect([S(0,0), R(1,1), S(2,2), S(3,3), R(4,4), B(5,5)])
+
+    clear()
+    expect([B(0,0)])
