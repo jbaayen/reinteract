@@ -3,6 +3,8 @@ import gobject
 import gtk
 import re
 
+calculate_serial = 1
+
 class StatementChunk:
     def __init__(self, start=-1, end=-1):
         self.start = start
@@ -146,7 +148,13 @@ class ShellBuffer(gtk.TextBuffer):
                 rescan_start -= 1
             else:
                 break
-            
+
+        # If we end on a statement, then any line in that statement might get merged into a previous statement,
+        # so we need to rescan all of it
+        rescan_end = end_line
+        if isinstance(self.__chunks[rescan_end], StatementChunk):
+            rescan_end = self.__chunks[rescan_end].end
+
         chunk_start = rescan_start
         statement_end = rescan_start - 1
         chunk_lines = []
@@ -156,7 +164,7 @@ class ShellBuffer(gtk.TextBuffer):
 
         changed_chunks = []
 
-        for line in xrange(rescan_start, end_line + 1):
+        for line in xrange(rescan_start, rescan_end + 1):
             if line < start_line:
                 line_text = self.__lines[line]
             else:
@@ -254,9 +262,9 @@ class ShellBuffer(gtk.TextBuffer):
         print "After insert, chunks are", self.__chunks
 
     def __delete_chunk(self, chunk, revalidate_iter1=None, revalidate_iter2=None):
-        # revalidate_iter1 and revalidate_iter2 get validated to point to the location
-        # of the deleted chunk. This is useful only as part of the workaround-hack in
-        # __fixup_results
+        # revalidate_iter1 and revalidate_iter2 get moved to point to the location
+        # of the deleted chunk and revalidated. This is useful only as part of the
+        # workaround-hack in __fixup_results
         self.__modifying_results = True
 
         if revalidate_iter1 != None:
@@ -293,80 +301,89 @@ class ShellBuffer(gtk.TextBuffer):
         
         self.__modifying_results = False
 
+    def __find_result(self, statement):
+        for chunk in self.iterate_chunks(statement.end + 1):
+            if isinstance(chunk, ResultChunk):
+                return chunk
+            elif isinstance(chunk, StatementChunk):
+                return None
+        
     def __get_result_fixup_state(self, first_modified_line, last_modified_line):
         state = ResultChunkFixupState()
 
-        state.first_modified_line = first_modified_line
         state.statement_before = None
-        state.statement_before_text = None
         state.result_before = None
         for i in xrange(first_modified_line - 1, -1, -1):
-            if isinstance(self.__chunks[i], StatementChunk):
-                # If the statement before continues into the modified region, there can be
-                # no intervening Result chunk, and no fixup is needed
-                if self.__chunks[i].end >= first_modified_line:
-                    break
-                
-                state.statement_before = self.__chunks[i]
-                state.statement_before_text = self.__chunks[i].text
-                
-                if isinstance(self.__chunks[state.statement_before.end + 1], ResultChunk):
-                    state.result_before = self.__chunks[state.statement_before.end + 1]
-                    break
+            if isinstance(self.__chunks[i], ResultChunk):
+                state.result_before = self.__chunks[i]
+            elif isinstance(self.__chunks[i], StatementChunk):
+                if state.result_before != None:
+                    state.statement_before = self.__chunks[i]
+                break
 
-        state.last_statement = None
+        state.statement_after = None
         state.result_after = None
-        if isinstance(self.__chunks[last_modified_line], StatementChunk):
-            line_after = self.__chunks[last_modified_line].end + 1
-            if line_after < len(self.__chunks) and isinstance(self.__chunks[line_after], ResultChunk):
-                state.last_statement = self.__chunks[last_modified_line]
-                state.result_after = self.__chunks[line_after]
+
+        for i in xrange(last_modified_line + 1, len(self.__chunks)):
+            if isinstance(self.__chunks[i], ResultChunk):
+                state.result_after = self.__chunks[i]
+                for j in xrange(i - 1, -1, -1):
+                    if isinstance(self.__chunks[j], StatementChunk):
+                        state.statement_after = self.__chunks[j]
+                        break
+            elif isinstance(self.__chunks[i], StatementChunk) and self.__chunks[i].start == i:
+                break
 
         return state
 
     def __fixup_results(self, state, revalidate_iters):
-        # If we merged new text into the previous statement, then we need to delete
-        # the result for the previous statement
-        delete_before = state.result_before != None and state.statement_before.text != state.statement_before_text
+        move_before = False
+        delete_after = False
+        move_after = False
         
-        # If the statement that had a result after the deleted segment is now gone
-        # then we need to delete that result
-        if state.last_statement != None:
-            if state.last_statement.end < state.first_modified_line:
-                test_line = state.last_statement.end
-            else:
-                test_line = state.first_modified_line
+        if state.result_before != None:
+            # If lines were added into the StatementChunk that produced the ResultChunk above the edited segment,
+            # then the ResultChunk needs to be moved after the newly inserted lines
+            if state.statement_before.end > state.result_before.start:
+                move_before = True
 
-            delete_after = self.__chunks[test_line] != state.last_statement
-        else:
-            delete_after = False
-                
-        
-        if not (delete_before or delete_after):
+        if state.result_after != None:
+            # If the StatementChunk that produced the ResultChunk after the edited segment was deleted, then the
+            # ResultChunk needs to be deleted as well
+            if self.__chunks[state.statement_after.start] != state.statement_after:
+                delete_after = True
+            else:
+                # If another StatementChunk was inserted between the StatementChunk and the ResultChunk, then we
+                # need to move the ResultChunk above that statement
+                for i in xrange(state.statement_after.end + 1, state.result_after.start):
+                    if self.__chunks[i] != state.statement_after and isinstance(self.__chunks[i], StatementChunk):
+                        move_after = True
+
+        if not (move_before or delete_after or move_after):
             return
-        
+
+        print "Result fixups: move_before=%s, delete_after=%s, move_after=%s" % (move_before, delete_after, move_after)
+
         revalidate = map(lambda iter: (iter, self.create_mark(None, iter, True)), revalidate_iters)
 
         # This hack is a workaround for being unable to assign iters by value in PyGtk, see
         #   http://bugzilla.gnome.org/show_bug.cgi?id=481715
         if len(revalidate_iters) > 0:
-            revalidate_iter1 = revalidate_iters[0]
+            revalidate_iter = revalidate_iters[0]
         else:
-            revalidate_iter1 = None
+            revalidate_iter = None
 
         if len(revalidate_iters) > 1:
-            revalidate_iter2 = revalidate_iters[1]
-        else:
-            revalidate_iter2 = None
+            raise Exception("I don't know how to keep more than one iter valid")
 
-        if len(revalidate_iters) > 2:
-            raise Exception("I don't know how to keep more than two iters valid")
+        if move_before:
+            self.__delete_chunk(state.result_before, revalidate_iter1=revalidate_iter)
+            self.insert_result(state.statement_before, state.result_before.text, revalidate_iter=revalidate_iter)
 
-        if delete_before:
-            self.__delete_chunk(state.result_before, revalidate_iter1=revalidate_iter1, revalidate_iter2=revalidate_iter2)
-
-        if delete_after:
-            self.__delete_chunk(state.result_after, revalidate_iter1=revalidate_iter1, revalidate_iter2=revalidate_iter2)
+        if delete_after or move_after:
+            self.__delete_chunk(state.result_after, revalidate_iter1=revalidate_iter)
+            if move_after:
+                self.insert_result(state.statement_after, state.result_after.text, revalidate_iter=revalidate_iter)
 
         for iter, mark in revalidate:
             new = self.get_iter_at_mark(mark)
@@ -438,15 +455,23 @@ class ShellBuffer(gtk.TextBuffer):
 
         self.__rescan(new_start, new_end)
 
-        self.__fixup_results(result_fixup_state, [start, end])
+        # We can only revalidate one iter due to PyGTK limitations; see comment in __fixup_results
+        # It turns out it works to cheat and only revalidate the end iter
+#        self.__fixup_results(result_fixup_state, [start, end])
+        self.__fixup_results(result_fixup_state, [end])
         
         print "After delete, chunks are", self.__chunks
         
     def calculate(self):
+        global calculate_serial
         for chunk in self.iterate_chunks():
             if isinstance(chunk, StatementChunk) and chunk.changed:
                 chunk.changed = False
-                self.insert_result(chunk, "Result")
+                old_result = self.__find_result(chunk)
+                if old_result:
+                    self.__delete_chunk(old_result)
+                self.insert_result(chunk, "Result" + str(calculate_serial))
+                calculate_serial +=1
                 
                 self.emit("chunk-status-changed", chunk)
 
@@ -455,9 +480,15 @@ class ShellBuffer(gtk.TextBuffer):
     def get_chunk(self, line_index):
         return self.__chunks[line_index]
 
-    def insert_result(self, chunk, text):
+    def insert_result(self, chunk, text, revalidate_iter=None):
+        # revalidate_iter gets move to point to the end of the inserted result and revalidated.
+        # This is useful only as part of the workaround-hack in __fixup_results
         self.__modifying_results = True
-        location = self.get_iter_at_line(chunk.end)
+        if revalidate_iter != None:
+            location = revalidate_iter
+            location.set_line(chunk.end)
+        else:
+            location = self.get_iter_at_line(chunk.end)
         location.forward_to_line_end()
             
         self.insert(location, "\n" + text)
@@ -466,6 +497,7 @@ class ShellBuffer(gtk.TextBuffer):
         self.apply_tag(self.__result_tag, self.get_iter_at_line(chunk.end + 1), location)
 
         result_chunk = ResultChunk(chunk.end + 1, chunk.end + n_inserted)
+        result_chunk.text = text
         self.__chunks[chunk.end + 1:chunk.end + 1] = [result_chunk for i in xrange(0, n_inserted)]
         self.__lines[chunk.end + 1:chunk.end + 1] = [None for i in xrange(0, n_inserted)]
         
