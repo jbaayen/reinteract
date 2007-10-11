@@ -343,7 +343,7 @@ if __name__ == '__main__':
     test_output('a=3', ())
     test_output('1', (1,))
     test_output('1,2', (1,2))
-#    test_output('1;2', (1,2))
+    test_output('1;2', (2,))
     test_output('a=3; a', (3,))
 
     #
@@ -390,22 +390,3 @@ if __name__ == '__main__':
     test_mutated('a.b()', (('a','b'),))
     test_mutated('a.b(1,2)', (('a','b'),))
     test_mutated('a.b.c(1,2)', ())
-
-    ast = parser.suite("""
-import sys
-a=3; b=4
-a
-a,b
-print 'HI', a
-for i in range(0,3):
-    i
-a = [1]
-b = [2]
-c = [3, 4]
-a.append(2)
-a[0] = 2
-a[1],b[0] = c[0], c[1] = 2,3
-a[0] += 1
-""")
-#    rewritten = _rewrite_file_input(ast.totuple())
-#    exec parser.sequence2ast(rewritten).compile()
