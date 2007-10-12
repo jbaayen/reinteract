@@ -10,6 +10,7 @@ class StatementChunk:
         self.end = end
         self.changed = True
         self.text = None
+        self.result = None
         self.statement = None
         
     def __repr__(self):
@@ -492,7 +493,8 @@ class ShellBuffer(gtk.TextBuffer):
                         self.__delete_chunk(old_result)
 
                     chunk.calculate(parent)
-                    self.insert_result(chunk)
+                    if chunk.result != None:
+                        self.insert_result(chunk)
                 
                     self.emit("chunk-status-changed", chunk)
 

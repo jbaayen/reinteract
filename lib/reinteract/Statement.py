@@ -35,7 +35,9 @@ class Statement:
         if len(args) == 1 and args[0] == None:
             return
         
-        if self.__result != "":
+        if self.__result == None:
+            self.__result = ""
+        else:
             self.__result += "\n"
             
         if len(args) == 1:
@@ -44,9 +46,11 @@ class Statement:
             self.__result += repr(args)
 
     def do_print(self, *args):
-        if self.__result != "":
+        if self.__result == None:
+            self.__result = ""
+        else:
             self.__result += "\n"
-
+            
         self.__result += " ".join(map(str, args))
 
     def eval(self):
@@ -65,7 +69,7 @@ class Statement:
 
             scope[variable] = copy.copy(scope[variable])
 
-        self.__result = ""
+        self.__result = None
         self.__globals['__reinteract_statement'] = self
         exec compiled in self.__globals, scope
         self.__globals['__reinteract_statement'] = None
