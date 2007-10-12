@@ -23,9 +23,16 @@ w.set_default_size(300, 300)
 
 w.show_all()
 
+def on_key_press_event(window, event):
+    if (event.keyval == 0xff0d or event.keyval == 0xff8d) and (event.state & gtk.gdk.CONTROL_MASK != 0):
+        view.get_buffer().calculate()
+        return True
+    return False
+
 def on_destroy(*args):
     gtk.main_quit()
 
+w.connect('key-press-event', on_key_press_event)
 w.connect('destroy', on_destroy)
 
 gtk.main()

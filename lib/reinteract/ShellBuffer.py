@@ -198,11 +198,22 @@ class ShellBuffer(gtk.TextBuffer):
             i.forward_line()
 
         changed_chunks.extend(self.__assign_lines(chunk_start, chunk_lines, statement_end))
-        for chunk in changed_chunks:
-            self.emit("chunk-status-changed", chunk)
+        if len(changed_chunks) > 0:
+            # changed_chunks is the chunks whose text has changed, but actually, we need to
+            # recalculate those chunks and all subsequent chunks in the buffer
+            first_changed_line = changed_chunks[0].start
+            for chunk in changed_chunks:
+                if chunk.start < first_changed_line:
+                    first_changed_line = chunk.start
+                    
+                for chunk in self.iterate_chunks(first_changed_line):
+                    if isinstance(chunk, StatementChunk):
+                        chunk.changed = True
+                        self.emit("chunk-status-changed", chunk)
+                        
             
     def iterate_chunks(self, start_line=0, end_line=None):
-        if end_line == None:
+        if end_line == None or end_line >= len(self.__chunks):
             end_line = len(self.__chunks) - 1
         if start_line >= len(self.__chunks) or end_line < start_line:
             return
