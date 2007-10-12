@@ -70,6 +70,34 @@ def _is_test_method_call(t):
     else:
         return args['variable'], args['method']
 
+def _is_test_attribute(t):
+    # Check if the given AST is a attribute of the form 'v.a' If it
+    # matches, returns v, otherwise returns None
+    args = _do_match(t,
+                     (symbol.test,
+                      (symbol.or_test,
+                       (symbol.and_test,
+                        (symbol.not_test,
+                         (symbol.comparison,
+                          (symbol.expr,
+                           (symbol.xor_expr,
+                            (symbol.and_expr,
+                             (symbol.shift_expr,
+                              (symbol.arith_expr,
+                               (symbol.term,
+                                (symbol.factor,
+                                 
+                                 (symbol.power,
+                                  (symbol.atom,
+                                   (token.NAME, 'variable')),
+                                  (symbol.trailer,
+                                   (token.DOT, ''),
+                                   (token.NAME, ''))))))))))))))))
+    if args == None:
+        return None
+    else:
+        return args['variable']
+
 def _is_test_slice(t):
     # Check if the given AST is a "test" of the form 'v[...]' If it
     # matches, returns v, otherwise returns None
@@ -180,6 +208,9 @@ def _rewrite_expr_stmt(t, mutated):
             assert(len(subnode) == 2) # can only augassign one thing, despite the grammar
             
             variable = _is_test_slice(subnode[1])
+            if variable == None:
+                variable = _is_test_attribute(subnode[1])
+            
             if variable != None:
                 if not variable in mutated:
                     mutated.append(variable)
@@ -193,7 +224,10 @@ def _rewrite_expr_stmt(t, mutated):
                         subsubnode = subnode[j]
                         if subsubnode[0] == symbol.test:
                             variable = _is_test_slice(subsubnode)
-                            if (variable != None):
+                            if variable == None:
+                                variable = _is_test_attribute(subnode[1])
+                                
+                            if variable != None:
                                 if not variable in mutated:
                                     mutated.append(variable)
         return t
@@ -263,7 +297,9 @@ def rewrite_and_compile(code):
     At the same time, the code is scanned for possible mutations, and a list is returned.
     In the list:
     
-      * A string indicates the mutation of a variable by assignment to a slice of it
+      * A string indicates the mutation of a variable by assignment to a slice of it,
+        or to an attribute.
+    
       * A tuple of (variable_name, method_name) indicates the invocation of a method
         on the variable; this will sometimes be a mutation (e.g., list.append(value)),
         and sometimes not.
@@ -386,6 +422,9 @@ if __name__ == '__main__':
     test_mutated('a[0], b[0] = c[0], d[0] = 1, 2', ('a', 'b', 'c', 'd'))
 
     test_mutated('a[0] += 1', ('a',))
+    
+    test_mutated('a.b = 1', ('a',))
+    test_mutated('a.b += 1', ('a',))
     
     test_mutated('a.b()', (('a','b'),))
     test_mutated('a.b(1,2)', (('a','b'),))
