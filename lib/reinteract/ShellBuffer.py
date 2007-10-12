@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import gobject
 import gtk
+import os
 import re
 from Statement import Statement
 
@@ -69,6 +70,8 @@ class ShellBuffer(gtk.TextBuffer):
         self.__chunks = [BlankChunk(0,0)]
         self.__modifying_results = False
         self.__user_action_count = 0
+        
+        self.filename = None
 
     def __assign_lines(self, chunk_start, lines, statement_end):
         changed_chunks = []
@@ -530,15 +533,32 @@ class ShellBuffer(gtk.TextBuffer):
             chunk.start += n_inserted
             chunk.end += n_inserted
 
+    def clear(self):
+        # This is actually working pretty much coincidentally, since the Delete
+        # code wasn't really written with non-interactive deletes in mind, and
+        # when there are ResultChunk present, a non-interactive delete will
+        # use ranges including them. But the logic happens to work out.
+        
+        self.delete(self.get_start_iter(), self.get_end_iter())        
+        self.filename = None
+
     def load(self, filename):
         f = open(filename)
         text = f.read()
         f.close()
         
-        self.delete(self.get_start_iter(), self.get_end_iter())
-        self.insert(buffer.get_start_iter(), text)
+        self.clear()
+        self.insert(self.get_start_iter(), text)
 
-    def save(self, filename):
+        self.filename = filename
+
+    def save(self, filename=None):
+        if filename == None:
+            if self.filename == None:
+                raise ValueError("No currnet or specified filename")
+
+            filename = self.filename
+
         # TODO: The atomic-save implementation here is Unix-specific and won't work on Windows
         tmpname = filename + ".tmp"
 
@@ -548,7 +568,7 @@ class ShellBuffer(gtk.TextBuffer):
         
         success = False
         try:
-            iter = buffer.get_start_iter()
+            iter = self.get_start_iter()
             for chunk in self.iterate_chunks():
                 next = iter.copy()
                 while next.get_line() <= chunk.end:
@@ -564,6 +584,8 @@ class ShellBuffer(gtk.TextBuffer):
             f.close()
             os.rename(tmpname, filename)
             success = True
+
+            self.filename = filename
         finally:
             if not success:
                 f.close()
@@ -594,7 +616,7 @@ if __name__ == '__main__':
     def expect(expected):
         chunks = [ x for x in buffer.iterate_chunks() ]
         if not compare(chunks, expected):
-            print "Got:\n   %s\nExpected:\n   %s" % (chunks, expected)
+            raise AssertionError("Got:\n   %s\nExpected:\n   %s" % (chunks, expected))
 
     def insert(line, offset, text):
         i = buffer.get_iter_at_line(line)
@@ -608,18 +630,11 @@ if __name__ == '__main__':
         j.set_line_offset(end_offset)
         buffer.delete_interactive(i, j, True)
 
-    # This is actually working pretty much coincidentally, since the Delete
-    # code wasn't really written with non-interactive deletes in mind, and
-    # when there are ResultChunk present, a non-interactive delete will
-    # use ranges including them. But the logic happens to work out.
-    def clear():
-        buffer.delete(buffer.get_start_iter(), buffer.get_end_iter())
-
     # Basic operation
     insert(0, 0, "1\n\n#2\ndef a():\n  3")
     expect([S(0,0), B(1,1), C(2,2), S(3,4)])
 
-    clear()
+    buffer.clear()
     expect([B(0,0)])
 
     # Turning a statement into a continuation line
@@ -642,7 +657,7 @@ if __name__ == '__main__':
     #
     import tempfile, os
 
-    clear()
+    buffer.clear()
     expect([B(0,0)])
 
     SAVE_TEST = """a = 1
@@ -673,5 +688,5 @@ b = 2"""
     finally:
         os.remove(fname)
 
-    clear()
+    buffer.clear()
     expect([B(0,0)])
