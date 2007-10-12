@@ -2,8 +2,7 @@
 import gobject
 import gtk
 import re
-
-calculate_serial = 1
+from Statement import Statement
 
 class StatementChunk:
     def __init__(self, start=-1, end=-1):
@@ -11,9 +10,14 @@ class StatementChunk:
         self.end = end
         self.changed = True
         self.text = None
+        self.statement = None
         
     def __repr__(self):
         return "StatementChunk(%d,%d,%s,'%s')" % (self.start, self.end, self.changed, self.text)
+
+    def calculate(self, parent):
+        self.statement = Statement(self.text, parent)
+        self.result = self.statement.eval()
 
 class BlankChunk:
     def __init__(self, start=-1, end=-1):
@@ -381,12 +385,12 @@ class ShellBuffer(gtk.TextBuffer):
 
         if move_before:
             self.__delete_chunk(state.result_before, revalidate_iter1=revalidate_iter)
-            self.insert_result(state.statement_before, state.result_before.text, revalidate_iter=revalidate_iter)
+            self.insert_result(state.statement_before, revalidate_iter=revalidate_iter)
 
         if delete_after or move_after:
             self.__delete_chunk(state.result_after, revalidate_iter1=revalidate_iter)
             if move_after:
-                self.insert_result(state.statement_after, state.result_after.text, revalidate_iter=revalidate_iter)
+                self.insert_result(state.statement_after, revalidate_iter=revalidate_iter)
 
         for iter, mark in revalidate:
             new = self.get_iter_at_mark(mark)
@@ -466,24 +470,29 @@ class ShellBuffer(gtk.TextBuffer):
         print "After delete, chunks are", self.__chunks
         
     def calculate(self):
-        global calculate_serial
+        parent = None
+        have_change = False
         for chunk in self.iterate_chunks():
-            if isinstance(chunk, StatementChunk) and chunk.changed:
-                chunk.changed = False
-                old_result = self.__find_result(chunk)
-                if old_result:
-                    self.__delete_chunk(old_result)
-                self.insert_result(chunk, "Result" + str(calculate_serial))
-                calculate_serial +=1
+            if isinstance(chunk, StatementChunk):
+                if have_change or chunk.changed:
+                    chunk.changed = False
+                    old_result = self.__find_result(chunk)
+                    if old_result:
+                        self.__delete_chunk(old_result)
+
+                    chunk.calculate(parent)
+                    self.insert_result(chunk)
                 
-                self.emit("chunk-status-changed", chunk)
+                    self.emit("chunk-status-changed", chunk)
+
+                parent = chunk.statement
 
         print "After calculate, chunks are", self.__chunks
 
     def get_chunk(self, line_index):
         return self.__chunks[line_index]
 
-    def insert_result(self, chunk, text, revalidate_iter=None):
+    def insert_result(self, chunk, revalidate_iter=None):
         # revalidate_iter gets move to point to the end of the inserted result and revalidated.
         # This is useful only as part of the workaround-hack in __fixup_results
         self.__modifying_results = True
@@ -494,13 +503,13 @@ class ShellBuffer(gtk.TextBuffer):
             location = self.get_iter_at_line(chunk.end)
         location.forward_to_line_end()
             
-        self.insert(location, "\n" + text)
+        self.insert(location, "\n" + chunk.result)
         self.__modifying_results = False
         n_inserted = location.get_line() - chunk.end
         self.apply_tag(self.__result_tag, self.get_iter_at_line(chunk.end + 1), location)
 
         result_chunk = ResultChunk(chunk.end + 1, chunk.end + n_inserted)
-        result_chunk.text = text
+        result_chunk.text = chunk.result
         self.__chunks[chunk.end + 1:chunk.end + 1] = [result_chunk for i in xrange(0, n_inserted)]
         self.__lines[chunk.end + 1:chunk.end + 1] = [None for i in xrange(0, n_inserted)]
         
@@ -554,19 +563,19 @@ if __name__ == '__main__':
         buffer.delete(buffer.get_start_iter(), buffer.get_end_iter())
 
     # Basic operation
-    insert(0, 0, "A\n\n#B\nC\n  C")
+    insert(0, 0, "1\n\n#2\ndef a():\n  3")
     expect([S(0,0), B(1,1), C(2,2), S(3,4)])
 
     clear()
     expect([B(0,0)])
 
     # Turning a statement into a continuation line
-    insert(0, 0, "A\nB\n")
+    insert(0, 0, "1 \\\n+ 2\n")
     insert(1, 0, " ")
     expect([S(0,1), B(2,2)])
 
     # Calculation resulting in result chunks
-    insert(2, 0, "C\n")
+    insert(2, 0, "3\n")
     buffer.calculate()
     expect([S(0,1), R(2,2), S(3,3), R(4,4), B(5,5)])
 
