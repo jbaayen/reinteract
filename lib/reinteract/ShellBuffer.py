@@ -59,6 +59,16 @@ class ShellBuffer(gtk.TextBuffer):
         'insert-text': 'override',
         'delete-range': 'override',
         'chunk-status-changed':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+
+        # It would be more GObject to make these properties, but we'll wait on that until
+        # decent property support lands:
+        #
+        #  http://blogs.gnome.org/johan/2007/04/30/simplified-gobject-properties/
+        #
+        'filename-changed':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
+        # Clumsy naming is because GtkTextBuffer already has a modified flag, but that would
+        # include changes to the results
+        'code-modified-changed':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
 
     def __init__(self):
@@ -72,6 +82,7 @@ class ShellBuffer(gtk.TextBuffer):
         self.__user_action_count = 0
         
         self.filename = None
+        self.code_modified = False
 
     def __assign_lines(self, chunk_start, lines, statement_end):
         changed_chunks = []
@@ -266,6 +277,9 @@ class ShellBuffer(gtk.TextBuffer):
         if self.__modifying_results:
             return
 
+        if self.__user_action_count > 0:
+            self.__set_modified(True)
+
         result_fixup_state = self.__get_result_fixup_state(start_line, start_line)
             
         self.__chunks[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
@@ -457,6 +471,9 @@ class ShellBuffer(gtk.TextBuffer):
         if self.__modifying_results:
             return
 
+        if self.__user_action_count > 0:
+            self.__set_modified(True)
+
         result_fixup_state = self.__get_result_fixup_state(new_start, last_modified_line)
 
         self.__chunks[first_deleted_line:last_deleted_line + 1] = []
@@ -533,24 +550,49 @@ class ShellBuffer(gtk.TextBuffer):
             chunk.start += n_inserted
             chunk.end += n_inserted
 
-    def clear(self):
+    def __set_filename_and_modified(self, filename, modified):
+        filename_changed = filename != self.filename
+        modified_changed = modified != self.code_modified
+
+        if not (filename_changed or modified_changed):
+            return
+        
+        self.filename = filename
+        self.code_modified = modified
+
+        if filename_changed:
+            self.emit('filename-changed')
+
+        if modified_changed:
+            self.emit('code-modified-changed')
+
+    def __set_modified(self, modified):
+        if modified == self.code_modified:
+            return
+
+        self.code_modified = modified
+        self.emit('code-modified-changed')
+
+    def __do_clear(self):
         # This is actually working pretty much coincidentally, since the Delete
         # code wasn't really written with non-interactive deletes in mind, and
         # when there are ResultChunk present, a non-interactive delete will
         # use ranges including them. But the logic happens to work out.
         
         self.delete(self.get_start_iter(), self.get_end_iter())        
-        self.filename = None
+
+    def clear(self):
+        self.__do_clear()
+        self.__set_filename_and_modified(None, False)
 
     def load(self, filename):
         f = open(filename)
         text = f.read()
         f.close()
         
-        self.clear()
+        self.__do_clear()
+        self.__set_filename_and_modified(filename, False)
         self.insert(self.get_start_iter(), text)
-
-        self.filename = filename
 
     def save(self, filename=None):
         if filename == None:
@@ -585,7 +627,7 @@ class ShellBuffer(gtk.TextBuffer):
             os.rename(tmpname, filename)
             success = True
 
-            self.filename = filename
+            self.__set_filename_and_modified(filename, False)
         finally:
             if not success:
                 f.close()

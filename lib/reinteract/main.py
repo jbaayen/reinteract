@@ -1,5 +1,7 @@
 import gtk
 
+import os
+
 from ShellView import ShellView
 
 w = gtk.Window()
@@ -32,7 +34,7 @@ def on_new(action):
     buf.clear()
     
 def on_open(action):
-    chooser = gtk.FileChooserDialog("Open File...", w, gtk.FILE_CHOOSER_ACTION_OPEN,
+    chooser = gtk.FileChooserDialog("Open Worksheet...", w, gtk.FILE_CHOOSER_ACTION_OPEN,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                      gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
     response = chooser.run()
@@ -131,6 +133,26 @@ v.show_all()
 view.grab_focus()
 
 w.show()
+
+def update_title(*args):
+    if buf.code_modified:
+        title = "*"
+    else:
+        title = ""
+    
+    if buf.filename == None:
+        title += "Unsaved Worksheet"
+    else:
+        title += os.path.basename(buf.filename)
+    
+    title += " - Reinteract"
+
+    w.set_title(title)
+
+buf.connect('filename-changed', update_title)
+buf.connect('code-modified-changed', update_title)
+
+update_title()
 
 # We have a <Control>Return accelerator, but this hooks up <Control>KP_Enter as well;
 # maybe someone wants that
