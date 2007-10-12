@@ -530,6 +530,46 @@ class ShellBuffer(gtk.TextBuffer):
             chunk.start += n_inserted
             chunk.end += n_inserted
 
+    def load(self, filename):
+        f = open(filename)
+        text = f.read()
+        f.close()
+        
+        self.delete(self.get_start_iter(), self.get_end_iter())
+        self.insert(buffer.get_start_iter(), text)
+
+    def save(self, filename):
+        # TODO: The atomic-save implementation here is Unix-specific and won't work on Windows
+        tmpname = filename + ".tmp"
+
+        # We use binary mode, since we don't want to munge line endings to the system default
+        # on a load-save cycle
+        f = open(tmpname, "wb")
+        
+        success = False
+        try:
+            iter = buffer.get_start_iter()
+            for chunk in self.iterate_chunks():
+                next = iter.copy()
+                while next.get_line() <= chunk.end:
+                    if not next.forward_line(): # at end of buffer
+                        break
+
+                if not isinstance(chunk, ResultChunk):
+                    chunk_text = self.get_slice(iter, next)
+                    f.write(chunk_text)
+
+                iter = next
+            
+            f.close()
+            os.rename(tmpname, filename)
+            success = True
+        finally:
+            if not success:
+                f.close()
+                os.remove(tmpname)
+                
+
 if __name__ == '__main__':
     S = StatementChunk
     B = BlankChunk
@@ -596,6 +636,42 @@ if __name__ == '__main__':
     # result chunk being moved to the last line of the first half
     delete(1, 0, 1, 1)
     expect([S(0,0), R(1,1), S(2,2), S(3,3), R(4,4), B(5,5)])
+
+    #
+    # Try writing to a file, and reading it back
+    #
+    import tempfile, os
+
+    clear()
+    expect([B(0,0)])
+
+    SAVE_TEST = """a = 1
+a
+# A comment
+
+b = 2"""
+
+    insert(0, 0, SAVE_TEST)
+    buffer.calculate()
+    
+    handle, fname = tempfile.mkstemp(".txt", "shell_buffer")
+    os.close(handle)
+    
+    try:
+        buffer.save(fname)
+        f = open(fname, "r")
+        saved = f.read()
+        f.close()
+
+        if saved != SAVE_TEST:
+            raise AssertionError("Got '%s', expected '%s'", saved, SAVE_TEST)
+
+        buffer.load(fname)
+        buffer.calculate()
+
+        expect([S(0,0), S(1,1), R(2,2), C(3,3), B(4,4), S(5,5)])
+    finally:
+        os.remove(fname)
 
     clear()
     expect([B(0,0)])
