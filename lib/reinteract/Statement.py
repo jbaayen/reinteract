@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import copy
-import compiler
+import sys
 
 import rewrite
 
@@ -12,92 +12,122 @@ def reinteract_output(*args):
 def reinteract_print(*args):
    __reinteract_statement.do_print(*args)
 """, __name__, 'exec')
-    
+
+# A wrapper so we don't have to trap all exceptions when running statement.Execute
+class ExecutionError(Exception):
+    def __init__(self, cause, traceback):
+        self.cause = cause
+        self.traceback = traceback
+
+    def __str__(self):
+        return "ExecutionError: " + str(self.cause)
+
 class Statement:
     def __init__(self, text, parent = None):
         self.__text = text
-        self.__parent = parent
-        self.__result_scope = None
+        self.__globals = None
+        self.result_scope = None
+        self.result = None
 
-        if self.__parent != None:
-            self.__globals = self.__parent.get_globals()
-        else:
-            self.__globals = { '__builtins__': __builtins__ }
-            exec _DEFINE_GLOBALS in self.__globals
+        # May raise SyntaxError
+        self.__compiled, self.__mutated = rewrite.rewrite_and_compile(self.__text)
+
+        self.set_parent(parent)
 
     def get_globals(self):
-        return self.__globals
+        if self.__globals == None:
+            if self.__parent != None:
+                self.__globals = self.__parent.get_globals()
+            else:
+                self.__globals = { '__builtins__': __builtins__ }
+                exec _DEFINE_GLOBALS in self.__globals
 
+        return self.__globals
+        
+    def set_parent(self, parent):
+        self.__parent = parent
+        self.__globals = None
+        
     def get_result_scope(self):
-        return self.__result_scope
+        return self.result_scope
 
     def do_output(self, *args):
         if len(args) == 1 and args[0] == None:
             return
         
-        if self.__result == None:
-            self.__result = ""
+        if self.result == None:
+            self.result = ""
         else:
-            self.__result += "\n"
+            self.result += "\n"
             
         if len(args) == 1:
-            self.__result += repr(args[0])
+            self.result += repr(args[0])
         else:
-            self.__result += repr(args)
+            self.result += repr(args)
 
     def do_print(self, *args):
-        if self.__result == None:
-            self.__result = ""
+        if self.result == None:
+            self.result = ""
         else:
-            self.__result += "\n"
+            self.result += "\n"
             
-        self.__result += " ".join(map(str, args))
+        self.result += " ".join(map(str, args))
 
-    def eval(self):
-        compiled, mutated = rewrite.rewrite_and_compile(self.__text)
-        
+    def execute(self):
+        global_scope = self.get_globals()
+
         if self.__parent:
-            scope = copy.copy(self.__parent.get_result_scope())
+            local_scope = copy.copy(self.__parent.result_scope)
         else:
-            scope = {}
+            local_scope = {}
 
-        for mutation in mutated:
+        for mutation in self.__mutated:
             if isinstance(mutation, tuple):
                 variable, method = mutation
             else:
                 variable = mutation
 
-            scope[variable] = copy.copy(scope[variable])
+            local_scope[variable] = copy.copy(local_scope[variable])
 
-        self.__result = None
-        self.__globals['__reinteract_statement'] = self
-        exec compiled in self.__globals, scope
-        self.__globals['__reinteract_statement'] = None
+        self.result = None
+        global_scope['__reinteract_statement'] = self
+        try:
+            exec self.__compiled in global_scope, local_scope
+        except:
+            _, cause, traceback = sys.exc_info()
+            raise ExecutionError(cause, traceback)
+        finally:
+            global_scope['__reinteract_statement'] = None
 
-        self.__result_scope = scope
-
-        return self.__result
+        self.result_scope = local_scope
 
 if __name__=='__main__':
     def expect(actual,expected):
         if actual != expected:
             raise AssertionError("Got: '%s'; Expected: '%s'" % (actual, expected))
 
+    def expect_result(text, result):
+        s = Statement(text)
+        s.execute()
+        expect(s.result, result)
+
     # A bare expression should give the repr of the expression
-    expect(Statement("'a'").eval(), repr('a'))
-    expect(Statement("1,2").eval(), repr((1,2)))
+    expect_result("'a'", repr('a'))
+    expect_result("1,2", repr((1,2)))
 
     # Print, on the other hand, gives the string form of the expression
-    expect(Statement("print 'a'").eval(), 'a')
+    expect_result("print 'a'", 'a')
 
     # Test that we copy a variable before mutating it (when we can detect
     # the mutation)
     s1 = Statement("b = [0]")
-    s1.eval()
+    s1.execute()
     s2 = Statement("b[0] = 1", parent=s1)
-    s2.eval()
+    s2.execute()
     s3 = Statement("b[0]", parent = s2)
-    expect(s3.eval(), "1")
+    s3.execute()
+    expect(s3.result, "1")
     
     s2a = Statement("b[0]", parent=s1)
-    expect(s2a.eval(), "0")
+    s2a.execute()
+    expect(s2a.result, "0")

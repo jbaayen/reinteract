@@ -3,24 +3,71 @@ import gobject
 import gtk
 import os
 import re
-from Statement import Statement
+from Statement import Statement, ExecutionError
 
 class StatementChunk:
     def __init__(self, start=-1, end=-1):
         self.start = start
         self.end = end
-        self.changed = True
-        self.text = None
-        self.result = None
-        self.statement = None
+        self.set_text(None)
         
     def __repr__(self):
-        return "StatementChunk(%d,%d,%s,'%s')" % (self.start, self.end, self.changed, self.text)
+        return "StatementChunk(%d,%d,%s,%s,'%s')" % (self.start, self.end, self.needs_compile, self.needs_execute, self.text)
 
-    def calculate(self, parent):
-        self.statement = Statement(self.text, parent)
-        self.result = self.statement.eval()
+    def set_text(self, text):
+        try:
+            if text == self.text:
+                return
+        except AttributeError:
+            pass
+        
+        self.text = text
+        self.needs_compile = text != None
+        self.needs_execute = False
+        
+        self.statement = None
+        
+        self.result = None
 
+        self.error_message = None
+        self.error_line = None
+        self.error_offset = None
+
+    def mark_for_execute(self):
+        if self.statement == None:
+            return
+
+        self.needs_execute = True
+
+    def compile(self):
+        if self.statement != None:
+            return
+        
+        self.needs_compile = False
+        
+        try:
+            self.statement = Statement(self.text)
+            self.needs_execute = True
+        except SyntaxError, e:
+            self.error_message = e.msg
+            self.error_line = e.lineno
+            self.error_offset = e.offset
+
+    def execute(self, parent):
+        assert(self.statement != None)
+        
+        self.needs_compile = False
+        self.needs_execute = False
+        
+        try:
+            self.statement.set_parent(parent)
+            self.statement.execute()
+            self.result = self.statement.result
+        except ExecutionError, e:
+            self.error_message = str(e.cause)
+            self.error_line = e.traceback.tb_frame.f_lineno
+            self.error_offset = None
+            
 class BlankChunk:
     def __init__(self, start=-1, end=-1):
         self.start = start
@@ -75,7 +122,11 @@ class ShellBuffer(gtk.TextBuffer):
         gtk.TextBuffer.__init__(self)
 
         self.__red_tag = self.create_tag(foreground="red")
-        self.__result_tag = self.create_tag(foreground="gray", editable=False)
+        self.__result_tag = self.create_tag(family="monospace", style="italic", editable=False)
+        # Order here is significant ... we want the recompute tag to have higher priority, so
+        # define it second
+        self.__error_tag = self.create_tag(foreground="#aa0000")
+        self.__recompute_tag = self.create_tag(foreground="#888888")
         self.__lines = [""]
         self.__chunks = [BlankChunk(0,0)]
         self.__modifying_results = False
@@ -103,8 +154,7 @@ class ShellBuffer(gtk.TextBuffer):
                 for i in xrange(old_statement.start, old_statement.end + 1):
                     self.__chunks[i] = None
 
-                changed = not old_statement.changed and text != old_statement.text
-                old_statement.changed = old_statement.changed or changed
+                changed = not old_statement.needs_compile and text != old_statement.text
                 chunk = old_statement
             else:
                 changed = True
@@ -115,7 +165,7 @@ class ShellBuffer(gtk.TextBuffer):
                 
             chunk.start = chunk_start
             chunk.end = statement_end
-            chunk.text = text
+            chunk.set_text(text)
             
             for i in xrange(chunk_start, statement_end + 1):
                 self.__chunks[i] = chunk
@@ -214,18 +264,26 @@ class ShellBuffer(gtk.TextBuffer):
 
         changed_chunks.extend(self.__assign_lines(chunk_start, chunk_lines, statement_end))
         if len(changed_chunks) > 0:
-            # changed_chunks is the chunks whose text has changed, but actually, we need to
-            # recalculate those chunks and all subsequent chunks in the buffer
+            # The the chunks in changed_chunks are already marked as needing recompilation; we
+            # need to emit signals and also mark those chunks and all subsequent chunks as
+            # needing reexecution
             first_changed_line = changed_chunks[0].start
             for chunk in changed_chunks:
                 if chunk.start < first_changed_line:
                     first_changed_line = chunk.start
-                    
-                for chunk in self.iterate_chunks(first_changed_line):
-                    if isinstance(chunk, StatementChunk):
-                        chunk.changed = True
-                        self.emit("chunk-status-changed", chunk)
+
+            for chunk in self.iterate_chunks(first_changed_line):
+                if isinstance(chunk, StatementChunk):
+                    chunk.mark_for_execute()
+
+                    result = self.__find_result(chunk)
+                    if result:
+                        self.__apply_tag_to_chunk(self.__recompute_tag, result)
                         
+                    self.emit("chunk-status-changed", chunk)
+                    if result:
+                        self.emit("chunk-status-changed", result)
+                    
             
     def iterate_chunks(self, start_line=0, end_line=None):
         if end_line == None or end_line >= len(self.__chunks):
@@ -503,19 +561,33 @@ class ShellBuffer(gtk.TextBuffer):
         
     def calculate(self):
         parent = None
-        have_change = False
+        have_error = False
         for chunk in self.iterate_chunks():
             if isinstance(chunk, StatementChunk):
-                if have_change or chunk.changed:
-                    chunk.changed = False
+                changed = False
+                if chunk.needs_compile or (chunk.needs_execute and not have_error):
                     old_result = self.__find_result(chunk)
                     if old_result:
                         self.__delete_chunk(old_result)
 
-                    chunk.calculate(parent)
-                    if chunk.result != None:
+                if chunk.needs_compile:
+                    changed = True
+                    chunk.compile()
+                    if chunk.error_message != None:
                         self.insert_result(chunk)
-                
+
+                if chunk.needs_execute and not have_error:
+                    changed = True
+                    chunk.execute(parent)
+                    if chunk.error_message != None:
+                        self.insert_result(chunk)
+                    elif chunk.result != None:
+                        self.insert_result(chunk)
+
+                if chunk.error_message != None:
+                    have_error = True
+
+                if changed:
                     self.emit("chunk-status-changed", chunk)
 
                 parent = chunk.statement
@@ -525,6 +597,12 @@ class ShellBuffer(gtk.TextBuffer):
     def get_chunk(self, line_index):
         return self.__chunks[line_index]
 
+    def __apply_tag_to_chunk(self, tag, chunk):
+        start = self.get_iter_at_line(chunk.start)
+        end = self.get_iter_at_line(chunk.end)
+        end.forward_to_line_end()
+        self.apply_tag(tag, start,end)
+    
     def insert_result(self, chunk, revalidate_iter=None):
         # revalidate_iter gets move to point to the end of the inserted result and revalidated.
         # This is useful only as part of the workaround-hack in __fixup_results
@@ -535,16 +613,25 @@ class ShellBuffer(gtk.TextBuffer):
         else:
             location = self.get_iter_at_line(chunk.end)
         location.forward_to_line_end()
+
+        if chunk.error_message:
+            text = chunk.error_message
+        else:
+            text = chunk.result
             
-        self.insert(location, "\n" + chunk.result)
+        self.insert(location, "\n" + text)
         self.__modifying_results = False
         n_inserted = location.get_line() - chunk.end
-        self.apply_tag(self.__result_tag, self.get_iter_at_line(chunk.end + 1), location)
 
         result_chunk = ResultChunk(chunk.end + 1, chunk.end + n_inserted)
-        result_chunk.text = chunk.result
+        result_chunk.text = text
         self.__chunks[chunk.end + 1:chunk.end + 1] = [result_chunk for i in xrange(0, n_inserted)]
         self.__lines[chunk.end + 1:chunk.end + 1] = [None for i in xrange(0, n_inserted)]
+
+        self.__apply_tag_to_chunk(self.__result_tag, result_chunk)
+
+        if chunk.error_message:
+            self.__apply_tag_to_chunk(self.__error_tag, result_chunk)
         
         for chunk in self.iterate_chunks(result_chunk.end + 1):
             chunk.start += n_inserted

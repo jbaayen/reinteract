@@ -55,12 +55,14 @@ class ShellView(gtk.TextView):
         
         for chunk in buf.iterate_chunks(start_line.get_line(), end_line.get_line()):
             if isinstance(chunk, StatementChunk):
-                if chunk.changed:
+                if chunk.error_message != None:
                     self.paint_chunk(cr, event.area, chunk, (1, 0, 0), (0.5, 0, 0))
+                elif chunk.needs_compile:
+                    self.paint_chunk(cr, event.area, chunk, (1, 1, 0), (0.5, 0.5, 0))
+                elif chunk.needs_execute:
+                    self.paint_chunk(cr, event.area, chunk, (1, 0, 1), (0.5, 0.5, 0))
                 else:
                     self.paint_chunk(cr, event.area, chunk, (0, 0, 1), (0, 0, 0.5))
-            elif isinstance(chunk, ResultChunk):
-                self.paint_chunk(cr, event.area, chunk, (0.8, 0.8, 0.8), (0.5, 0.5, 0.5))
                 
         return False
 
