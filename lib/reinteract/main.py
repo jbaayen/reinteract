@@ -1,6 +1,7 @@
 import gtk
 
 import os
+import sys
 
 from shell_view import ShellView
 
@@ -129,12 +130,10 @@ v.pack_start(sw, expand=True, fill=True)
 
 sw.add(view)
 
-w.set_default_size(500, 700)
+w.set_default_size(600, 800)
 
 v.show_all()
 view.grab_focus()
-
-w.show()
 
 def update_title(*args):
     if buf.code_modified:
@@ -165,6 +164,12 @@ def on_key_press_event(window, event):
     return False
 
 w.connect('key-press-event', on_key_press_event)
+
+if len(sys.argv) > 1:
+    buf.load(sys.argv[1])
+    buf.calculate()
+
+w.show()
 
 def on_destroy(*args):
     gtk.main_quit()

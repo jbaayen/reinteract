@@ -4,6 +4,7 @@ import gtk
 import os
 import re
 from statement import Statement, ExecutionError
+from custom_result import CustomResult
 
 _verbose = False
 
@@ -29,7 +30,7 @@ class StatementChunk:
         
         self.statement = None
         
-        self.result = None
+        self.results = None
 
         self.error_message = None
         self.error_line = None
@@ -64,7 +65,7 @@ class StatementChunk:
         try:
             self.statement.set_parent(parent)
             self.statement.execute()
-            self.result = self.statement.result
+            self.results = self.statement.results
         except ExecutionError, e:
             self.error_message = str(e.cause)
             self.error_line = e.traceback.tb_frame.f_lineno
@@ -108,6 +109,7 @@ class ShellBuffer(gtk.TextBuffer):
         'insert-text': 'override',
         'delete-range': 'override',
         'chunk-status-changed':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+        'add-custom-result':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)),
 
         # It would be more GObject to make these properties, but we'll wait on that until
         # decent property support lands:
@@ -129,6 +131,7 @@ class ShellBuffer(gtk.TextBuffer):
         # define it second
         self.__error_tag = self.create_tag(foreground="#aa0000")
         self.__recompute_tag = self.create_tag(foreground="#888888")
+        self.__comment_tag = self.create_tag(foreground="#00aa00")
         self.__lines = [""]
         self.__chunks = [BlankChunk(0,0)]
         self.__modifying_results = False
@@ -198,6 +201,8 @@ class ShellBuffer(gtk.TextBuffer):
                 chunk.end = i
                 self.__chunks[i] = chunk
                 self.__lines[i] = lines[i - chunk_start]
+                # This is O(n^2) inefficient
+                self.__apply_tag_to_chunk(self.__comment_tag, chunk)
         
         return changed_chunks
             
@@ -588,7 +593,7 @@ class ShellBuffer(gtk.TextBuffer):
                     chunk.execute(parent)
                     if chunk.error_message != None:
                         self.insert_result(chunk)
-                    elif chunk.result != None:
+                    elif len(chunk.results) > 0:
                         self.insert_result(chunk)
 
                 if chunk.error_message != None:
@@ -623,16 +628,22 @@ class ShellBuffer(gtk.TextBuffer):
         location.forward_to_line_end()
 
         if chunk.error_message:
-            text = chunk.error_message
+            results = [ chunk.error_message ]
         else:
-            text = chunk.result
+            results = chunk.results
+
+        for result in results:
+            if isinstance(result, basestring):
+                self.insert(location, "\n" + result)
+            elif isinstance(result, CustomResult):
+                self.insert(location, "\n")
+                anchor = self.create_child_anchor(location)
+                self.emit("add-custom-result", result, anchor)
             
-        self.insert(location, "\n" + text)
         self.__modifying_results = False
         n_inserted = location.get_line() - chunk.end
 
         result_chunk = ResultChunk(chunk.end + 1, chunk.end + n_inserted)
-        result_chunk.text = text
         self.__chunks[chunk.end + 1:chunk.end + 1] = [result_chunk for i in xrange(0, n_inserted)]
         self.__lines[chunk.end + 1:chunk.end + 1] = [None for i in xrange(0, n_inserted)]
 

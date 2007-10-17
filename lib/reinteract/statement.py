@@ -4,6 +4,7 @@ import copy
 import sys
 
 import rewrite
+from custom_result import CustomResult
 
 _DEFINE_GLOBALS = compile("""
 global reinteract_output, reinteract_print
@@ -27,7 +28,7 @@ class Statement:
         self.__text = text
         self.__globals = None
         self.result_scope = None
-        self.result = None
+        self.results = None
 
         # May raise SyntaxError
         self.__compiled, self.__mutated = rewrite.rewrite_and_compile(self.__text)
@@ -52,26 +53,20 @@ class Statement:
         return self.result_scope
 
     def do_output(self, *args):
-        if len(args) == 1 and args[0] == None:
-            return
-        
-        if self.result == None:
-            self.result = ""
-        else:
-            self.result += "\n"
-            
         if len(args) == 1:
-            self.result += repr(args[0])
+            arg = args[0]
+            
+            if args[0] == None:
+                return
+            elif isinstance(args[0], CustomResult):
+                self.results.append(args[0])
+            else:
+                self.results.append(repr(args[0]))
         else:
-            self.result += repr(args)
+            self.results.append(repr(args))
 
     def do_print(self, *args):
-        if self.result == None:
-            self.result = ""
-        else:
-            self.result += "\n"
-            
-        self.result += " ".join(map(str, args))
+        self.results.append(" ".join(map(str, args)))
 
     def execute(self):
         global_scope = self.get_globals()
@@ -89,11 +84,12 @@ class Statement:
 
             local_scope[variable] = copy.copy(local_scope[variable])
 
-        self.result = None
+        self.results = []
         global_scope['__reinteract_statement'] = self
         try:
             exec self.__compiled in global_scope, local_scope
         except:
+            self.results = None
             _, cause, traceback = sys.exc_info()
             raise ExecutionError(cause, traceback)
         finally:
@@ -109,7 +105,7 @@ if __name__=='__main__':
     def expect_result(text, result):
         s = Statement(text)
         s.execute()
-        expect(s.result, result)
+        expect(s.results[0], result)
 
     # A bare expression should give the repr of the expression
     expect_result("'a'", repr('a'))
@@ -126,8 +122,8 @@ if __name__=='__main__':
     s2.execute()
     s3 = Statement("b[0]", parent = s2)
     s3.execute()
-    expect(s3.result, "1")
+    expect(s3.results[0], "1")
     
     s2a = Statement("b[0]", parent=s1)
     s2a.execute()
-    expect(s2a.result, "0")
+    expect(s2a.results[0], "0")

@@ -13,6 +13,7 @@ class ShellView(gtk.TextView):
             buf = ShellBuffer()
 
         buf.connect('chunk-status-changed', self.on_chunk_status_changed)
+        buf.connect('add-custom-result', self.on_add_custom_result)
             
         gtk.TextView.__init__(self, buf)
         self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, 10)
@@ -71,5 +72,11 @@ class ShellView(gtk.TextView):
         (end_y, end_height) = self.get_line_yrange(buf.get_iter_at_line(chunk.end))
 
         (_, window_y) = self.buffer_to_window_coords(gtk.TEXT_WINDOW_LEFT, 0, start_y)
-        
-        self.get_window(gtk.TEXT_WINDOW_LEFT).invalidate_rect((0, window_y, 10, end_y + end_height - start_y), False)
+
+        if self.window:
+            self.get_window(gtk.TEXT_WINDOW_LEFT).invalidate_rect((0, window_y, 10, end_y + end_height - start_y), False)
+
+    def on_add_custom_result(self, buf, result, anchor):
+        widget = result.create_widget()
+        widget.show()
+        self.add_child_at_anchor(widget, anchor)
