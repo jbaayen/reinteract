@@ -2,7 +2,7 @@ import gtk
 
 import os
 
-from ShellView import ShellView
+from shell_view import ShellView
 
 w = gtk.Window()
 
@@ -37,6 +37,7 @@ def on_open(action):
     chooser = gtk.FileChooserDialog("Open Worksheet...", w, gtk.FILE_CHOOSER_ACTION_OPEN,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                      gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
+    chooser.set_default_response(gtk.RESPONSE_OK)
     response = chooser.run()
     filename = None
     if response == gtk.RESPONSE_OK:
@@ -58,6 +59,7 @@ def on_save_as(action):
     chooser = gtk.FileChooserDialog("Save As...", w, gtk.FILE_CHOOSER_ACTION_SAVE,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                      gtk.STOCK_SAVE,   gtk.RESPONSE_OK))
+    chooser.set_default_response(gtk.RESPONSE_OK)
     response = chooser.run()
     filename = None
     if response == gtk.RESPONSE_OK:

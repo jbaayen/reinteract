@@ -3,7 +3,9 @@ import gobject
 import gtk
 import os
 import re
-from Statement import Statement, ExecutionError
+from statement import Statement, ExecutionError
+
+_verbose = False
 
 class StatementChunk:
     def __init__(self, start=-1, end=-1):
@@ -122,7 +124,7 @@ class ShellBuffer(gtk.TextBuffer):
         gtk.TextBuffer.__init__(self)
 
         self.__red_tag = self.create_tag(foreground="red")
-        self.__result_tag = self.create_tag(family="monospace", style="italic", editable=False)
+        self.__result_tag = self.create_tag(family="monospace", style="italic", wrap_mode=gtk.WRAP_WORD, editable=False)
         # Order here is significant ... we want the recompute tag to have higher priority, so
         # define it second
         self.__error_tag = self.create_tag(foreground="#aa0000")
@@ -325,9 +327,10 @@ class ShellBuffer(gtk.TextBuffer):
         if self.__user_action_count > 0:
             if isinstance(self.__chunks[start_line], ResultChunk):
                 return
-            
-        if not self.__modifying_results:
-            print "Inserting '%s' at %s" % (text, (location.get_line(), location.get_line_offset()))
+
+        if _verbose:
+            if not self.__modifying_results:
+                print "Inserting '%s' at %s" % (text, (location.get_line(), location.get_line_offset()))
 
         gtk.TextBuffer.do_insert_text(self, location, text, text_len)
         end_line = location.get_line()
@@ -353,7 +356,8 @@ class ShellBuffer(gtk.TextBuffer):
 
         self.__fixup_results(result_fixup_state, [location])
 
-        print "After insert, chunks are", self.__chunks
+        if _verbose:
+            print "After insert, chunks are", self.__chunks
 
     def __delete_chunk(self, chunk, revalidate_iter1=None, revalidate_iter2=None):
         # revalidate_iter1 and revalidate_iter2 get moved to point to the location
@@ -456,7 +460,8 @@ class ShellBuffer(gtk.TextBuffer):
         if not (move_before or delete_after or move_after):
             return
 
-        print "Result fixups: move_before=%s, delete_after=%s, move_after=%s" % (move_before, delete_after, move_after)
+        if _verbose:
+            print "Result fixups: move_before=%s, delete_after=%s, move_after=%s" % (move_before, delete_after, move_after)
 
         revalidate = map(lambda iter: (iter, self.create_mark(None, iter, True)), revalidate_iters)
 
@@ -520,9 +525,10 @@ class ShellBuffer(gtk.TextBuffer):
             (new_start, new_end) = (start_line, start_line)
             last_modified_line = end_line
 
-        if not self.__modifying_results:
-            print "Deleting range %s" % (((start.get_line(), start.get_line_offset()), (end.get_line(), end.get_line_offset())),)
-            print "first_deleted_line=%d, last_deleted_line=%d, new_start=%d, new_end=%d, last_modified_line=%d" % (first_deleted_line, last_deleted_line, new_start, new_end, last_modified_line)
+        if _verbose:
+            if not self.__modifying_results:
+                print "Deleting range %s" % (((start.get_line(), start.get_line_offset()), (end.get_line(), end.get_line_offset())),)
+                print "first_deleted_line=%d, last_deleted_line=%d, new_start=%d, new_end=%d, last_modified_line=%d" % (first_deleted_line, last_deleted_line, new_start, new_end, last_modified_line)
         
         gtk.TextBuffer.do_delete_range(self, start, end)
 
@@ -556,8 +562,9 @@ class ShellBuffer(gtk.TextBuffer):
         # It turns out it works to cheat and only revalidate the end iter
 #        self.__fixup_results(result_fixup_state, [start, end])
         self.__fixup_results(result_fixup_state, [end])
-        
-        print "After delete, chunks are", self.__chunks
+
+        if _verbose:
+            print "After delete, chunks are", self.__chunks
         
     def calculate(self):
         parent = None
@@ -592,7 +599,8 @@ class ShellBuffer(gtk.TextBuffer):
 
                 parent = chunk.statement
 
-        print "After calculate, chunks are", self.__chunks
+        if _verbose:
+            print "After calculate, chunks are", self.__chunks
 
     def get_chunk(self, line_index):
         return self.__chunks[line_index]

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import gtk
-from ShellBuffer import ShellBuffer, StatementChunk, ResultChunk
+from shell_buffer import ShellBuffer, StatementChunk, ResultChunk
 
 class ShellView(gtk.TextView):
     __gsignals__ = {
