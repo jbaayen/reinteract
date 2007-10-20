@@ -4,6 +4,7 @@ import gtk
 import traceback
 import os
 import re
+from notebook import Notebook
 from statement import Statement, ExecutionError
 from worksheet import Worksheet
 from custom_result import CustomResult
@@ -15,6 +16,12 @@ class StatementChunk:
         self.start = start
         self.end = end
         self.set_text(None)
+        
+        self.results = None
+
+        self.error_message = None
+        self.error_line = None
+        self.error_offset = None
         
     def __repr__(self):
         return "StatementChunk(%d,%d,%s,%s,'%s')" % (self.start, self.end, self.needs_compile, self.needs_execute, self.text)
@@ -31,12 +38,6 @@ class StatementChunk:
         self.needs_execute = False
         
         self.statement = None
-        
-        self.results = None
-
-        self.error_message = None
-        self.error_line = None
-        self.error_offset = None
 
     def mark_for_execute(self):
         if self.statement == None:
@@ -49,6 +50,12 @@ class StatementChunk:
             return
         
         self.needs_compile = False
+        
+        self.results = None
+
+        self.error_message = None
+        self.error_line = None
+        self.error_offset = None
         
         try:
             self.statement = Statement(self.text, worksheet)
@@ -95,7 +102,7 @@ class ResultChunk:
         self.end = end
         
     def __repr__(self):
-        return "ResultChunk(%d,%d,'%s')" % (self.start, self.end, self.text)
+        return "ResultChunk(%d,%d)" % (self.start, self.end)
     
 BLANK = re.compile(r'^\s*$')
 COMMENT = re.compile(r'^\s*#')
@@ -228,11 +235,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             else:
                 break
 
-        # If we end on a statement, then any line in that statement might get merged into a previous statement,
-        # so we need to rescan all of it
+        # If previous contents of the modified range ended within a statement, then we need to rescan all of it;
+        # since we may have already deleted all of the statement lines within the modified range, we detect
+        # this case by seeing if the line *after* our range is a continuation line.
         rescan_end = end_line
         while rescan_end + 1 < len(self.__chunks):
-            if isinstance(self.__chunks[rescan_end + 1], StatementChunk) and self.__chunks[rescan_end + 1].end != rescan_end + 1:
+            if isinstance(self.__chunks[rescan_end + 1], StatementChunk) and self.__chunks[rescan_end + 1].start != rescan_end + 1:
                 rescan_end += 1
             else:
                 break
@@ -318,8 +326,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             yield chunk
             if chunk == last_chunk:
                 break
-            line = chunk.end + 1
-            chunk = self.__chunks[line]
+            chunk = self.__chunks[chunk.end + 1]
             while chunk == None:
                 line += 1
                 chunk = self.__chunks[line]
@@ -436,6 +443,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 for j in xrange(i - 1, -1, -1):
                     if isinstance(self.__chunks[j], StatementChunk):
                         state.statement_after = self.__chunks[j]
+                        assert state.statement_after.results != None
                         break
             elif isinstance(self.__chunks[i], StatementChunk) and self.__chunks[i].start == i:
                 break
@@ -552,17 +560,14 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__lines[first_deleted_line:last_deleted_line + 1] = []
         n_deleted = 1 + last_deleted_line - first_deleted_line
 
-        for chunk in self.iterate_chunks(0, new_start - 1):
+        for chunk in self.iterate_chunks():
             if chunk.end >= last_deleted_line:
                 chunk.end -= n_deleted;
             elif chunk.end >= first_deleted_line:
                 chunk.end = first_deleted_line - 1
 
-        for chunk in self.iterate_chunks(new_end + 1):
             if chunk.start >= last_deleted_line:
                 chunk.start -= n_deleted
-            if chunk.end >= last_deleted_line:
-                chunk.end -= n_deleted
 
         self.__rescan(new_start, new_end)
 
@@ -762,7 +767,7 @@ if __name__ == '__main__':
 
         return True
 
-    buffer = ShellBuffer()
+    buffer = ShellBuffer(Notebook())
 
     def expect(expected):
         chunks = [ x for x in buffer.iterate_chunks() ]
@@ -798,10 +803,25 @@ if __name__ == '__main__':
     buffer.calculate()
     expect([S(0,1), R(2,2), S(3,3), R(4,4), B(5,5)])
 
-    # Check that splitting a statement with an insert results in the
+    # Check that splitting a statement with a delete results in the
     # result chunk being moved to the last line of the first half
     delete(1, 0, 1, 1)
     expect([S(0,0), R(1,1), S(2,2), S(3,3), R(4,4), B(5,5)])
+
+    # Editing a continuation line, while leaving it a continuation
+    buffer.clear()
+    
+    insert(0, 0, "1\\\n  + 2\\\n  + 3")
+    delete(1, 0, 1, 1)
+    expect([S(0,2)])
+
+    # Deleting an entire continuation line
+    buffer.clear()
+    
+    insert(0, 0, "for i in (1,2):\n    print i\n    print i + 1\n")
+    expect([S(0,2), B(3,3)])
+    delete(1, 0, 2, 0)
+    expect([S(0,1), B(2,2)])
 
     #
     # Try writing to a file, and reading it back
