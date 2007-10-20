@@ -6,14 +6,6 @@ import sys
 import rewrite
 from custom_result import CustomResult
 
-_DEFINE_GLOBALS = compile("""
-global reinteract_output, reinteract_print
-def reinteract_output(*args):
-   __reinteract_statement.do_output(*args)
-def reinteract_print(*args):
-   __reinteract_statement.do_print(*args)
-""", __name__, 'exec')
-
 # A wrapper so we don't have to trap all exceptions when running statement.Execute
 class ExecutionError(Exception):
     def __init__(self, cause, traceback):
@@ -24,8 +16,9 @@ class ExecutionError(Exception):
         return "ExecutionError: " + str(self.cause)
 
 class Statement:
-    def __init__(self, text, parent = None):
+    def __init__(self, text, worksheet, parent = None):
         self.__text = text
+        self.__worksheet = worksheet
         self.__globals = None
         self.result_scope = None
         self.results = None
@@ -35,16 +28,6 @@ class Statement:
 
         self.set_parent(parent)
 
-    def get_globals(self):
-        if self.__globals == None:
-            if self.__parent != None:
-                self.__globals = self.__parent.get_globals()
-            else:
-                self.__globals = { '__builtins__': __builtins__ }
-                exec _DEFINE_GLOBALS in self.__globals
-
-        return self.__globals
-        
     def set_parent(self, parent):
         self.__parent = parent
         self.__globals = None
@@ -69,7 +52,7 @@ class Statement:
         self.results.append(" ".join(map(str, args)))
 
     def execute(self):
-        global_scope = self.get_globals()
+        global_scope = self.__worksheet.global_scope
 
         if self.__parent:
             local_scope = copy.copy(self.__parent.result_scope)

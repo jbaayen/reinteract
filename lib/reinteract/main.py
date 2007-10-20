@@ -3,14 +3,19 @@ import gtk
 import os
 import sys
 
+from notebook import Notebook
+from shell_buffer import ShellBuffer
 from shell_view import ShellView
 
+
+notebook = Notebook()
 w = gtk.Window()
 
 v = gtk.VBox()
 w.add(v)
 
-view = ShellView()
+buf = ShellBuffer(notebook)
+view = ShellView(buf)
 buf = view.get_buffer()
 
 ui_manager = gtk.UIManager()
@@ -33,7 +38,13 @@ def on_delete(action):
 
 def on_new(action):
     buf.clear()
+
+def load(filename):
+    notebook.set_path([os.path.dirname(os.path.abspath(filename))])
     
+    buf.load(filename)
+    buf.calculate()
+
 def on_open(action):
     chooser = gtk.FileChooserDialog("Open Worksheet...", w, gtk.FILE_CHOOSER_ACTION_OPEN,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
@@ -45,8 +56,7 @@ def on_open(action):
         filename = chooser.get_filename()
 
     if filename != None:
-        buf.load(filename)
-        buf.calculate()
+        load(filename)
 
     chooser.destroy()
 
@@ -68,6 +78,7 @@ def on_save_as(action):
 
     if filename != None:
         buf.save(filename)
+        notebook.set_path([os.path.dirname(os.path.abspath(filename))])
 
     chooser.destroy()
     
@@ -130,7 +141,7 @@ v.pack_start(sw, expand=True, fill=True)
 
 sw.add(view)
 
-w.set_default_size(600, 800)
+w.set_default_size(700, 800)
 
 v.show_all()
 view.grab_focus()
@@ -166,8 +177,7 @@ def on_key_press_event(window, event):
 w.connect('key-press-event', on_key_press_event)
 
 if len(sys.argv) > 1:
-    buf.load(sys.argv[1])
-    buf.calculate()
+    load(sys.argv[1])
 
 w.show()
 

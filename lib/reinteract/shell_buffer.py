@@ -1,9 +1,11 @@
 #!/usr/bin/python
 import gobject
 import gtk
+import traceback
 import os
 import re
 from statement import Statement, ExecutionError
+from worksheet import Worksheet
 from custom_result import CustomResult
 
 _verbose = False
@@ -42,14 +44,14 @@ class StatementChunk:
 
         self.needs_execute = True
 
-    def compile(self):
+    def compile(self, worksheet):
         if self.statement != None:
             return
         
         self.needs_compile = False
         
         try:
-            self.statement = Statement(self.text)
+            self.statement = Statement(self.text, worksheet)
             self.needs_execute = True
         except SyntaxError, e:
             self.error_message = e.msg
@@ -67,7 +69,7 @@ class StatementChunk:
             self.statement.execute()
             self.results = self.statement.results
         except ExecutionError, e:
-            self.error_message = str(e.cause)
+            self.error_message = "\n".join(traceback.format_tb(e.traceback)[2:]) + "\n" + str(e.cause)
             self.error_line = e.traceback.tb_frame.f_lineno
             self.error_offset = None
             
@@ -102,7 +104,7 @@ CONTINUATION = re.compile(r'^\s+')
 class ResultChunkFixupState:
     pass
 
-class ShellBuffer(gtk.TextBuffer):
+class ShellBuffer(gtk.TextBuffer, Worksheet):
     __gsignals__ = {
         'begin-user-action': 'override',
         'end-user-action': 'override',
@@ -122,8 +124,9 @@ class ShellBuffer(gtk.TextBuffer):
         'code-modified-changed':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
 
-    def __init__(self):
+    def __init__(self, notebook):
         gtk.TextBuffer.__init__(self)
+        Worksheet.__init__(self, notebook)
 
         self.__red_tag = self.create_tag(foreground="red")
         self.__result_tag = self.create_tag(family="monospace", style="italic", wrap_mode=gtk.WRAP_WORD, editable=False)
@@ -584,7 +587,7 @@ class ShellBuffer(gtk.TextBuffer):
 
                 if chunk.needs_compile:
                     changed = True
-                    chunk.compile()
+                    chunk.compile(self)
                     if chunk.error_message != None:
                         self.insert_result(chunk)
 
@@ -703,7 +706,7 @@ class ShellBuffer(gtk.TextBuffer):
     def save(self, filename=None):
         if filename == None:
             if self.filename == None:
-                raise ValueError("No currnet or specified filename")
+                raise ValueError("No current or specified filename")
 
             filename = self.filename
 

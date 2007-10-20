@@ -8,10 +8,7 @@ class ShellView(gtk.TextView):
         'expose-event': 'override'
    }
         
-    def __init__(self, buf=None):
-        if buf == None:
-            buf = ShellBuffer()
-
+    def __init__(self, buf):
         buf.connect('chunk-status-changed', self.on_chunk_status_changed)
         buf.connect('add-custom-result', self.on_add_custom_result)
             
