@@ -71,6 +71,10 @@ class StatementChunk:
         self.needs_compile = False
         self.needs_execute = False
         
+        self.error_message = None
+        self.error_line = None
+        self.error_offset = None
+        
         try:
             self.statement.set_parent(parent)
             self.statement.execute()
