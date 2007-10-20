@@ -330,7 +330,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             yield chunk
             if chunk == last_chunk:
                 break
-            chunk = self.__chunks[chunk.end + 1]
+            line = chunk.end + 1
+            chunk = self.__chunks[line]
             while chunk == None:
                 line += 1
                 chunk = self.__chunks[line]
@@ -447,7 +448,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 for j in xrange(i - 1, -1, -1):
                     if isinstance(self.__chunks[j], StatementChunk):
                         state.statement_after = self.__chunks[j]
-                        assert state.statement_after.results != None
+                        assert state.statement_after.results != None or state.statement_after.error_message != None
                         break
             elif isinstance(self.__chunks[i], StatementChunk) and self.__chunks[i].start == i:
                 break
@@ -818,6 +819,17 @@ if __name__ == '__main__':
     insert(0, 0, "1\\\n  + 2\\\n  + 3")
     delete(1, 0, 1, 1)
     expect([S(0,2)])
+
+    # Editing a line with an existing error chunk to fix the error
+    buffer.clear()
+    
+    insert(0, 0, "a\na=2")
+    buffer.calculate()
+    
+    insert(0, 0, "2")
+    delete(0, 1, 0, 2)
+    buffer.calculate()
+    expect([S(0,0), R(1,1), S(2,2)])
 
     # Deleting an entire continuation line
     buffer.clear()
