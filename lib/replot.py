@@ -11,15 +11,23 @@ class _DummyCanvas:
 
 class PlotResult(CustomResult):
     def __init__(self, *args):
-        if len(args) == 1:
-            self.y = args[0]
-            self.x = numpy.arange(len(self.y))
-        elif len(args) == 2:
-            self.x = args[0]
-            self.y = args[1]
+        self.__args = args
 
     def create_widget(self):
-        return PlotWidget(self)
+        widget = PlotWidget(self)
+        widget.axes.plot(*self.__args)
+
+        return widget
+    
+class ImshowResult(CustomResult):
+    def __init__(self, *args):
+        self.__args = args
+
+    def create_widget(self):
+        widget = PlotWidget(self)
+        widget.axes.imshow(*self.__args)
+
+        return widget
     
 class PlotWidget(gtk.DrawingArea):
     __gsignals__ = {
@@ -31,9 +39,8 @@ class PlotWidget(gtk.DrawingArea):
         self.figure = Figure(facecolor='white', figsize=(6,4.5))
         self.figure.set_canvas(_DummyCanvas())
 
-        axes = self.figure.add_axes((0.05,0.05,0.9,0.9))
-        axes.plot(result.x, result.y)
-    
+        self.axes = self.figure.add_axes((0.05,0.05,0.9,0.9))
+
     def do_expose_event(self, event):
         cr = self.window.cairo_create()
         
@@ -60,3 +67,6 @@ class PlotWidget(gtk.DrawingArea):
 
 def plot(*args):
     return PlotResult(*args)
+
+def imshow(*args):
+    return ImshowResult(*args)
