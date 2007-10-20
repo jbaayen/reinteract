@@ -65,7 +65,8 @@ class Notebook:
             else:
                 module = imp.load_module(name, f, pathname, description)
         finally:
-            f.close()
+            if f != None:
+                f.close()
 
         return module, local
         
