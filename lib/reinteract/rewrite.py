@@ -270,6 +270,7 @@ def _rewrite_compound_stmt(t, mutated):
     return _rewrite_tree(t, mutated,
                          { symbol.if_stmt:    _rewrite_block_stmt,
                            symbol.while_stmt: _rewrite_block_stmt,
+                           symbol.for_stmt:   _rewrite_block_stmt,
                            symbol.try_stmt:   _rewrite_block_stmt,
                            symbol.with_stmt:  _rewrite_block_stmt })
 
@@ -374,7 +375,8 @@ if __name__ == '__main__':
 
         exec compiled in scope
 
-        assert tuple(test_args) == tuple(expected)
+        if tuple(test_args) != tuple(expected):
+            raise AssertionError("Got '%s', expected '%s'" % (test_args, expected))
 
     test_output('a=3', ())
     test_output('1', (1,))
@@ -394,12 +396,14 @@ if __name__ == '__main__':
 
         exec compiled in scope
 
-        assert tuple(test_args) == tuple(expected)
+        if tuple(test_args) != tuple(expected):
+            raise AssertionError("Got '%s', expected '%s'" % (test_args, expected))
 
     test_print('a=3', ())
     test_print('print 1', (1,))
     test_print('print 1,2', (1,2))
     test_print('print "",', ("",))
+    test_print('for i in [0]: print i', (0,))
     test_print('import sys; print >>sys.stderr, "",', ())
 
     #
@@ -414,7 +418,8 @@ if __name__ == '__main__':
         expected = list(expected)
         expected.sort()
 
-        assert mutated == expected
+        if tuple(mutated) != tuple(expected):
+            raise AssertionError("Got '%s', expected '%s'" % (mutated, expected))
 
     test_mutated('a[0] = 1', ('a',))
     test_mutated('a[0], b[0] = 1, 2', ('a', 'b'))
