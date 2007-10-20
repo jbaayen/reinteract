@@ -31,6 +31,8 @@ class ImshowResult(CustomResult):
     
 class PlotWidget(gtk.DrawingArea):
     __gsignals__ = {
+        'button-press-event': 'override',
+        'button-release-event': 'override',
         'expose-event': 'override'
     }
 
@@ -40,6 +42,7 @@ class PlotWidget(gtk.DrawingArea):
         self.figure.set_canvas(_DummyCanvas())
 
         self.axes = self.figure.add_axes((0.05,0.05,0.9,0.9))
+        self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
 
     def do_expose_event(self, event):
         cr = self.window.cairo_create()
@@ -54,6 +57,12 @@ class PlotWidget(gtk.DrawingArea):
 #        gdk_context.clip()
         
         self.figure.draw(renderer)
+
+    def do_button_press_event(self, event):
+        return True
+    
+    def do_button_release_event(self, event):
+        return True
 
     def do_size_request(self, requisition):
         requisition.width = self.figure.bbox.width()
