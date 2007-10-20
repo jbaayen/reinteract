@@ -1,11 +1,14 @@
 #!/usr/bin/python
 import gtk
-from shell_buffer import ShellBuffer, StatementChunk, ResultChunk
+import re
+from shell_buffer import ShellBuffer, StatementChunk, ResultChunk, CommentChunk, BlankChunk
 
 class ShellView(gtk.TextView):
     __gsignals__ = {
-        'realize': 'override',
-        'expose-event': 'override'
+        'backspace' : 'override',
+        'expose-event': 'override',
+        'key-press-event': 'override',
+        'realize': 'override'
    }
         
     def __init__(self, buf):
@@ -63,6 +66,206 @@ class ShellView(gtk.TextView):
                     self.paint_chunk(cr, event.area, chunk, (0, 0, 1), (0, 0, 0.5))
                 
         return False
+
+    def __get_line_text(self, iter):
+        start = iter.copy()
+        start.set_line_index(0)
+        end = iter.copy()
+        end.forward_to_line_end()
+        
+        return start.get_slice(end)
+    
+    # This is likely overengineered, since we're going to try as hard as possible not to
+    # have tabs in our worksheets
+    def __count_indent(self, text):
+        indent = 0
+        for c in text:
+            if c == ' ':
+                indent += 1
+            elif c == '\t':
+                indent += 8 - (indent % 8)
+            else:
+                break
+
+        return indent
+
+    def __find_outdent(self, iter):
+        buf = self.get_buffer()
+        line = iter.get_line()
+
+        current_indent = self.__count_indent(self.__get_line_text(iter))
+
+        previous_line = iter.copy()
+        while  line > 0:
+            line -= 1
+            previous_line.backward_line()
+            if not isinstance(buf.get_chunk(line), ResultChunk):
+                line_text = self.__get_line_text(previous_line)
+                
+                indent = self.__count_indent(line_text)
+                if indent < current_indent:
+                    indent_text = re.match(r"^[\t ]*", line_text).group(0)
+                        
+                    return indent_text
+                
+        return ""
+
+    def __find_default_indent(self, iter):
+        buf = self.get_buffer()
+        line = iter.get_line()
+
+        previous_line = iter.copy()
+        while  line > 0:
+            line -= 1
+            previous_line.backward_line()
+            if not isinstance(buf.get_chunk(line), ResultChunk):
+                line_text = self.__get_line_text(previous_line)
+                
+                indent = self.__count_indent(line_text)
+                indent_text = re.match(r"^[\t ]*", line_text).group(0)
+
+                if line_text.endswith(":") and not re.match(r"^\s*#", line_text):
+                    indent_text += "    "
+                        
+                return indent_text
+                
+        return ""
+
+    def __reindent_line(self, iter, indent_text):
+        buf = self.get_buffer()
+
+        line_text = self.__get_line_text(iter)
+        prefix = re.match(r"^[\t ]*", line_text).group(0)
+
+        diff = self.__count_indent(indent_text) - self.__count_indent(prefix)
+        if diff == 0:
+            return 0
+
+        common_len = 0
+        for a, b in zip(prefix, indent_text):
+            if a != b:
+                break
+            common_len += 1
+    
+        start = iter.copy()
+        start.set_line_offset(common_len)
+        end = iter.copy()
+        end.set_line_offset(len(prefix))
+
+        # Nitpicky-detail. If the selection starts at the start of the line, and we are
+        # inserting white-space there, then the whitespace should be *inside* the selection
+        mark_to_start = None
+        if common_len == 0 and buf.get_has_selection():
+            mark = buf.get_insert()
+            if buf.get_iter_at_mark(mark).compare(start) == 0:
+                mark_to_start = mark
+                
+            mark = buf.get_selection_bound()
+            if buf.get_iter_at_mark(mark).compare(start) == 0:
+                mark_to_start = mark
+        
+        buf.delete(start, end)
+        buf.insert(start, indent_text[common_len:])
+
+        if mark_to_start != None:
+            start.set_line_offset(0)
+            buf.move_mark(mark_to_start, start)
+
+        return diff
+
+    def __reindent_selection(self, outdent):
+        buf = self.get_buffer()
+
+        bounds = buf.get_selection_bounds()
+        if bounds == ():
+            insert_mark = buf.get_insert()
+            bounds = buf.get_iter_at_mark(insert_mark), buf.get_iter_at_mark(insert_mark)
+        start, end = bounds
+
+        line = start.get_line()
+        end_line = end.get_line()
+        if end.starts_line() and end.compare(start) > 0:
+            end_line -= 1
+
+        current_chunk = buf.get_chunk(line)
+        while isinstance(current_chunk, ResultChunk):
+            line += 1
+            if line > end_line:
+                return
+            current_chunk = buf.get_chunk(line)
+
+        iter = buf.get_iter_at_line(line)
+
+        if outdent:
+            indent_text = self.__find_outdent(iter)
+        else:
+            indent_text = self.__find_default_indent(iter)
+
+        diff = self.__reindent_line(iter, indent_text)
+        while True:
+            line += 1
+            if line > end_line:
+                return
+
+            current_chunk = buf.get_chunk(line)
+            while isinstance(current_chunk, ResultChunk):
+                line += 1
+                if line > end_line:
+                    return
+                current_chunk = buf.get_chunk(line)
+
+            iter = buf.get_iter_at_line(line)
+            current_indent = self.__count_indent(self.__get_line_text(iter))
+            self.__reindent_line(iter, max(0, " " * (current_indent + diff)))
+    
+    def do_key_press_event(self, event):
+        buf = self.get_buffer()
+        
+        if event.keyval in (gtk.keysyms.KP_Enter, gtk.keysyms.Return):
+
+            increase_indent = False
+            insert = buf.get_iter_at_mark(buf.get_insert())
+
+            line = insert.get_line()
+            current_chunk = buf.get_chunk(line)
+
+            gtk.TextView.do_key_press_event(self, event)
+
+            insert = buf.get_iter_at_mark(buf.get_insert())
+            
+            if not isinstance(current_chunk, ResultChunk):
+                self.__reindent_line(insert, self.__find_default_indent(insert))
+                
+            if isinstance(current_chunk, CommentChunk) and line > 0 and isinstance(buf.get_chunk(line - 1), CommentChunk):
+                self.get_buffer().insert_interactive_at_cursor("# ", -1)
+                
+            return True
+        elif event.keyval in (gtk.keysyms.Tab, gtk.keysyms.KP_Tab) and event.state & gtk.gdk.CONTROL_MASK == 0:
+            self.__reindent_selection(outdent=False)
+            return True
+        elif event.keyval == gtk.keysyms.ISO_Left_Tab and event.state & gtk.gdk.CONTROL_MASK == 0:
+            self.__reindent_selection(outdent=True)
+            return True
+        
+        return gtk.TextView.do_key_press_event(self, event)
+
+    def do_backspace(self):
+        buf = self.get_buffer()
+        
+        insert = buf.get_iter_at_mark(buf.get_insert())
+        line = insert.get_line()
+        
+        current_chunk = buf.get_chunk(line)
+        if isinstance(current_chunk, StatementChunk) or isinstance(current_chunk, BlankChunk):
+            line_start = insert.copy()
+            line_start.set_line_offset(0)
+            line_text = line_start.get_slice(insert)
+
+            if re.match(r"^[\t ]+$", line_text):
+                self.__reindent_line(insert, self.__find_outdent(insert))
+                return
+                       
+        return gtk.TextView.do_backspace(self)
 
     def on_chunk_status_changed(self, buf, chunk):
         (start_y, start_height) = self.get_line_yrange(buf.get_iter_at_line(chunk.start))
