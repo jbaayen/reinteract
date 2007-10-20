@@ -19,7 +19,6 @@ class Statement:
     def __init__(self, text, worksheet, parent = None):
         self.__text = text
         self.__worksheet = worksheet
-        self.__globals = None
         self.result_scope = None
         self.results = None
 
@@ -30,7 +29,6 @@ class Statement:
 
     def set_parent(self, parent):
         self.__parent = parent
-        self.__globals = None
         
     def get_result_scope(self):
         return self.result_scope
@@ -52,12 +50,11 @@ class Statement:
         self.results.append(" ".join(map(str, args)))
 
     def execute(self):
-        global_scope = self.__worksheet.global_scope
-
+        root_scope = self.__worksheet.global_scope
         if self.__parent:
-            local_scope = copy.copy(self.__parent.result_scope)
+            scope = copy.copy(self.__parent.result_scope)
         else:
-            local_scope = {}
+            scope = copy.copy(root_scope)
 
         for mutation in self.__mutated:
             if isinstance(mutation, tuple):
@@ -65,20 +62,20 @@ class Statement:
             else:
                 variable = mutation
 
-            local_scope[variable] = copy.copy(local_scope[variable])
+            scope[variable] = copy.copy(scope[variable])
 
         self.results = []
-        global_scope['__reinteract_statement'] = self
+        root_scope['__reinteract_statement'] = self
         try:
-            exec self.__compiled in global_scope, local_scope
+            exec self.__compiled in scope, scope
         except:
             self.results = None
             _, cause, traceback = sys.exc_info()
             raise ExecutionError(cause, traceback)
         finally:
-            global_scope['__reinteract_statement'] = None
+            root_scope['__reinteract_statement'] = None
 
-        self.result_scope = local_scope
+        self.result_scope = scope
 
 if __name__=='__main__':
     def expect(actual,expected):
