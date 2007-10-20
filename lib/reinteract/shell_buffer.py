@@ -173,7 +173,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 for i in xrange(old_statement.start, old_statement.end + 1):
                     self.__chunks[i] = None
 
-                changed = not old_statement.needs_compile and text != old_statement.text
+                changed = text != old_statement.text
                 chunk = old_statement
             else:
                 changed = True
@@ -185,6 +185,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             chunk.start = chunk_start
             chunk.end = statement_end
             chunk.set_text(text)
+            self.__remove_tag_from_chunk(self.__comment_tag, chunk)
             
             for i in xrange(chunk_start, statement_end + 1):
                 self.__chunks[i] = chunk
@@ -628,6 +629,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         end = self.get_iter_at_line(chunk.end)
         end.forward_to_line_end()
         self.apply_tag(tag, start,end)
+    
+    def __remove_tag_from_chunk(self, tag, chunk):
+        start = self.get_iter_at_line(chunk.start)
+        end = self.get_iter_at_line(chunk.end)
+        end.forward_to_line_end()
+        self.remove_tag(tag, start,end)
     
     def insert_result(self, chunk, revalidate_iter=None):
         # revalidate_iter gets move to point to the end of the inserted result and revalidated.
