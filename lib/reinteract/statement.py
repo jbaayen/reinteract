@@ -43,8 +43,10 @@ class Statement:
                 self.results.append(args[0])
             else:
                 self.results.append(repr(args[0]))
+                self.result_scope['_'] = args[0]
         else:
             self.results.append(repr(args))
+            self.result_scope['_'] = args
 
     def do_print(self, *args):
         self.results.append(" ".join(map(str, args)))
@@ -65,17 +67,17 @@ class Statement:
             scope[variable] = copy.copy(scope[variable])
 
         self.results = []
+        self.result_scope = scope
         root_scope['__reinteract_statement'] = self
         try:
             exec self.__compiled in scope, scope
         except:
             self.results = None
+            self.result_scope = None
             _, cause, traceback = sys.exc_info()
             raise ExecutionError(cause, traceback)
         finally:
             root_scope['__reinteract_statement'] = None
-
-        self.result_scope = scope
 
 if __name__=='__main__':
     def expect(actual,expected):
