@@ -220,8 +220,21 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 self.__apply_tag_to_chunk(self.__comment_tag, chunk)
         
         return changed_chunks
-            
-    def __rescan(self, start_line, end_line):
+
+    def __mark_rest_for_execute(self, start_line):
+        for chunk in self.iterate_chunks(start_line):
+            if isinstance(chunk, StatementChunk):
+                chunk.mark_for_execute()
+
+                result = self.__find_result(chunk)
+                if result:
+                    self.__apply_tag_to_chunk(self.__recompute_tag, result)
+                        
+                self.emit("chunk-status-changed", chunk)
+                if result:
+                    self.emit("chunk-status-changed", result)
+    
+    def __rescan(self, start_line, end_line, entire_statements_deleted=False):
         rescan_start = start_line
         while rescan_start > 0:
             if rescan_start < start_line:
@@ -295,18 +308,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 if chunk.start < first_changed_line:
                     first_changed_line = chunk.start
 
-            for chunk in self.iterate_chunks(first_changed_line):
-                if isinstance(chunk, StatementChunk):
-                    chunk.mark_for_execute()
-
-                    result = self.__find_result(chunk)
-                    if result:
-                        self.__apply_tag_to_chunk(self.__recompute_tag, result)
-                        
-                    self.emit("chunk-status-changed", chunk)
-                    if result:
-                        self.emit("chunk-status-changed", result)
-                    
+            self.__mark_rest_for_execute(first_changed_line)
+        elif entire_statements_deleted:
+            # If the user deleted entire statements we need to mark subsequent chunks
+            # as needing compilation even if all the remaining statements remained unchanged
+            self.__mark_rest_for_execute(end_line + 1)
             
     def iterate_chunks(self, start_line=0, end_line=None):
         if end_line == None or end_line >= len(self.__chunks):
@@ -562,6 +568,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 
         result_fixup_state = self.__get_result_fixup_state(new_start, last_modified_line)
 
+        entire_statements_deleted = False
+        for chunk in self.iterate_chunks(first_deleted_line, last_deleted_line):
+            if isinstance(chunk, StatementChunk) and chunk.start >= first_deleted_line and chunk.end <= last_deleted_line:
+                entire_statements_deleted = True
+        
         self.__chunks[first_deleted_line:last_deleted_line + 1] = []
         self.__lines[first_deleted_line:last_deleted_line + 1] = []
         n_deleted = 1 + last_deleted_line - first_deleted_line
@@ -575,7 +586,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             if chunk.start >= last_deleted_line:
                 chunk.start -= n_deleted
 
-        self.__rescan(new_start, new_end)
+        self.__rescan(new_start, new_end, entire_statements_deleted=entire_statements_deleted)
 
         # We can only revalidate one iter due to PyGTK limitations; see comment in __fixup_results
         # It turns out it works to cheat and only revalidate the end iter
