@@ -76,7 +76,80 @@ class PlotWidget(gtk.DrawingArea):
 #        dpi = self.figure.dpi.get()
 #        self.figure.set_size_inches (allocation.width / dpi, allocation.height / dpi)
 
+def _validate_args(args):
+    #
+    # The matplotlib argument parsing is a little wonky
+    #
+    #  plot(x, y, 'fmt', y2)
+    #  plot(x1, y2, x2, y2, 'fmt', y3)
+    # 
+    # Are valid, but
+    #
+    #  plot(x, y, y2)
+    #
+    # is not. We just duplicate the algorithm here
+    #
+    l = len(args)
+    i = 0
+    while True:
+        xi = None
+        yi = None
+        formati = None
+        
+        remaining = l - i
+        if remaining == 0:
+            break
+        elif remaining == 1:
+            yi = i
+            i += 1
+        # The remaining != 3 and ... encapsulates the wonkyness referred to above
+        elif remaining == 2 or (remaining != 3 and not isinstance(args[i + 2], basestring)):
+            # plot(...., x, y [, ....])
+            xi = i
+            yi = i + 1
+            i += 2
+        else:
+            # plot(....., x, y, format [, ...])
+            xi = i
+            yi = i + 1
+            formati = i + 2
+            i += 3
+
+        if xi != None:
+            arg = args[xi]
+            if isinstance(arg, numpy.ndarray):
+                xshape = arg.shape
+            elif isinstance(arg, list):
+                # Not supporting nested python lists here
+                xshape = (len(arg),)
+            else:
+                raise TypeError("Expected numpy array or list for argument %d" % (xi + 1))
+        else:
+            xshape = None
+
+        # y isn't optional, pretend it is to preserve code symmetry
+            
+        if yi != None:
+            arg = args[yi]
+            if isinstance(arg, numpy.ndarray):
+                yshape = arg.shape
+            elif isinstance(arg, list):
+                # Not supporting nested python lists here
+                yshape = (len(arg),)
+            else:
+                raise TypeError("Expected numpy array or list for argument %d" % (yi + 1))
+        else:
+            yshape = None
+
+        if xshape != None and yshape != None and xshape != yshape:
+            raise TypeError("Shapes of arguments %d and %d aren't compatible" % ((xi + 1), (yi + 1)))
+        
+        if formati != None and not isinstance(args[formati], basestring):
+            raise TypeError("Expected format string for argument %d" % (formati + 1))
+
+
 def plot(*args, **kwargs):
+    _validate_args(args)
     return PlotResult(*args, **kwargs)
 
 def imshow(*args, **kwargs):
