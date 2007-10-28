@@ -165,7 +165,7 @@ class ShellView(gtk.TextView):
                 mark_to_start = mark
         
         buf.delete(start, end)
-        buf.insert(start, indent_text[common_len:])
+        buf.insert(end, indent_text[common_len:])
 
         if mark_to_start != None:
             start.set_line_offset(0)
