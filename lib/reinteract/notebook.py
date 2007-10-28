@@ -55,15 +55,16 @@ class Notebook:
                 f, pathname, description = imp.find_module(name)
                 local = False
         else:
-            parent, local = self.__import_recurse(self, names[0:-1], fromlist)
-            f, pathname, description = imp.find_module(name, parent.__path__)
+            child_names = names[0:-1]
+            parent, local = self.__import_recurse(names[0:-1], fromlist)
+            f, pathname, description = imp.find_module(names[-1], parent.__path__)
 
         try:
             if local:
                 module = imp.load_module(self.__prefix + "." + name, f, pathname, description)
                 self.__modules[name] = module
             else:
-                module = imp.load_module(name, f, pathname, description)
+                module = imp.load_module(name, f, pathname, description) 
         finally:
             if f != None:
                 f.close()
