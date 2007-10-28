@@ -102,7 +102,7 @@ def _validate_args(args):
         elif remaining == 1:
             yi = i
             i += 1
-        # The remaining != 3 and ... encapsulates the wonkyness referred to above
+        # The 'remaining != 3 and' encapsulates the wonkyness referred to above
         elif remaining == 2 or (remaining != 3 and not isinstance(args[i + 2], basestring)):
             # plot(...., x, y [, ....])
             xi = i
