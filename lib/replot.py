@@ -10,22 +10,24 @@ class _DummyCanvas:
         pass
 
 class PlotResult(CustomResult):
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         self.__args = args
+        self.__kwargs = kwargs
 
     def create_widget(self):
         widget = PlotWidget(self)
-        widget.axes.plot(*self.__args)
+        widget.axes.plot(*self.__args, **self.__kwargs)
 
         return widget
     
 class ImshowResult(CustomResult):
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         self.__args = args
+        self.__kwargs = kwargs
 
     def create_widget(self):
         widget = PlotWidget(self)
-        widget.axes.imshow(*self.__args)
+        widget.axes.imshow(*self.__args, **self.__kwargs)
 
         return widget
     
@@ -74,8 +76,8 @@ class PlotWidget(gtk.DrawingArea):
 #        dpi = self.figure.dpi.get()
 #        self.figure.set_size_inches (allocation.width / dpi, allocation.height / dpi)
 
-def plot(*args):
-    return PlotResult(*args)
+def plot(*args, **kwargs):
+    return PlotResult(*args, **kwargs)
 
-def imshow(*args):
-    return ImshowResult(*args)
+def imshow(*args, **kwargs):
+    return ImshowResult(*args, **kwargs)
