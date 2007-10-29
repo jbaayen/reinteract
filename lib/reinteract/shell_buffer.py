@@ -11,7 +11,7 @@ from custom_result import CustomResult
 
 # See comment in iter_copy_from.py
 try:
-    gtk.TextIter.copy_fromm
+    gtk.TextIter.copy_from
     def _copy_iter(dest, src):
         dest.copy_from(src)
 except AttributeError:
@@ -454,8 +454,14 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         i_start = self.get_iter_at_line(chunk.start)
         i_end = self.get_iter_at_line(chunk.end)
         i_end.forward_line()
-        if i_end.get_line() == chunk.end: # Last line of buffer
-            i_end.forward_to_line_end()
+        if i_end.get_line() == chunk.end:
+            # Last line of buffer, need to delete the chunk and not
+            # leave a trailing newline
+            if not i_end.ends_line():
+                i_end.forward_to_line_end()
+            i_start.backward_line()
+            if not i_start.ends_line():
+                i_start.forward_to_line_end()
         self.delete(i_start, i_end)
         
         self.__chunks[chunk.start:chunk.end + 1] = []
@@ -614,7 +620,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 start_line -= 1 + result_chunk.end - result_chunk.start
                 end_line -= 1 + result_chunk.end - result_chunk.start
                 _copy_iter(start, self.get_iter_at_line(start_line))
-                start.forward_to_line_end()
+                if not start.ends_line():
+                    start.forward_to_line_end()
                 _copy_iter(end, self.get_iter_at_line_offset(end_line, end_offset))
                 
             if end.starts_line() and not start.starts_line() and isinstance(self.__chunks[end_line], ResultChunk):
@@ -624,13 +631,15 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 new_end = end.copy()
                 
                 new_end.backward_line()
-                new_end.forward_to_line_end()
+                if not new_end.ends_line():
+                    new_end.forward_to_line_end()
 
                 if start.compare(new_end) == 0:
                     return
 
                 end.backward_line()
-                new_end.forward_to_line_end()
+                if not new_end.ends_line():
+                    new_end.forward_to_line_end()
                 end_line -= 1
                 
         if start.starts_line() and end.starts_line():
@@ -714,7 +723,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             insert = self.get_iter_at_mark(self.get_insert())
             if insert.get_line() >= result_chunk.start:
                 insert.set_line(result_chunk.start - 1)
-                insert.forward_to_line_end()
+                if not insert.ends_line():
+                    insert.forward_to_line_end()
                 self.place_cursor(insert)
 
         if _verbose:
@@ -808,22 +818,26 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
     def get_chunk(self, line_index):
         return self.__chunks[line_index]
 
-    def __apply_tag_to_chunk(self, tag, chunk):
+    def __get_chunk_bounds(self, chunk):
         start = self.get_iter_at_line(chunk.start)
         end = self.get_iter_at_line(chunk.end)
-        end.forward_to_line_end()
-        self.apply_tag(tag, start,end)
+        if not end.ends_line():
+            end.forward_to_line_end()
+        return start, end
+
+    def __apply_tag_to_chunk(self, tag, chunk):
+        start, end = self.__get_chunk_bounds(chunk)
+        self.apply_tag(tag, start, end)
     
     def __remove_tag_from_chunk(self, tag, chunk):
-        start = self.get_iter_at_line(chunk.start)
-        end = self.get_iter_at_line(chunk.end)
-        end.forward_to_line_end()
-        self.remove_tag(tag, start,end)
+        start, end = self.__get_chunk_bounds(chunk)
+        self.remove_tag(tag, start, end)
     
     def insert_result(self, chunk):
         self.__modifying_results = True
         location = self.get_iter_at_line(chunk.end)
-        location.forward_to_line_end()
+        if not location.ends_line():
+            location.forward_to_line_end()
 
         if chunk.error_message:
             results = [ chunk.error_message ]
