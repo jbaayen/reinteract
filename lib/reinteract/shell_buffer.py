@@ -377,6 +377,40 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 line += 1
                 chunk = self.__chunks[line]
 
+    def iterate_text(self):
+        iter = self.get_start_iter()
+        line = 0
+        chunk = self.__chunks[0]
+
+        while chunk != None:
+            next_line = chunk.end + 1
+            if next_line < len(self.__chunks):
+                next_chunk = self.__chunks[chunk.end + 1]
+                
+                next = iter.copy()
+                while next.get_line() <= chunk.end:
+                    next.forward_line()
+            else:
+                next_chunk = None
+                next = iter.copy()
+                next.forward_to_end()
+
+            # Special case .... if the last chunk is a ResultChunk, then we don't
+            # want to include the new line from the previous line
+            if isinstance(next_chunk, ResultChunk) and next_chunk.end + 1 == len(self.__chunks):
+                next.backward_line()
+                if not next.ends_line():
+                    next.forward_to_line_end()
+                next_chunk = None
+                
+            if not isinstance(chunk, ResultChunk):
+                chunk_text = self.get_slice(iter, next)
+                yield chunk_text
+
+            iter = next
+            line = next_line
+            chunk = next_chunk
+            
     def do_begin_user_action(self):
         self.__user_action_count += 1
         
@@ -932,21 +966,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         # We use binary mode, since we don't want to munge line endings to the system default
         # on a load-save cycle
         f = open(tmpname, "wb")
-        
+
         success = False
         try:
-            iter = self.get_start_iter()
-            for chunk in self.iterate_chunks():
-                next = iter.copy()
-                while next.get_line() <= chunk.end:
-                    if not next.forward_line(): # at end of buffer
-                        break
-
-                if not isinstance(chunk, ResultChunk):
-                    chunk_text = self.get_slice(iter, next)
-                    f.write(chunk_text)
-
-                iter = next
+            for chunk_text in self.iterate_text():
+                f.write(chunk_text)
             
             f.close()
             os.rename(tmpname, filename)
@@ -996,18 +1020,8 @@ if __name__ == '__main__':
 
     def expect_text(expected):
         text = ""
-        iter = buffer.get_start_iter()
-        for chunk in buffer.iterate_chunks():
-            next = iter.copy()
-            while next.get_line() <= chunk.end:
-                if not next.forward_line(): # at end of buffer
-                    break
-
-            if not isinstance(chunk, ResultChunk):
-                chunk_text = buffer.get_slice(iter, next)
-                text += chunk_text
-
-            iter = next
+        for chunk_text in buffer.iterate_text():
+            text += chunk_text
 
         if (text != expected):
             raise AssertionError("\nGot:\n   '%s'\nExpected:\n   '%s'" % (text, expected))
@@ -1123,13 +1137,11 @@ if __name__ == '__main__':
     # Undoing insertion of a newline
     clear()
 
-    # The trailing newline here works around some uncertainty about the
-    # final newline in the buffer
-    insert(0, 0, "1\n")
+    insert(0, 0, "1")
     insert(0, 1, "\n")
     buffer.calculate()
     buffer.undo()
-    expect_text("1\n")
+    expect_text("1")
 
     # Test the "pruning" behavior of modifications after undos
     clear()
