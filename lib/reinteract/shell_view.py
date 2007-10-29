@@ -246,6 +246,18 @@ class ShellView(gtk.TextView):
         elif event.keyval == gtk.keysyms.ISO_Left_Tab and event.state & gtk.gdk.CONTROL_MASK == 0:
             self.__reindent_selection(outdent=True)
             return True
+        elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
+                (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
+                (event.state & gtk.gdk.SHIFT_MASK) == 0:
+            buf.undo()
+        # This is the gedit/gtksourceview binding to cause your hands to fall off
+        elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
+                (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
+                (event.state & gtk.gdk.SHIFT_MASK) != 0:
+            buf.redo()
+        # This is the familiar binding (Eclipse, etc). Firefox supports both
+        elif event.keyval in (gtk.keysyms.y, gtk.keysyms.Y) and event.state & gtk.gdk.CONTROL_MASK != 0:
+            buf.redo()
         
         return gtk.TextView.do_key_press_event(self, event)
 
