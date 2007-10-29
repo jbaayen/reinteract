@@ -703,11 +703,19 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 self.__find_result(restore_result_statement) == None:
             start_mark = self.create_mark(None, start, True)
             end_mark = self.create_mark(None, end, True)
-            self.insert_result(restore_result_statement)
+            result_chunk = self.insert_result(restore_result_statement)
             _copy_iter(start, self.get_iter_at_mark(start_mark))
             self.delete_mark(start_mark)
             _copy_iter(end, self.get_iter_at_mark(end_mark))
             self.delete_mark(end_mark)
+
+            # If the cursor ended up in or after the restored result chunk,
+            # we need to move it before
+            insert = self.get_iter_at_mark(self.get_insert())
+            if insert.get_line() >= result_chunk.start:
+                insert.set_line(result_chunk.start - 1)
+                insert.forward_to_line_end()
+                self.place_cursor(insert)
 
         if _verbose:
             print "After delete, chunks are", self.__chunks
@@ -846,6 +854,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         for chunk in self.iterate_chunks(result_chunk.end + 1):
             chunk.start += n_inserted
             chunk.end += n_inserted
+
+        return result_chunk
 
     def __set_filename_and_modified(self, filename, modified):
         filename_changed = filename != self.filename
