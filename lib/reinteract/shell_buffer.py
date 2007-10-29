@@ -9,6 +9,14 @@ from statement import Statement, ExecutionError
 from worksheet import Worksheet
 from custom_result import CustomResult
 
+# See comment in iter_copy_from.py
+try:
+    gtk.TextIter.copy_fromm
+    def _copy_iter(dest, src):
+        dest.copy_from(src)
+except AttributeError:
+    from iter_copy_from import iter_copy_from as _copy_iter
+        
 _verbose = False
 
 _OP_INSERT = 0
@@ -440,22 +448,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         if _verbose:
             print "After insert, chunks are", self.__chunks
 
-    def __delete_chunk(self, chunk, revalidate_iter1=None, revalidate_iter2=None):
-        # revalidate_iter1 and revalidate_iter2 get moved to point to the location
-        # of the deleted chunk and revalidated. This is useful only as part of the
-        # workaround-hack in __fixup_results
+    def __delete_chunk(self, chunk):
         self.__modifying_results = True
 
-        if revalidate_iter1 != None:
-            i_start = revalidate_iter1
-            i_start.set_line(chunk.start)
-        else:
-            i_start = self.get_iter_at_line(chunk.start)
-        if revalidate_iter2 != None:
-            i_end = revalidate_iter2
-            i_end.set_line(chunk.end)
-        else:
-            i_end = self.get_iter_at_line(chunk.end)
+        i_start = self.get_iter_at_line(chunk.start)
+        i_end = self.get_iter_at_line(chunk.end)
         i_end.forward_line()
         if i_end.get_line() == chunk.end: # Last line of buffer
             i_end.forward_to_line_end()
@@ -564,27 +561,17 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 
         revalidate = map(lambda iter: (iter, self.create_mark(None, iter, True)), revalidate_iters)
 
-        # This hack is a workaround for being unable to assign iters by value in PyGtk, see
-        #   http://bugzilla.gnome.org/show_bug.cgi?id=481715
-        if len(revalidate_iters) > 0:
-            revalidate_iter = revalidate_iters[0]
-        else:
-            revalidate_iter = None
-
-        if len(revalidate_iters) > 1:
-            raise Exception("I don't know how to keep more than one iter valid")
-
         if move_before:
-            self.__delete_chunk(state.result_before, revalidate_iter1=revalidate_iter)
-            self.insert_result(state.statement_before, revalidate_iter=revalidate_iter)
+            self.__delete_chunk(state.result_before)
+            self.insert_result(state.statement_before)
 
         if delete_after or move_after:
-            self.__delete_chunk(state.result_after, revalidate_iter1=revalidate_iter)
+            self.__delete_chunk(state.result_after)
             if move_after:
-                self.insert_result(state.statement_after, revalidate_iter=revalidate_iter)
+                self.insert_result(state.statement_after)
 
         for iter, mark in revalidate:
-            self.__move_iter_to_mark(iter, mark)
+            _copy_iter(iter, self.get_iter_at_mark(mark))
             self.delete_mark(mark)
         
     def do_delete_range(self, start, end):
@@ -627,14 +614,13 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 restore_result_statement = self.__find_statement_for_result(result_chunk)
                 end_offset = end.get_line_offset()
                 self.__modifying_results = True
-                self.__delete_chunk(result_chunk, revalidate_iter1=start, revalidate_iter2=end)
+                self.__delete_chunk(result_chunk)
                 self.__modifying_results = False
                 start_line -= 1 + result_chunk.end - result_chunk.start
                 end_line -= 1 + result_chunk.end - result_chunk.start
-                start.set_line(start_line)
+                _copy_iter(start, self.get_iter_at_line(start_line))
                 start.forward_to_line_end()
-                end.set_line(end_line)
-                end.set_line_offset(end_offset)
+                _copy_iter(end, self.get_iter_at_line_offset(end_line, end_offset))
                 
             if end.starts_line() and not start.starts_line() and isinstance(self.__chunks[end_line], ResultChunk):
                 # Merging a ResultChunk onto the end of another chunk; just ignore this; we do have
@@ -715,19 +701,18 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 
         self.__rescan(new_start, new_end, entire_statements_deleted=entire_statements_deleted)
 
-        # We can only revalidate one iter due to PyGTK limitations; see comment in __fixup_results
-        # It turns out it works to cheat and only revalidate the end iter
-#        self.__fixup_results(result_fixup_state, [start, end])
-        self.__fixup_results(result_fixup_state, [end])
+        self.__fixup_results(result_fixup_state, [start, end])
 
         if restore_result_statement != None and \
                 self.__chunks[restore_result_statement.start] == restore_result_statement and \
                 self.__find_result(restore_result_statement) == None:
-            # As above, we can only revalidate the end iter
-            mark = self.create_mark(None, end, True)
-            self.insert_result(restore_result_statement, revalidate_iter=end)
-            self.__move_iter_to_mark(end, mark)
-            self.delete_mark(mark)
+            start_mark = self.create_mark(None, start, True)
+            end_mark = self.create_mark(None, end, True)
+            self.insert_result(restore_result_statement)
+            _copy_iter(start, self.get_iter_at_mark(start_mark))
+            self.delete_mark(start_mark)
+            _copy_iter(end, self.get_iter_at_mark(end_mark))
+            self.delete_mark(end_mark)
 
         if _verbose:
             print "After delete, chunks are", self.__chunks
@@ -833,15 +818,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         end.forward_to_line_end()
         self.remove_tag(tag, start,end)
     
-    def insert_result(self, chunk, revalidate_iter=None):
-        # revalidate_iter gets move to point to the end of the inserted result and revalidated.
-        # This is useful only as part of the workaround-hack in __fixup_results
+    def insert_result(self, chunk):
         self.__modifying_results = True
-        if revalidate_iter != None:
-            location = revalidate_iter
-            location.set_line(chunk.end)
-        else:
-            location = self.get_iter_at_line(chunk.end)
+        location = self.get_iter_at_line(chunk.end)
         location.forward_to_line_end()
 
         if chunk.error_message:
@@ -960,7 +939,6 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             if not success:
                 f.close()
                 os.remove(tmpname)
-                
 
 if __name__ == '__main__':
     S = StatementChunk
@@ -1127,11 +1105,13 @@ if __name__ == '__main__':
     # Undoing insertion of a newline
     clear()
 
-    insert(0, 0, "1")
+    # The trailing newline here works around some uncertainty about the
+    # final newline in the buffer
+    insert(0, 0, "1\n")
     insert(0, 1, "\n")
     buffer.calculate()
     buffer.undo()
-    expect_text("1")
+    expect_text("1\n")
 
     # Test the "pruning" behavior of modifications after undos
     clear()
