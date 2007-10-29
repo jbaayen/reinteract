@@ -525,11 +525,6 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 
         return state
 
-    def __move_iter_to_mark(self, iter, mark):
-        new = self.get_iter_at_mark(mark)
-        iter.set_line(new.get_line())
-        iter.set_line_index(new.get_line_index())
-
     def __fixup_results(self, state, revalidate_iters):
         move_before = False
         delete_after = False
@@ -716,7 +711,6 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 
         if _verbose:
             print "After delete, chunks are", self.__chunks
-            print "After delete, end is at ", ((end.get_line(), end.get_offset()),)
 
     def calculate(self):
         parent = None
