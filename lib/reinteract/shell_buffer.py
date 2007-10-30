@@ -410,9 +410,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             
     def do_begin_user_action(self):
         self.__user_action_count += 1
+        self.__undo_stack.begin_user_action()
         
     def do_end_user_action(self):
         self.__user_action_count -= 1
+        self.__undo_stack.end_user_action()
 
     def __compute_nr_pos_from_iter(self, iter):
         line = iter.get_line()
@@ -1091,11 +1093,11 @@ if __name__ == '__main__':
     # Undoing insertion of a newline
     clear()
 
-    insert(0, 0, "1")
+    insert(0, 0, "1 ")
     insert(0, 1, "\n")
     buffer.calculate()
     buffer.undo()
-    expect_text("1")
+    expect_text("1 ")
 
     # Test the "pruning" behavior of modifications after undos
     clear()
@@ -1107,6 +1109,41 @@ if __name__ == '__main__':
     buffer.redo() # does nothing
     expect_text("2")
     insert(0, 0, "2\n")
+
+    # Test coalescing consecutive inserts
+    clear()
+    
+    insert(0, 0, "1")
+    insert(0, 1, "2")
+    buffer.undo()
+    expect_text("")
+
+    # Test grouping of multiple undos by user actions
+    clear()
+
+    insert(0, 0, "1")
+    buffer.begin_user_action()
+    delete(0, 0, 0, 1)
+    insert(0, 0, "2")
+    buffer.end_user_action()
+    buffer.undo()
+    expect_text("1")
+    buffer.redo()
+    expect_text("2")
+
+    # Make sure that coalescing doesn't coalesce one user action with
+    # only part of another
+    clear()
+
+    insert(0, 0, "1")
+    buffer.begin_user_action()
+    insert(0, 1, "2")
+    delete(0, 0, 0, 1)
+    buffer.end_user_action()
+    buffer.undo()
+    expect_text("1")
+    buffer.redo()
+    expect_text("2")
     
     # Test an undo of an insert that caused insertion of result chunks
     clear()
