@@ -1,3 +1,9 @@
+import re
+
+# Two consecutive inserts where the first one matches this regular
+# expression are merged together
+COALESCE_RE = re.compile(r'^\S+$')
+
 class _InsertDeleteOp(object):
     def __init__(self, start, end, text):
         self.start = start
@@ -67,9 +73,18 @@ class UndoStack(object):
     def append_op(self, op):
         if self.__applying_undo:
             return
-        
-        if self.__position < len(self.__stack):
+
+        if self.__position == len(self.__stack):
+            if self.__position > 0:
+                prev = self.__stack[-1]
+                if isinstance(op, InsertOp) and isinstance(prev, InsertOp) and \
+                        op.start == prev.end and COALESCE_RE.match(prev.text):
+                    prev.end = op.end
+                    prev.text += op.text
+                    return
+        else:
             self.__stack[self.__position:] = []
+        
         self.__stack.append(op)
         self.__position += 1
         
