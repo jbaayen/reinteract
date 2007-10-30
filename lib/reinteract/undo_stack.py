@@ -155,3 +155,7 @@ class UndoStack(object):
     def clear(self):
         self.__stack = []
         self.__position = 0
+
+    def __repr__(self):
+        return "UndoStack(stack=%s, position=%d)" % (self.__stack, self.__position)
+    

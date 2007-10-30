@@ -229,6 +229,18 @@ class ShellView(gtk.TextView):
             line = insert.get_line()
             current_chunk = buf.get_chunk(line)
 
+            # Inserting return inside a ResultChunk would normally do nothing
+            # but we want to make it insert a line after the chunk
+            if isinstance(current_chunk, ResultChunk) and not buf.get_has_selection():
+                iter = buf.get_iter_at_line(current_chunk.end)
+                if not iter.ends_line():
+                    iter.forward_to_line_end()
+
+                buf.insert_interactive(iter, "\n", True)
+                buf.place_cursor(iter)
+                
+                return True
+
             gtk.TextView.do_key_press_event(self, event)
 
             insert = buf.get_iter_at_mark(buf.get_insert())

@@ -416,32 +416,84 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__user_action_count -= 1
         self.__undo_stack.end_user_action()
 
+    def __compute_nr_pos_from_chunk_offset(self, chunk, line, offset):
+        if isinstance(chunk, ResultChunk):
+            prev_chunk = self.__chunks[chunk.start - 1]
+            iter = self.get_iter_at_line(prev_chunk.end)
+            if not iter.ends_line():
+                iter.forward_to_line_end()
+            return (prev_chunk.end - prev_chunk.start + prev_chunk.nr_start, iter.get_line_offset(), 1)
+        else:
+            return (line - chunk.start + chunk.nr_start, offset)
+        
     def __compute_nr_pos_from_iter(self, iter):
         line = iter.get_line()
         chunk = self.__chunks[line]
-        return (line - chunk.start + chunk.nr_start, iter.get_line_offset())
+        return self.__compute_nr_pos_from_chunk_offset(chunk, line, iter.get_line_offset())
 
     def __compute_nr_pos_from_line_offset(self, line, offset):
-        chunk = self.__chunks[line]
-        return (line - chunk.start + chunk.nr_start, offset)
+        return self.__compute_nr_pos_from_chunk_offset(self.__chunks[line], line, offset)
 
     def _get_iter_at_nr_pos(self, nr_pos):
-        nr_line, offset = nr_pos
+        if len(nr_pos) == 2:
+            nr_line, offset = nr_pos
+            in_result = False
+        else:
+            nr_line, offset, in_result = nr_pos
+            
         for chunk in self.iterate_chunks():
             if not isinstance(chunk, ResultChunk) and chunk.nr_start + (chunk.end - chunk.start) >= nr_line:
                 line = chunk.start + nr_line - chunk.nr_start
                 iter = self.get_iter_at_line(line)
                 iter.set_line_offset(offset)
 
+                if in_result and chunk.end + 1 < len(self.__chunks):
+                    next_chunk = self.__chunks[chunk.end + 1]
+                    if isinstance(next_chunk, ResultChunk):
+                        iter = self.get_iter_at_line(next_chunk.end)
+                        if not iter.ends_line():
+                            iter.forward_to_line_end()
+
                 return iter
 
         raise AssertionError("nr_pos pointed outside buffer")
 
+
+    def __insert_blank_line_after(self, chunk_before, location, separator):
+        start_pos = self.__compute_nr_pos_from_iter(location)
+    
+        self.__modifying_results = True
+        gtk.TextBuffer.do_insert_text(self, location, separator, len(separator))
+        self.__modifying_results = False
+
+        new_chunk = BlankChunk(chunk_before.end + 1, chunk_before.end + 1, chunk_before.nr_start)
+        self.__chunks[chunk_before.end + 1:chunk_before.end + 1] = [new_chunk]
+        self.__lines[chunk_before.end + 1:chunk_before.end + 1] = [""]
+
+        for chunk in self.iterate_chunks(new_chunk.end + 1):
+            chunk.start += 1     
+            chunk.end += 1
+            chunk.nr_start += 1
+
+        end_pos = self.__compute_nr_pos_from_iter(location)
+        self.__undo_stack.append_op(InsertOp(start_pos, end_pos, separator))
+    
     def do_insert_text(self, location, text, text_len):
         start_line = location.get_line()
+        is_pure_insert = False
         if self.__user_action_count > 0:
-            if isinstance(self.__chunks[start_line], ResultChunk):
-                return
+            current_chunk = self.__chunks[start_line]
+            if isinstance(current_chunk, ResultChunk):
+                # The only thing that's valid to do with a ResultChunk is insert
+                # a newline at the end to get another line after it
+                if not (start_line == current_chunk.end and location.ends_line()):
+                    return
+                # FIXME: PS
+                if not (text.startswith("\r") or text.startswith("\n")):
+                    return
+
+                start_line += 1
+                is_pure_insert = True
 
         if _verbose:
             if not self.__modifying_results:
@@ -460,16 +512,27 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             self.__set_modified(True)
 
         result_fixup_state = self.__get_result_fixup_state(start_line, start_line)
-            
-        self.__chunks[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
-        self.__lines[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
 
-        for chunk in self.iterate_chunks(start_line):
-            if chunk.start > start_line:
-                chunk.start += (end_line - start_line)
-                chunk.nr_start += (end_line - start_line)
-            if chunk.end > start_line:
-                chunk.end += (end_line - start_line)
+        if is_pure_insert:
+            self.__chunks[start_line:start_line] = [None for i in xrange(start_line, end_line + 1)]
+            self.__lines[start_line:start_line] = [None for i in xrange(start_line, end_line + 1)]
+            
+            for chunk in self.iterate_chunks(end_line + 1):
+                if chunk.start >= start_line:
+                    chunk.start += (1 + end_line - start_line)
+                    chunk.nr_start += (1 + end_line - start_line)
+                if chunk.end >= start_line:
+                    chunk.end += (1 + end_line - start_line)
+        else:
+            self.__chunks[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
+            self.__lines[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
+
+            for chunk in self.iterate_chunks(start_line):
+                if chunk.start > start_line:
+                    chunk.start += (end_line - start_line)
+                    chunk.nr_start += (end_line - start_line)
+                if chunk.end > start_line:
+                    chunk.end += (end_line - start_line)
 
         self.__rescan(start_line, end_line)
 
@@ -1065,7 +1128,38 @@ if __name__ == '__main__':
     expect([S(0,0), R(1,1), B(2,2)])
     expect_text("12\n");
 
+    # Test inserting random text inside a result chunk, should ignore
+    clear()
+    
+    insert(0, 0, "1\n2");
+    buffer.calculate()
+    expect([S(0,0), R(1,1), S(2,2), R(3,3)])
+    insert(1, 0, "foo")
+    expect_text("1\n2");
+    expect([S(0,0), R(1,1), S(2,2), R(3,3)])
+
+    # Test inserting a newline at the end of a result chunk, should create
+    # a new line
+    insert(1, 1, "\n")
+    expect_text("1\n\n2");
+    expect([S(0,0), R(1,1), B(2,2), S(3,3), R(4,4)])
+
+    # Same, at the end of the buffer
+    insert(4, 1, "\n")
+    expect_text("1\n\n2\n");
+    expect([S(0,0), R(1,1), B(2,2), S(3,3), R(4,4), B(5,5)])
+
+    # Try undoing these insertions
+    buffer.undo()
+    expect_text("1\n\n2");
+    expect([S(0,0), R(1,1), B(2,2), S(3,3), R(4,4)])
+
+    buffer.undo()
+    expect_text("1\n2");
+    expect([S(0,0), R(1,1), S(2,2), R(3,3)])
+    
     # Test deleting a range containing both results and statements
+
     clear()
     
     insert(0, 0, "1\n2\n3\n4\n")
