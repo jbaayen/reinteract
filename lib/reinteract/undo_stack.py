@@ -12,7 +12,7 @@ class _InsertDeleteOp(object):
 
     def _insert(self, buffer):
         start = buffer._get_iter_at_nr_pos(self.start)
-        buffer.insert_interactive(start, self.text, len(self.text), True)
+        buffer.insert_interactive(start, self.text, True)
 
     def _delete(self, buffer):
         start = buffer._get_iter_at_nr_pos(self.start)
@@ -26,6 +26,9 @@ class InsertOp(_InsertDeleteOp):
     def undo(self, buffer):
         self._delete(buffer)
 
+    def __repr__(self):
+        return "InsertOp(%s, %s, %s)" % (self.start, self.end, repr(self.text))
+
 class DeleteOp(_InsertDeleteOp):
     def redo(self, buffer):
         self._delete(buffer)
@@ -33,6 +36,9 @@ class DeleteOp(_InsertDeleteOp):
     def undo(self, buffer):
         self._insert(buffer)
 
+    def __repr__(self):
+        return "DeleteOp(%s, %s, %s)" % (self.start, self.end, repr(self.text))
+    
 class UndoStack(object):
     def __init__(self, buffer):
         self.__buffer = buffer
@@ -57,7 +63,7 @@ class UndoStack(object):
         try:
             self.__stack[self.__position].undo(self.__buffer)
         finally:
-            self.__applying_undo = False            
+            self.__applying_undo = False
 
     def redo(self):
         if self.__position == len(self.__stack):
@@ -68,7 +74,7 @@ class UndoStack(object):
         try:
             self.__stack[self.__position - 1].redo(self.__buffer)
         finally:
-            self.__applying_undo = False            
+            self.__applying_undo = False
         
     def append_op(self, op):
         if self.__applying_undo:
