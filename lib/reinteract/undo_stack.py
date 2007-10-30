@@ -13,11 +13,13 @@ class _InsertDeleteOp(object):
     def _insert(self, buffer):
         start = buffer._get_iter_at_nr_pos(self.start)
         buffer.insert_interactive(start, self.text, True)
+        buffer.place_cursor(start)
 
     def _delete(self, buffer):
         start = buffer._get_iter_at_nr_pos(self.start)
         end = buffer._get_iter_at_nr_pos(self.end)
         buffer.delete_interactive(start, end, True)
+        buffer.place_cursor(start)
 
 class InsertOp(_InsertDeleteOp):
     def redo(self, buffer):
