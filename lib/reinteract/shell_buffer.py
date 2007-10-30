@@ -8,6 +8,7 @@ from notebook import Notebook
 from statement import Statement, ExecutionError
 from worksheet import Worksheet
 from custom_result import CustomResult
+from undo_stack import UndoStack, InsertOp, DeleteOp
 
 # See comment in iter_copy_from.py
 try:
@@ -19,15 +20,12 @@ except AttributeError:
         
 _verbose = False
 
-_OP_INSERT = 0
-_OP_DELETE = 1
-
 class StatementChunk:
     def __init__(self, start=-1, end=-1, nr_start=-1):
         self.start = start
         self.end = end
         # this is the start index ignoring result chunks; we need this for
-        # storing items in the undo ring
+        # storing items in the undo stack
         self.nr_start = nr_start
         self.set_text(None)
         
@@ -169,8 +167,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__applying_undo = False
         self.__user_action_count = 0
 
-        self.__undo_stack = []
-        self.__undo_position = 0
+        self.__undo_stack = UndoStack(self)
         
         self.filename = None
         self.code_modified = False
@@ -426,7 +423,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         chunk = self.__chunks[line]
         return (line - chunk.start + chunk.nr_start, offset)
 
-    def __get_iter_at_nr_pos(self, nr_pos):
+    def _get_iter_at_nr_pos(self, nr_pos):
         nr_line, offset = nr_pos
         for chunk in self.iterate_chunks():
             if not isinstance(chunk, ResultChunk) and chunk.nr_start + (chunk.end - chunk.start) >= nr_line:
@@ -475,7 +472,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__rescan(start_line, end_line)
 
         end_pos = self.__compute_nr_pos_from_line_offset(end_line, end_offset)
-        self.__append_undo_op((_OP_INSERT, start_pos, end_pos, text[0:text_len]))
+        self.__undo_stack.append_op(InsertOp(start_pos, end_pos, text[0:text_len]))
 
         self.__fixup_results(result_fixup_state, [location])
 
@@ -710,7 +707,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         if self.__user_action_count > 0:
             self.__set_modified(True)
 
-        self.__append_undo_op((_OP_DELETE, start_pos, end_pos, deleted_text))
+        self.__undo_stack.append_op(DeleteOp(start_pos, end_pos, deleted_text))
 
         result_fixup_state = self.__get_result_fixup_state(new_start, last_modified_line)
 
@@ -800,58 +797,15 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         if _verbose:
             print "After calculate, chunks are", self.__chunks
 
-    def undo(self):
-        if self.__undo_position == 0:
-            return
-
-        self.__applying_undo = True
-        try:
-            self.__undo_position -= 1
-            op = self.__undo_stack[self.__undo_position]
-            if op[0] == _OP_INSERT:
-                start = self.__get_iter_at_nr_pos(op[1])
-                end = self.__get_iter_at_nr_pos(op[2])
-                self.delete_interactive(start, end, True)
-            elif op[0] == _OP_DELETE:
-                start = self.__get_iter_at_nr_pos(op[1])
-                self.insert_interactive(start, op[3], len(op[3]), True)
-        finally:
-            self.__applying_undo = False
-
-    def redo(self):
-        if self.__undo_position == len(self.__undo_stack):
-            return
-
-        self.__applying_undo = True
-        try:
-            self.__undo_position += 1
-            op = self.__undo_stack[self.__undo_position - 1]
-            if op[0] == _OP_INSERT:
-                start = self.__get_iter_at_nr_pos(op[1])
-                self.insert_interactive(start, op[3], len(op[3]), True)
-            elif op[0] == _OP_DELETE:
-                start = self.__get_iter_at_nr_pos(op[1])
-                end = self.__get_iter_at_nr_pos(op[2])
-                self.delete_interactive(start, end, True)
-        finally:
-            self.__applying_undo = False
-            
-    def __append_undo_op(self, op):
-        if self.__applying_undo:
-            return
-        
-        if self.__undo_position < len(self.__undo_stack):
-            self.__undo_stack[self.__undo_position:] = []
-        self.__undo_stack.append(op)
-        self.__undo_position += 1
-        
-    def clear_undo_stack(self):
-        self.__undo_stack = []
-        self.__undo_position = 0
-
     def get_chunk(self, line_index):
         return self.__chunks[line_index]
 
+    def undo(self):
+        self.__undo_stack.undo()
+
+    def redo(self):
+        self.__undo_stack.redo()
+        
     def __get_chunk_bounds(self, chunk):
         start = self.get_iter_at_line(chunk.start)
         end = self.get_iter_at_line(chunk.end)
@@ -941,7 +895,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__set_filename_and_modified(None, False)
 
         # This prevents redoing New, but we need some more work to enable that
-        self.clear_undo_stack()
+        self.__undo_stack.clear()
 
     def load(self, filename):
         f = open(filename)
@@ -951,7 +905,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__do_clear()
         self.__set_filename_and_modified(filename, False)
         self.insert(self.get_start_iter(), text)
-        self.clear_undo_stack()
+        self.__undo_stack.clear()
 
     def save(self, filename=None):
         if filename == None:
