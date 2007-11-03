@@ -13,17 +13,67 @@ class PlayResult(CustomResult):
         widget = gtk.Button("Play")
         widget.connect('clicked', self.play)
 
+        widget.connect('button_press_event', self.on_button_press)
+
         return widget
 
     def play(self, *args):
         if self.__data.dtype == float32:
-            command = 'play -t raw -r 44100 -f -4 -L -q -'
+            command = "play -t raw -r 44100 -f -4 -L -q -"
         else:
-            command = 'play -t raw -r 44100 -f -8 -L -q -'
+            command = "play -t raw -r 44100 -f -8 -L -q -"
             
         f = os.popen(command, 'w')
         self.__data.tofile(f)
         f.close()
+
+    def __save(self, filename):
+        escaped = filename.replace("'", r"'\''")
+        print repr(escaped)
+        
+        if self.__data.dtype == float32:
+            command = "sox -t raw -r 44100 -f -4 -L -q - '%s'" % escaped
+        else:
+            command = "sox -t raw -r 44100 -f -8 -L -q - '%s'" % escaped
+            
+        f = os.popen(command, 'w')
+        self.__data.tofile(f)
+        f.close()
+
+    def on_button_press(self, button, event):
+        if event.button == 3:
+            toplevel = button.get_toplevel()
+        
+            menu = gtk.Menu()
+            menu_item = gtk.ImageMenuItem(stock_id=gtk.STOCK_SAVE_AS)
+            menu_item.show()
+            menu.add(menu_item)
+
+            def on_selection_done(menu):
+                menu.destroy()
+            menu.connect('selection-done', on_selection_done)
+
+            def on_activate(menu):
+                chooser = gtk.FileChooserDialog("Save As...", toplevel, gtk.FILE_CHOOSER_ACTION_SAVE,
+                                                (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                                 gtk.STOCK_SAVE,   gtk.RESPONSE_OK))
+                chooser.set_default_response(gtk.RESPONSE_OK)
+                response = chooser.run()
+                filename = None
+                if response == gtk.RESPONSE_OK:
+                    filename = chooser.get_filename()
+
+                chooser.destroy()
+                
+                if filename != None:
+                    self.__save(filename)
+                    
+            menu_item.connect('activate', on_activate)
+            
+            menu.popup(None, None, None, event.button, event.time)
+            
+            return True
+        return False
     
 def play(data):
     if data.dtype != float32 and data.dtype != float64:
