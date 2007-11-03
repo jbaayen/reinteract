@@ -213,7 +213,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         
         if statement_end >= chunk_start:
             def notnull(l): return l != None
-            chunk_lines = lines[0:statement_end + 1 - chunk_start]
+            chunk_lines = filter(notnull, lines[0:statement_end + 1 - chunk_start])
 
             old_statement = None
             for i in xrange(chunk_start, statement_end + 1):
@@ -247,7 +247,6 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             chunk.end = statement_end
             self.__compute_nr_start(chunk)
             self.__fontify_statement_lines(chunk, changed_lines)
-            self.__remove_tag_from_chunk(self.__comment_tag, chunk)
             
             for i in xrange(chunk_start, statement_end + 1):
                 self.__chunks[i] = chunk
