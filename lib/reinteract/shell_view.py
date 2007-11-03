@@ -14,6 +14,7 @@ class ShellView(gtk.TextView):
     def __init__(self, buf):
         buf.connect('chunk-status-changed', self.on_chunk_status_changed)
         buf.connect('add-custom-result', self.on_add_custom_result)
+        buf.connect('pair-location-changed', self.on_pair_location_changed)
             
         gtk.TextView.__init__(self, buf)
         self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, 10)
@@ -40,10 +41,7 @@ class ShellView(gtk.TextView):
 
         self.get_window(gtk.TEXT_WINDOW_LEFT).set_background(self.style.white)
 
-    def do_expose_event(self, event):
-        if event.window != self.get_window(gtk.TEXT_WINDOW_LEFT):
-            return gtk.TextView.do_expose_event(self, event)
-
+    def __expose_window_left(self, event):
         (_, start_y) = self.window_to_buffer_coords(gtk.TEXT_WINDOW_LEFT, 0, event.area.y)
         (start_line, _) = self.get_line_at_y(start_y)
         
@@ -64,7 +62,35 @@ class ShellView(gtk.TextView):
                     self.paint_chunk(cr, event.area, chunk, (1, 0, 1), (0.5, 0.5, 0))
                 else:
                     self.paint_chunk(cr, event.area, chunk, (0, 0, 1), (0, 0, 0.5))
-                
+
+    def __expose_pair_location(self, event):
+        pair_location = self.get_buffer().get_pair_location()
+        if pair_location == None:
+            return
+        
+        rect = self.get_iter_location(pair_location)
+
+        rect.x, rect.y = self.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, rect.x, rect.y)
+        
+        if (rect.y + rect.height <= event.area.y or rect.y >= event.area.y + event.area.height):
+            return
+
+        cr = event.window.cairo_create()
+        cr.set_line_width(1.)
+        cr.rectangle(rect.x + 0.5, rect.y + 0.5, rect.width - 1, rect.height - 1)
+        cr.set_source_rgb(0.6, 0.6, 0.6)
+        cr.stroke()
+        
+    def do_expose_event(self, event):
+        if event.window == self.get_window(gtk.TEXT_WINDOW_LEFT):
+            self.__expose_window_left(event)
+            return False
+        
+        gtk.TextView.do_expose_event(self, event)
+
+        if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT):
+            self.__expose_pair_location(event)
+        
         return False
 
     def __get_line_text(self, iter):
@@ -304,3 +330,16 @@ class ShellView(gtk.TextView):
         widget = result.create_widget()
         widget.show()
         self.add_child_at_anchor(widget, anchor)
+
+    def __invalidate_char_position(self, iter):
+        y, height = self.get_line_yrange(iter)
+        if self.window:
+            text_window = self.get_window(gtk.TEXT_WINDOW_TEXT)
+            width, _ = text_window.get_size()
+            text_window.invalidate_rect((0, y, width, height), False)
+        
+    def on_pair_location_changed(self, buf, old_position, new_position):
+        if old_position:
+            self.__invalidate_char_position(old_position)
+        if new_position:
+            self.__invalidate_char_position(new_position)

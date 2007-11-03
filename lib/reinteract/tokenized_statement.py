@@ -1,5 +1,49 @@
-from tokenize import tokenize_line
+from tokenize import *
 
+class _TokenIter(object):
+    def __init__(self, statement, line, i):
+        self.statement = statement
+        self.line = line
+        self.i = i
+        self.__update()
+
+    def __update(self):
+        self.token_type, self.start, self.end, self.flags = self.statement.tokens[self.line][self.i]
+
+    def prev(self):
+        if self.i > 0:
+            self.i -= 1
+        else:
+            l = self.line - 1
+            while True:
+                if l < 0:
+                    raise StopIteration("Already at beginning")
+                if len(self.statement.tokens[l]) > 0:
+                    break
+            self.line = l
+            self.i = len(self.statement.tokens[l]) - 1
+        self.__update()
+        
+    def next(self):
+        if self.i + 1 < len(self.statement.tokens[self.line]):
+            self.i += 1
+        else:
+            l = self.line + 1
+            while True:
+                if l >= len(self.statement.tokens):
+                    raise StopIteration("Already at end")
+                if len(self.statement.tokens[l]) > 0:
+                    break
+            self.line = l
+            self.i = 0
+        self.__update()
+
+    def is_open(self):
+        return self.flags & FLAG_OPEN != 0
+        
+    def is_close(self):
+        return self.flags & FLAG_CLOSE != 0
+    
 class TokenizedStatement(object):
     def __init__(self):
         self.lines = []
@@ -87,6 +131,53 @@ class TokenizedStatement(object):
     def get_tokens(self, line):
         return self.tokens[line]
 
+    def _get_iter(self, line, index):
+        for i, (token_type, start, end, _) in enumerate(self.tokens[line]):
+            if start > index:
+                return None
+            if start <= index and end > index:
+                return _TokenIter(self, line, i)
+            
+        return None
+        
+    def get_pair_location(self, line, index):
+        iter = self._get_iter(line, index)
+        if iter == None:
+            return None, None
+
+        # We don't do pair matching on strings; it's obvious from the
+        # fontification, even though strings can participate in the stack
+        if iter.token_type == TOKEN_STRING:
+            return None, None
+        elif iter.is_close():
+            level = 0
+            while True:
+                if iter.is_close():
+                    level += 1
+                elif iter.is_open():
+                    level -= 1
+                if level == 0:
+                    return iter.line, iter.start
+                    
+                iter.prev()
+                
+        elif iter.is_open():
+            level = 0
+            while True:
+                if iter.is_close():
+                    level -= 1
+                elif iter.is_open():
+                    level += 1
+                if level == 0:
+                    return iter.line, iter.start
+
+                try:
+                    iter.next()
+                except StopIteration:
+                    break
+
+        return None, None
+            
     def __repr__(self):
         return "TokenizedStatement" + repr([([(t[0], line[t[1]:t[2]]) for t in tokens], stack) for line, tokens, stack in zip(self.lines, self.tokens, self.stacks)])
             
@@ -138,6 +229,77 @@ if __name__ == '__main__':
     assert ts.set_lines(['((1 + 2', '+ 3 + 4)', '+ 5 + 6)']) == [1, 2]
     expect(ts, [['(', '(', '1', '+', '2', ['(', '(']], ['+', '3', '+', '4', ')', ['(']], ['+', '5', '+', '6', ')']])
 
+    # Tests of iterator functionality
+    ts = TokenizedStatement()
+    ts.set_lines(['(1 + ','2)'])
+    assert ts._get_iter(0, 2) == None
+    assert ts._get_iter(1, 2) == None
+
+    i = ts._get_iter(0, 3)
+    assert i.token_type == TOKEN_PUNCTUATION
+    assert i.start == 3
+    assert i.end == 4
+
+    i.prev()
+    assert i.token_type == TOKEN_NUMBER
+    assert i.start == 1
+    assert i.end == 2
+
+    i.prev()
+    assert i.token_type == TOKEN_LPAREN
+    assert i.start == 0
+    assert i.end == 1
+
+    raised = False
+    try:
+        i.prev()
+    except StopIteration:
+        raised = True
+    assert raised
+    assert i.start == 0
+    assert i.end == 1
+
+    i = ts._get_iter(0, 3)
+    i.next()
+    assert i.line == 1
+    assert i.start == 0
+    assert i.end == 1
+
+    i.next()
+    assert i.start == 1
+    assert i.end == 2
+
+    raised = False
+    try:
+        i.next()
+    except StopIteration:
+        raised = True
+    assert raised
+    assert i.start == 1
+    assert i.end == 2
+
+    # Tests of paired punctuation
+    
+    ts = TokenizedStatement()
+    ts.set_lines(['a = ([(1 + ',
+                  '2), { "a" : "b" }',
+                  ']}'])
+
+    # Pair location is not at a random position
+    assert ts.get_pair_location(1, 2) == (None, None)
+    # Pair location is None for an unpaired closed (which isn't a close at all)
+    assert ts.get_pair_location(2, 1) == (None, None)
+    # Pair location is None for an unpaired open
+    assert ts.get_pair_location(0, 4) == (None, None)
+
+    # Open punctuation
+    assert ts.get_pair_location(0, 5) == (2, 0)
+    assert ts.get_pair_location(1, 4) == (1, 16)
+
+    # Close punctuation
+    assert ts.get_pair_location(2, 0) == (0, 5)
+    assert ts.get_pair_location(1, 16) == (1, 4)
+    
     if failed:
         sys.exit(1)
     else:

@@ -16,6 +16,9 @@ TOKEN_LBRACE       = 12
 TOKEN_RBRACE       = 13
 TOKEN_BACKQUOTE    = 14
 
+FLAG_OPEN = 1
+FLAG_CLOSE = 2
+
 _KEYWORDS = set([ 'and', 'as', 'assert', 'break', 'class', 'continue', 'def',
                   'del', 'elif', 'else', 'except', 'exec', 'finally',  'for',
                   'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'not',
@@ -118,7 +121,8 @@ def tokenize_line(str, stack=None):
             delim = stack[-1]
             match = _CLOSE_STRING_RE[delim].match(str)
             assert(match)
-            tokens.append((TOKEN_STRING, match.start(), match.end()))
+
+            flags = 0
 
             s  = match.group()
             if (len(s) >= len(delim) and s.endswith(delim) and
@@ -126,8 +130,11 @@ def tokenize_line(str, stack=None):
                  not s[len(s)-len(delim)-1] == '\\' or
                  (len(s) > len(delim) + 1 and
                   s[len(s)-len(delim)-2] == '\\'))):
+                flags |= FLAG_CLOSE
                 stack.pop()
-
+                
+            tokens.append((TOKEN_STRING, match.start(), match.end(), flags))
+            
             pos = match.end()
             
     l = len(str)
@@ -137,6 +144,8 @@ def tokenize_line(str, stack=None):
 #        print repr(match.group()), match.span(), match.groupdict()
         
         if not match.group('white'):
+            flags = 0
+            
             token_type = None
             if match.group('punctuation'):
                 token_type = TOKEN_PUNCTUATION
@@ -145,15 +154,19 @@ def tokenize_line(str, stack=None):
                     token_type = _PUNCTUATION_TOKENS[s]
                     if token_type == TOKEN_BACKQUOTE:
                         if len(stack) > 0 and stack[-1] == "`":
+                            flags |= FLAG_CLOSE
                             stack.pop()
                         else:
+                            flags |= FLAG_OPEN
                             stack.append("`")
                     elif s in _PUNCTUATION_MATCH:
                         if len(stack) > 0 and stack[-1] == _PUNCTUATION_MATCH[s]:
+                            flags |= FLAG_CLOSE
                             stack.pop()
                         else:
                             token_type = TOKEN_JUNK
                     elif token_type == TOKEN_LPAREN or token_type == TOKEN_LSQB or token_type == TOKEN_LBRACE:
+                        flags |= FLAG_OPEN
                         stack.append(s)
             elif match.group('identifier'):
                 s = match.group()
@@ -183,6 +196,7 @@ def tokenize_line(str, stack=None):
                    not core.endswith(delim) or \
                    (core[len(core)-len(delim)-1] == '\\' and
                     core[len(core)-len(delim)-2] != '\\'):
+                    flags |= FLAG_OPEN
                     stack.append(delim)
 
             elif match.group('dot'):
@@ -194,7 +208,7 @@ def tokenize_line(str, stack=None):
             elif match.group('junk'):
                 token_type = TOKEN_JUNK
 
-            tokens.append((token_type, match.start(), match.end()))
+            tokens.append((token_type, match.start(), match.end(), flags))
                 
         pos = match.end()
 
@@ -202,6 +216,9 @@ def tokenize_line(str, stack=None):
     # Would be nice to indicate an error here somehow, but I'm not sure how
     if len(stack) > 0 and (stack[-1] == "'" or stack[-1] == '"') and \
             (len(tokens) == 0  or tokens[-1][0] != TOKEN_CONTINUATION):
+        token_type, start, end, flags = tokens[-1]
+        flags &= ~FLAG_OPEN
+        tokens[-1] = (token_type, start, end, flags)
         stack.pop()
         
     return (tokens, stack)

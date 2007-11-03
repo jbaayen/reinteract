@@ -143,6 +143,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         'delete-range': 'override',
         'chunk-status-changed':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
         'add-custom-result':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)),
+        'pair-location-changed': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)),
 
         # It would be more GObject to make these properties, but we'll wait on that until
         # decent property support lands:
@@ -192,6 +193,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__modifying_results = False
         self.__applying_undo = False
         self.__user_action_count = 0
+
+        self.__have_pair = False
+        self.__pair_mark = self.create_mark(None, self.get_start_iter(), True)
 
         self.__undo_stack = UndoStack(self)
         
@@ -572,6 +576,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__undo_stack.append_op(InsertOp(start_pos, end_pos, text[0:text_len]))
 
         self.__fixup_results(result_fixup_state, [location])
+        self.__calculate_pair_location()
 
         if _verbose:
             print "After insert, chunks are", self.__chunks
@@ -855,6 +860,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                     insert.forward_to_line_end()
                 self.place_cursor(insert)
 
+        self.__calculate_pair_location()
+        
         if _verbose:
             print "After delete, chunks are", self.__chunks
 
@@ -894,6 +901,71 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         if _verbose:
             print "After calculate, chunks are", self.__chunks
 
+    def __set_pair_location(self, location):
+        changed = False
+        old_location = None
+
+        if location == None:
+            if self.__have_pair:
+                old_location = self.get_iter_at_mark(self.__pair_mark)
+                self.__have_pair = False
+                changed = True
+        else:
+            if not self.__have_pair:
+                self.__have_pair = True
+                self.move_mark(self.__pair_mark, location)
+                changed = True
+            else:
+                old_location = self.get_iter_at_mark(self.__pair_mark)
+                if location.compare(old_location) != 0:
+                    self.move_mark(self.__pair_mark, location)
+                    changed = True
+
+        if changed:
+            self.emit('pair-location-changed', old_location, location)
+
+    def get_pair_location(self):
+        if self.__have_pair:
+            return self.get_iter_at_mark(self.__pair_mark)
+        else:
+            return None
+
+    def __calculate_pair_location(self):
+        if self.get_has_selection():
+            self.__set_pair_location(None)
+            return
+
+        location = self.get_iter_at_mark(self.get_insert())
+        
+        line = location.get_line()
+        chunk = self.__chunks[line]
+        if not isinstance(chunk, StatementChunk):
+            self.__set_pair_location(None)
+            return
+
+        if location.starts_line():
+            self.__set_pair_location(None)
+            return
+
+        previous = location.copy()
+        previous.backward_char()
+        pair_line, pair_start = chunk.tokenized.get_pair_location(line - chunk.start, previous.get_line_index())
+
+        if pair_line == None:
+            self.__set_pair_location(None)
+            return
+
+        pair_iter = self.get_iter_at_line_index(chunk.start + pair_line, pair_start)
+        self.__set_pair_location(pair_iter)
+
+    def do_mark_set(self, location, mark):
+        gtk.TextBuffer.do_mark_set(self, location, mark)
+
+        if mark != self.get_insert() and mark != self.get_selection_bound():
+            return
+
+        self.__calculate_pair_location()
+        
     def get_chunk(self, line_index):
         return self.__chunks[line_index]
 
@@ -922,7 +994,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             self.remove_all_tags(iter, end)
 
             end = iter.copy()
-            for token_type, start_index, end_index in chunk.tokenized.get_tokens(l):
+            for token_type, start_index, end_index, _ in chunk.tokenized.get_tokens(l):
                 tag = self.__fontify_tags[token_type]
                 if tag != None:
                     iter.set_line_index(start_index)
