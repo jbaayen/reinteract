@@ -7,6 +7,8 @@ from notebook import Notebook
 from shell_buffer import ShellBuffer
 from shell_view import ShellView
 
+from format_escaped import format_escaped
+
 
 notebook = Notebook()
 w = gtk.Window()
@@ -21,8 +23,13 @@ buf = view.get_buffer()
 ui_manager = gtk.UIManager()
 w.add_accel_group(ui_manager.get_accel_group())
 
-def on_quit(action):
+def quit():
+    if not confirm_discard('Save the unchanged changes to worksheet "%s" before quitting?', '_Quit without saving'):
+        return
     gtk.main_quit()
+
+def on_quit(action):
+    quit()
 
 def on_cut(action):
     buf.cut_clipboard(view.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD), view.get_editable())
@@ -36,7 +43,52 @@ def on_paste(action):
 def on_delete(action):
     buf.delete_selection(True, view.get_editable())
 
+def confirm_discard(message_format, continue_button_text):
+    if not buf.code_modified:
+        return True
+
+    if buf.filename == None:
+        save_button_text = gtk.STOCK_SAVE_AS
+    else:
+        save_button_text = gtk.STOCK_SAVE
+
+    if buf.filename == None:
+        name = "Unsaved Worksheet"
+    else:
+        name = buf.filename
+        
+    message = format_escaped("<big><b>" + message_format + "</b></big>", name)
+    
+    dialog = gtk.MessageDialog(parent=w, buttons=gtk.BUTTONS_NONE,
+                               type=gtk.MESSAGE_WARNING)
+    dialog.set_markup(message)
+                            
+    dialog.add_buttons(continue_button_text, gtk.RESPONSE_OK,
+                       gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                       save_button_text, 1)
+    dialog.set_default_response(1)
+    response = dialog.run()
+    dialog.destroy()
+
+    if response == gtk.RESPONSE_OK:
+        return True
+    elif response == 1:
+        if buf.filename == None:
+            save_as()
+        else:
+            buf.save()
+
+        if buf.code_modified:
+            return False
+        else:
+            return True
+    else:
+        return False
+    
 def on_new(action):
+    if not confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
+        return
+    
     buf.clear()
 
 def load(filename):
@@ -46,6 +98,9 @@ def load(filename):
     buf.calculate()
 
 def on_open(action):
+    if not confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
+        return
+    
     chooser = gtk.FileChooserDialog("Open Worksheet...", w, gtk.FILE_CHOOSER_ACTION_OPEN,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                      gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
@@ -66,7 +121,7 @@ def on_save(action):
     else:
         buf.save()
 
-def on_save_as(action):
+def save_as():
     chooser = gtk.FileChooserDialog("Save As...", w, gtk.FILE_CHOOSER_ACTION_SAVE,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                      gtk.STOCK_SAVE,   gtk.RESPONSE_OK))
@@ -81,6 +136,9 @@ def on_save_as(action):
         notebook.set_path([os.path.dirname(os.path.abspath(filename))])
 
     chooser.destroy()
+        
+def on_save_as(action):
+    save_as()
     
 def on_calculate(action):
     buf.calculate()
@@ -181,9 +239,10 @@ if len(sys.argv) > 1:
 
 w.show()
 
-def on_destroy(*args):
-    gtk.main_quit()
+def on_delete_event(window, event):
+    quit()
+    return True
 
-w.connect('destroy', on_destroy)
+w.connect('delete-event', on_delete_event)
 
 gtk.main()
