@@ -16,6 +16,7 @@ TOKEN_LBRACE       = 12
 TOKEN_RBRACE       = 13
 TOKEN_BACKQUOTE    = 14
 TOKEN_COLON        = 15
+TOKEN_BUILTIN_CONSTANT = 16
 
 FLAG_OPEN = 1
 FLAG_CLOSE = 2
@@ -25,6 +26,12 @@ _KEYWORDS = set([ 'and', 'as', 'assert', 'break', 'class', 'continue', 'def',
                   'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'not',
                   'or', 'pass', 'print', 'raise',  'return', 'try', 'while',
                   'with', 'yield' ])
+
+_IDENTIFIER_TOKENS = {
+    'None' : TOKEN_BUILTIN_CONSTANT,
+    'True' : TOKEN_BUILTIN_CONSTANT,
+    'False' : TOKEN_BUILTIN_CONSTANT
+}
 
 _PUNCTUATION_TOKENS = {
     '(' : TOKEN_LPAREN,
@@ -174,6 +181,8 @@ def tokenize_line(str, stack=None):
                 s = match.group()
                 if s in _KEYWORDS:
                     token_type = TOKEN_KEYWORD
+                elif s in _IDENTIFIER_TOKENS:
+                    token_type = _IDENTIFIER_TOKENS[s]
                 else:
                     token_type = TOKEN_NAME
             elif match.group('number'):

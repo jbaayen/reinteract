@@ -174,6 +174,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             tokenize.TOKEN_KEYWORD      : self.create_tag(foreground="#7f0055", weight=600),
             tokenize.TOKEN_NAME         : None,
             tokenize.TOKEN_COMMENT      : self.__comment_tag,
+            tokenize.TOKEN_BUILTIN_CONSTANT : self.create_tag(foreground="#55007f"),
             tokenize.TOKEN_STRING       : self.create_tag(foreground="#00aa00"),
             tokenize.TOKEN_PUNCTUATION  : punctuation_tag,
             tokenize.TOKEN_CONTINUATION : punctuation_tag,
