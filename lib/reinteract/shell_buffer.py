@@ -406,11 +406,19 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             yield chunk
             if chunk == last_chunk:
                 break
-            line = chunk.end + 1
-            chunk = self.__chunks[line]
-            while chunk == None:
-                line += 1
+            try:
+                line = chunk.end + 1
                 chunk = self.__chunks[line]
+                while chunk == None:
+                    line += 1
+                    chunk = self.__chunks[line]
+            except IndexError:
+                # This happens if the last chunk was removed; just
+                # proceeding to the end of the buffer isn't always
+                # going to be right, but it is right in the case
+                # where we are iterating the whole buffer, which
+                # is what happens for calculate()
+                return
 
     def iterate_text(self):
         iter = self.get_start_iter()
@@ -1022,6 +1030,13 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         else:
             results = chunk.results
 
+        # We don't want to move the insert cursor in the common case of
+        # inserting a result right at the insert cursor
+        if location.compare(self.get_iter_at_mark(self.get_insert())) == 0:
+            saved_insert = self.create_mark(None, location, True)
+        else:
+            saved_insert = None
+
         for result in results:
             if isinstance(result, basestring):
                 self.insert(location, "\n" + result)
@@ -1046,6 +1061,10 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         for chunk in self.iterate_chunks(result_chunk.end + 1):
             chunk.start += n_inserted
             chunk.end += n_inserted
+
+        if saved_insert != None:
+            self.place_cursor(self.get_iter_at_mark(saved_insert))
+            self.delete_mark(saved_insert)
 
         return result_chunk
 
