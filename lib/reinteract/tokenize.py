@@ -61,8 +61,8 @@ _TOKENIZE_RE = re.compile(r"""
 (?P<string>
   (?:[rR][uU]?|[uU][rR]?|)
   (?P<stringcore>
-    (?: '''(?:\\.|[^'\\])*(?:'''|(?=\\$)|$)) |       # String delimited with '''
-    (?: \"""(?:\\.|[^"\\])*(?:\"""|(?=\\$)|$)) |     # String delimited with \"""
+    (?: '''(?:\\.|[^'\\]|'(?!''))*(?:'''|(?=\\$)|$)) |       # String delimited with '''
+    (?: \"""(?:\\.|[^"\\]|"(?!""))*(?:\"""|(?=\\$)|$)) |     # String delimited with \"""
     (?:   '(?:\\.|[^'\\])*(?:'|(?=\\$)|$)) |           # String delimited with '
     (?:   "(?:\\.|[^"\\])*(?:"|(?=\\$)|$))             # String delimited with "
   )
@@ -87,8 +87,8 @@ _TOKENIZE_RE = re.compile(r"""
 """, re.VERBOSE)
 
 _CLOSE_STRING_RE = {
-    "'''": re.compile(r"(?:\\.|[^\'\\])*(?:\'\'\'|(?=\\$)|$)"),
-    '"""': re.compile(r"(?:\\.|[^\"\\])*(?:\"\"\"|(?=\\$)|$)"),
+    "'''": re.compile(r"(?:\\.|[^\'\\]|\'(?!\'\'))*(?:\'\'\'|(?=\\$)|$)"),
+    '"""': re.compile(r"(?:\\.|[^\"\\]|\"(?!\"\"))*(?:\"\"\"|(?=\\$)|$)"),
     "'": re.compile(r"(?:\\.|[^\'\\])*(?:\'|(?=\\$)|$)"),
     '"': re.compile(r"(?:\\.|[^\"\\])*(?:\"|(?=\\$)|$)")
  }
@@ -267,6 +267,9 @@ if __name__ == '__main__':
     expect(r"'a\'bc'", [(TOKEN_STRING, r"'a\'bc'")])
     expect(r"'abc", [(TOKEN_STRING, r"'abc")])
     expect("'abc\\", [(TOKEN_STRING, "'abc"), (TOKEN_CONTINUATION, "\\")], expected_stack=["'"])
+
+    expect('"""foo"', [(TOKEN_STRING, '"""foo"')], expected_stack=['"""'])
+    expect("'''foo'", [(TOKEN_STRING, "'''foo'")], expected_stack=["'''"])
     
     expect('0x0', [(TOKEN_NUMBER, '0x0')])
     expect('1', [(TOKEN_NUMBER, '1')])
@@ -294,7 +297,7 @@ if __name__ == '__main__':
     expect(r'"abc\"', [(TOKEN_STRING, r'"abc\"')])
     
     expect('"""foo""" """bar', [(TOKEN_STRING, '"""foo"""'), (TOKEN_STRING, '"""bar')], expected_stack=['"""'])
-
+    
     # Testing starting with an open string
     expect('"', [(TOKEN_STRING, '"')], in_stack=['"'])
     expect('\\"', [(TOKEN_STRING, '\\"')], in_stack=['"'])
@@ -302,8 +305,10 @@ if __name__ == '__main__':
     expect("'", [(TOKEN_STRING, "'")], in_stack=["'"])
     expect('foo"""', [(TOKEN_STRING, 'foo"""')], in_stack=['"""'])
     expect('foo', [(TOKEN_STRING, 'foo')], in_stack=['"""'], expected_stack=['"""'])
+    expect('foo"', [(TOKEN_STRING, 'foo"')], in_stack=['"""'], expected_stack=['"""'])
     expect("foo'''", [(TOKEN_STRING, "foo'''")], in_stack=["'''"])
     expect('foo', [(TOKEN_STRING, 'foo')], in_stack=["'''"], expected_stack=["'''"])
+    expect("foo'", [(TOKEN_STRING, "foo'")], in_stack=["'''"], expected_stack=["'''"])
     
     if failed:
         sys.exit(1)
