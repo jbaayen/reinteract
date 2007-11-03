@@ -140,20 +140,14 @@ class ShellView(gtk.TextView):
         buf = self.get_buffer()
         line = iter.get_line()
 
-        previous_line = iter.copy()
-        while  line > 0:
+        while line > 0:
             line -= 1
-            previous_line.backward_line()
-            if not isinstance(buf.get_chunk(line), ResultChunk):
-                line_text = self.__get_line_text(previous_line)
-                
-                indent = self.__count_indent(line_text)
-                indent_text = re.match(r"^[\t ]*", line_text).group(0)
-
-                if line_text.endswith(":") and not re.match(r"^\s*#", line_text):
-                    indent_text += "    "
-                        
-                return indent_text
+            chunk = buf.get_chunk(line)
+            if not isinstance(chunk, ResultChunk):
+                if isinstance(chunk, StatementChunk):
+                    return chunk.tokenized.get_next_line_indent(line - chunk.start)
+                else:
+                    return ""
                 
         return ""
 

@@ -15,6 +15,7 @@ TOKEN_RSQB         = 11
 TOKEN_LBRACE       = 12
 TOKEN_RBRACE       = 13
 TOKEN_BACKQUOTE    = 14
+TOKEN_COLON        = 15
 
 FLAG_OPEN = 1
 FLAG_CLOSE = 2
@@ -32,7 +33,8 @@ _PUNCTUATION_TOKENS = {
     ']' : TOKEN_RSQB,
     '{' : TOKEN_LBRACE,
     '}' : TOKEN_RBRACE,
-    '`' : TOKEN_BACKQUOTE
+    '`' : TOKEN_BACKQUOTE,
+    ':' : TOKEN_COLON
 }
 
 _PUNCTUATION_MATCH = {

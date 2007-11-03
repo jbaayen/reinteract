@@ -177,6 +177,36 @@ class TokenizedStatement(object):
                     break
 
         return None, None
+
+    def get_next_line_indent(self, line):
+        base_line = line
+        while True:
+            prev_line = base_line - 1
+            if prev_line < 0:
+                break
+            if (len(self.stacks[prev_line]) == 0 and
+                (len(self.tokens[prev_line]) == 0 or self.tokens[prev_line][-1][0] != TOKEN_CONTINUATION)):
+                break
+
+            base_line = prev_line
+
+        indent_text = re.match(r"^[\t ]*", self.lines[base_line]).group(0)
+        extra_indent = 0
+
+        tokens = self.tokens[line]
+
+        if (len(tokens) > 0 and tokens[-1][0] == TOKEN_COLON or
+            len(tokens) > 1 and tokens[-1][0] == TOKEN_COMMENT and tokens[-2][0] == TOKEN_COLON):
+            extra_indent = 4
+        elif len(self.stacks[line]) > 0:
+            extra_indent = 4
+        elif len(tokens) > 0 and tokens[-1][0] == TOKEN_CONTINUATION:
+            extra_indent = 4
+
+        if extra_indent != 0:
+            indent_text += " " * extra_indent
+            
+        return indent_text
             
     def __repr__(self):
         return "TokenizedStatement" + repr([([(t[0], line[t[1]:t[2]]) for t in tokens], stack) for line, tokens, stack in zip(self.lines, self.tokens, self.stacks)])
@@ -229,7 +259,8 @@ if __name__ == '__main__':
     assert ts.set_lines(['((1 + 2', '+ 3 + 4)', '+ 5 + 6)']) == [1, 2]
     expect(ts, [['(', '(', '1', '+', '2', ['(', '(']], ['+', '3', '+', '4', ')', ['(']], ['+', '5', '+', '6', ')']])
 
-    # Tests of iterator functionality
+    ### Tests of iterator functionality
+    
     ts = TokenizedStatement()
     ts.set_lines(['(1 + ','2)'])
     assert ts._get_iter(0, 2) == None
@@ -278,7 +309,7 @@ if __name__ == '__main__':
     assert i.start == 1
     assert i.end == 2
 
-    # Tests of paired punctuation
+    ### Tests of paired punctuation
     
     ts = TokenizedStatement()
     ts.set_lines(['a = ([(1 + ',
@@ -299,6 +330,32 @@ if __name__ == '__main__':
     # Close punctuation
     assert ts.get_pair_location(2, 0) == (0, 5)
     assert ts.get_pair_location(1, 16) == (1, 4)
+
+    ### Tests of get_next_line_indent()
+
+    ts = TokenizedStatement()
+
+    lines = ([('if (True):',                     4),
+              ('    pass',                       4),
+              ('if (True): # a true statement',  4),
+              ('    pass',                       4),
+              ('if (a >',                        4),
+              ('    1 +',                        4),
+              ('    5):',                        4),
+              ('    pass',                       4),
+              ('"""A string',                    4),
+              ('    more string',                4),
+              ('    string finish"""',           0),
+              ('a = \\',                         4),
+              ('    1',                          0),
+              ])
+
+    ts.set_lines([text for text, _ in lines])
+    for i, (text, expected) in enumerate(lines):
+        next_line_indent = ts.get_next_line_indent(i).count(" ")
+        if next_line_indent != expected:
+            print "For %s, got next_line_indent=%d, expected %d" % (text, next_line_indent, expected)
+            failed = True
     
     if failed:
         sys.exit(1)
