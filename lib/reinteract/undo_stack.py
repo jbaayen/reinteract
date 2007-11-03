@@ -1,8 +1,10 @@
 import re
 
-# Two consecutive inserts where the first one matches this regular
-# expression are merged together
-COALESCE_RE = re.compile(r'^\S+$')
+# Two consecutive inserts are merged together if the sum of the
+# two matches this. The (?!\n) is to defeat the normal regular
+# expression behavior where 'a$' matches 'a\n' because $ matches
+# before the last newline in the string
+COALESCE_RE = re.compile(r'^\S+ *(?!\n)$')
 
 class _InsertDeleteOp(object):
     def __init__(self, start, end, text):
@@ -114,7 +116,7 @@ class UndoStack(object):
         cur = self.__stack[-1]
         prev = self.__stack[-2]
         if isinstance(cur, InsertOp) and isinstance(prev, InsertOp) and \
-                cur.start == prev.end and COALESCE_RE.match(prev.text):
+                cur.start == prev.end and COALESCE_RE.match(prev.text + cur.text):
             prev.end = cur.end
             prev.text += cur.text
             self.__stack.pop()
