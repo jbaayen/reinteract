@@ -194,8 +194,8 @@ class ShellView(gtk.TextView):
         buf.insert(end, indent_text[common_len:])
 
         if mark_to_start != None:
-            start.set_line_offset(0)
-            buf.move_mark(mark_to_start, start)
+            end.set_line_offset(0)
+            buf.move_mark(mark_to_start, end)
 
         return diff
 
@@ -267,6 +267,8 @@ class ShellView(gtk.TextView):
                 
                 return True
 
+            buf.begin_user_action()
+            
             gtk.TextView.do_key_press_event(self, event)
 
             insert = buf.get_iter_at_mark(buf.get_insert())
@@ -276,13 +278,19 @@ class ShellView(gtk.TextView):
                 
             if isinstance(current_chunk, CommentChunk) and line > 0 and isinstance(buf.get_chunk(line - 1), CommentChunk):
                 self.get_buffer().insert_interactive_at_cursor("# ", -1)
+
+            buf.end_user_action()
                 
             return True
         elif event.keyval in (gtk.keysyms.Tab, gtk.keysyms.KP_Tab) and event.state & gtk.gdk.CONTROL_MASK == 0:
+            buf.begin_user_action()
             self.__reindent_selection(outdent=False)
+            buf.end_user_action()
             return True
         elif event.keyval == gtk.keysyms.ISO_Left_Tab and event.state & gtk.gdk.CONTROL_MASK == 0:
+            buf.begin_user_action()
             self.__reindent_selection(outdent=True)
+            buf.end_user_action()
             return True
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
                 (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
