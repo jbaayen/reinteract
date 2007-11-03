@@ -14,6 +14,7 @@ class PlayResult(CustomResult):
         widget.connect('clicked', self.play)
 
         widget.connect('button_press_event', self.on_button_press)
+        widget.connect('realize', self.on_realize)
 
         return widget
 
@@ -74,6 +75,16 @@ class PlayResult(CustomResult):
             
             return True
         return False
+
+    def on_realize(self, button):
+        # Hack to get the right cursor over the button, since the button
+        # doesn't set a cursor itself. button.window is the text view's
+        # window, we have to search to find button.event_window, since
+        # its not bound
+        for c in button.window.get_children():
+            if c.get_user_data() == button:
+                cursor = gtk.gdk.Cursor(gtk.gdk.LEFT_PTR)
+                c.set_cursor(cursor)
     
 def play(data):
     if data.dtype != float32 and data.dtype != float64:
