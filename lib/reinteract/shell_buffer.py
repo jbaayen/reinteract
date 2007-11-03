@@ -234,7 +234,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 # If we moved the statement with respect to the buffer, then the we
                 # need to refontify, even if the old statement didn't change
                 if old_statement.start != chunk_start:
-                    changed_lines = range[0, 1 + statement_end - chunk_start]
+                    changed_lines = range(0, 1 + statement_end - chunk_start)
             else:
                 chunk = StatementChunk()
                 changed_lines = chunk.set_lines(chunk_lines)
