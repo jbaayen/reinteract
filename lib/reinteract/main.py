@@ -95,7 +95,7 @@ def load(filename):
     notebook.set_path([os.path.dirname(os.path.abspath(filename))])
     
     buf.load(filename)
-    buf.calculate()
+    calculate()
 
 def on_open(action):
     if not confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
@@ -139,9 +139,20 @@ def save_as():
         
 def on_save_as(action):
     save_as()
+
+def calculate():
+    buf.calculate()
+
+    # This is a hack to work around the fact that scroll_mark_onscreen()
+    # doesn't wait for a size-allocate cycle, so doesn't properly handle
+    # embedded request widgets
+    w, h = view.size_request()
+    view.size_allocate((view.allocation.x, view.allocation.y, w, h))
+    
+    view.scroll_mark_onscreen(buf.get_insert())
     
 def on_calculate(action):
-    buf.calculate()
+    calculate()
 
 action_group = gtk.ActionGroup("main")
 action_group.add_actions([
@@ -228,7 +239,7 @@ update_title()
 # maybe someone wants that
 def on_key_press_event(window, event):
     if (event.keyval == 0xff0d or event.keyval == 0xff8d) and (event.state & gtk.gdk.CONTROL_MASK != 0):
-        buf.calculate()
+        calculate()
         return True
     return False
 
