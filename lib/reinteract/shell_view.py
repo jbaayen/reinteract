@@ -18,6 +18,7 @@ class ShellView(gtk.TextView):
             
         gtk.TextView.__init__(self, buf)
         self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, 10)
+        self.set_left_margin(2)
 
     def paint_chunk(self, cr, area, chunk, fill_color, outline_color):
         buf = self.get_buffer()
