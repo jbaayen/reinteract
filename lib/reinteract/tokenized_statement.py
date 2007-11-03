@@ -84,6 +84,9 @@ class TokenizedStatement(object):
     def get_text(self):
         return "\n".join(self.lines)
 
+    def get_tokens(self, line):
+        return self.tokens[line]
+
     def __repr__(self):
         return "TokenizedStatement" + repr([([(t[0], line[t[1]:t[2]]) for t in tokens], stack) for line, tokens, stack in zip(self.lines, self.tokens, self.stacks)])
             

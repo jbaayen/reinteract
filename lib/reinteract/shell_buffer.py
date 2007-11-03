@@ -8,6 +8,8 @@ from notebook import Notebook
 from statement import Statement, ExecutionError
 from worksheet import Worksheet
 from custom_result import CustomResult
+import tokenize
+from tokenized_statement import TokenizedStatement
 from undo_stack import UndoStack, InsertOp, DeleteOp
 
 # See comment in iter_copy_from.py
@@ -27,7 +29,11 @@ class StatementChunk:
         # this is the start index ignoring result chunks; we need this for
         # storing items in the undo stack
         self.nr_start = nr_start
-        self.set_text(None)
+        self.tokenized = TokenizedStatement()
+        
+        self.needs_compile = False
+        self.needs_execute = False
+        self.statement = None
         
         self.results = None
 
@@ -36,20 +42,19 @@ class StatementChunk:
         self.error_offset = None
         
     def __repr__(self):
-        return "StatementChunk(%d,%d,%s,%s,'%s')" % (self.start, self.end, self.needs_compile, self.needs_execute, self.text)
+        return "StatementChunk(%d,%d,%s,%s,'%s')" % (self.start, self.end, self.needs_compile, self.needs_execute, self.tokenized.get_text())
 
-    def set_text(self, text):
-        try:
-            if text == self.text:
-                return
-        except AttributeError:
-            pass
+    def set_lines(self, lines):
+        changed_lines = self.tokenized.set_lines(lines)
+        if changed_lines == []:
+            return changed_lines
         
-        self.text = text
-        self.needs_compile = text != None
+        self.needs_compile = True
         self.needs_execute = False
         
         self.statement = None
+
+        return changed_lines
 
     def mark_for_execute(self):
         if self.statement == None:
@@ -70,7 +75,7 @@ class StatementChunk:
         self.error_offset = None
         
         try:
-            self.statement = Statement(self.text, worksheet)
+            self.statement = Statement(self.tokenized.get_text(), worksheet)
             self.needs_execute = True
         except SyntaxError, e:
             self.error_message = e.msg
@@ -160,7 +165,28 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         # define it second
         self.__error_tag = self.create_tag(foreground="#aa0000")
         self.__recompute_tag = self.create_tag(foreground="#888888")
-        self.__comment_tag = self.create_tag(foreground="#00aa00")
+        self.__comment_tag = self.create_tag(foreground="#3f7f5f")
+
+        punctuation_tag = None
+
+        self.__fontify_tags = {
+            tokenize.TOKEN_KEYWORD      : self.create_tag(foreground="#7f0055", weight=600),
+            tokenize.TOKEN_NAME         : None,
+            tokenize.TOKEN_COMMENT      : self.__comment_tag,
+            tokenize.TOKEN_STRING       : self.create_tag(foreground="#00aa00"),
+            tokenize.TOKEN_PUNCTUATION  : punctuation_tag,
+            tokenize.TOKEN_CONTINUATION : punctuation_tag,
+            tokenize.TOKEN_LPAREN       : punctuation_tag,
+            tokenize.TOKEN_RPAREN       : punctuation_tag,
+            tokenize.TOKEN_LSQB         : punctuation_tag,
+            tokenize.TOKEN_RSQB         : punctuation_tag,
+            tokenize.TOKEN_LBRACE       : punctuation_tag,
+            tokenize.TOKEN_RBRACE       : punctuation_tag,
+            tokenize.TOKEN_BACKQUOTE    : punctuation_tag,
+            tokenize.TOKEN_NUMBER       : None,
+            tokenize.TOKEN_JUNK         : self.create_tag(underline="error"),
+        }
+        
         self.__lines = [""]
         self.__chunks = [BlankChunk(0,0, 0)]
         self.__modifying_results = False
@@ -187,7 +213,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         
         if statement_end >= chunk_start:
             def notnull(l): return l != None
-            text = "\n".join(filter(notnull, lines[0:statement_end + 1 - chunk_start]))
+            chunk_lines = lines[0:statement_end + 1 - chunk_start]
 
             old_statement = None
             for i in xrange(chunk_start, statement_end + 1):
@@ -201,19 +227,26 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 for i in xrange(old_statement.start, old_statement.end + 1):
                     self.__chunks[i] = None
 
-                changed = text != old_statement.text
                 chunk = old_statement
+                changed_lines = chunk.set_lines(chunk_lines)
+                changed = changed_lines != []
+
+                # If we moved the statement with respect to the buffer, then the we
+                # need to refontify, even if the old statement didn't change
+                if old_statement.start != chunk_start:
+                    changed_lines = range[0, 1 + statement_end - chunk_start]
             else:
-                changed = True
                 chunk = StatementChunk()
+                changed_lines = chunk.set_lines(chunk_lines)
+                changed = True
 
             if changed:
                 changed_chunks.append(chunk)
                 
             chunk.start = chunk_start
             chunk.end = statement_end
-            chunk.set_text(text)
             self.__compute_nr_start(chunk)
+            self.__fontify_statement_lines(chunk, changed_lines)
             self.__remove_tag_from_chunk(self.__comment_tag, chunk)
             
             for i in xrange(chunk_start, statement_end + 1):
@@ -878,10 +911,29 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             end.forward_to_line_end()
         return start, end
 
+    def __fontify_statement_lines(self, chunk, changed_lines):
+        iter = self.get_iter_at_line(chunk.start)
+        i = 0
+        for l in changed_lines:
+            while i < l:
+                iter.forward_line()
+                i += 1
+            end = iter.copy()
+            end.forward_line()
+            self.remove_all_tags(iter, end)
+
+            end = iter.copy()
+            for token_type, start_index, end_index in chunk.tokenized.get_tokens(l):
+                tag = self.__fontify_tags[token_type]
+                if tag != None:
+                    iter.set_line_index(start_index)
+                    end.set_line_index(end_index)
+                    self.apply_tag(tag, iter, end)
+                
     def __apply_tag_to_chunk(self, tag, chunk):
         start, end = self.__get_chunk_bounds(chunk)
         self.apply_tag(tag, start, end)
-    
+
     def __remove_tag_from_chunk(self, tag, chunk):
         start, end = self.__get_chunk_bounds(chunk)
         self.remove_tag(tag, start, end)
