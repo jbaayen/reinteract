@@ -545,7 +545,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             if not self.__modifying_results:
                 print "Inserting '%s' at %s" % (text, (location.get_line(), location.get_line_offset()))
 
-        start_pos = self.__compute_nr_pos_from_iter(location)
+        if not self.__modifying_results:
+            start_pos = self.__compute_nr_pos_from_iter(location)
         
         gtk.TextBuffer.do_insert_text(self, location, text, text_len)
         end_line = location.get_line()
@@ -1302,6 +1303,13 @@ if __name__ == '__main__':
     expect_text("1\n2");
     expect([S(0,0), R(1,1), S(2,2), R(3,3)])
     
+    # Calculation resulting in a multi-line result change
+    clear()
+    
+    insert(0, 0, "for i in range(0, 10): print i")
+    buffer.calculate()
+    expect([S(0, 0), R(1, 10)])
+
     # Test deleting a range containing both results and statements
 
     clear()
