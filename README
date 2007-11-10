@@ -4,15 +4,18 @@ Reinteract is a interactive shell for Python that allows changing history, not j
 repeating it. You can go back to early statements, edit them, and the changes flow
 through the rest of the subsequent code. You might think of it as a Python 'worksheet'.
 
-This works best when you are doing things without operating system interaction, like
-math, if a statement deletes a file on disk, reinteract can't undelete it.
+See:
+
+ http://fishsoup.net/software/reinteract/
+
+For more information.
 
 Reinteract is licensed under the terms of the GNU General Public License version 2 
-or later.
+or later and Copyright 2007, Owen Taylor and Red Hat, Inc.
 
 You can get the latest sources using git:
 
  git clone git://git.fishsoup.net/reinteract.git
 
 Owen Taylor <otaylor@fishsoup.net>
-9 September 2007
+11 November 2007
