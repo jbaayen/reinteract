@@ -1,4 +1,5 @@
 import gtk
+import pango
 
 import os
 import sys
@@ -18,6 +19,7 @@ w.add(v)
 
 buf = ShellBuffer(notebook)
 view = ShellView(buf)
+view.modify_font(pango.FontDescription("monospace"))
 buf = view.get_buffer()
 
 ui_manager = gtk.UIManager()
