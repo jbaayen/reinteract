@@ -5,7 +5,7 @@ import traceback
 import os
 import re
 from notebook import Notebook
-from statement import Statement, ExecutionError
+from statement import Statement, ExecutionError, WarningResult
 from worksheet import Worksheet
 from custom_result import CustomResult
 import tokenize
@@ -97,7 +97,10 @@ class StatementChunk:
             self.statement.execute()
             self.results = self.statement.results
         except ExecutionError, e:
-            self.error_message = "\n".join(traceback.format_tb(e.traceback)[2:]) + "\n" + str(e.cause)
+            self.error_message = "\n".join(traceback.format_tb(e.traceback)[2:]) + "\n".join(traceback.format_exception_only(e.type, e.value))
+            if self.error_message.endswith("\n"):
+                self.error_message = self.error_message[0:-1]
+                
             self.error_line = e.traceback.tb_frame.f_lineno
             self.error_offset = None
             
@@ -164,6 +167,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__result_tag = self.create_tag(family="monospace", style="italic", wrap_mode=gtk.WRAP_WORD, editable=False)
         # Order here is significant ... we want the recompute tag to have higher priority, so
         # define it second
+        self.__warning_tag = self.create_tag(foreground="#aa8800")
         self.__error_tag = self.create_tag(foreground="#aa0000")
         self.__recompute_tag = self.create_tag(foreground="#888888")
         self.__comment_tag = self.create_tag(foreground="#3f7f5f")
@@ -1041,6 +1045,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         for result in results:
             if isinstance(result, basestring):
                 self.insert(location, "\n" + result)
+            elif isinstance(result, WarningResult):
+                start_mark = self.create_mark(None, location, True)
+                self.insert(location, "\n" + result.message)
+                start = self.get_iter_at_mark(start_mark)
+                self.delete_mark(start_mark)
+                self.apply_tag(self.__warning_tag, start, location)
             elif isinstance(result, CustomResult):
                 self.insert(location, "\n")
                 anchor = self.create_child_anchor(location)

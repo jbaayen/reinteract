@@ -8,13 +8,18 @@ from custom_result import CustomResult
 
 # A wrapper so we don't have to trap all exceptions when running statement.Execute
 class ExecutionError(Exception):
-    def __init__(self, cause, traceback):
-        self.cause = cause
+    def __init__(self, type, value, traceback):
+        self.type = type
+        self.value = value
         self.traceback = traceback
 
     def __str__(self):
         return "ExecutionError: " + str(self.cause)
 
+class WarningResult(object):
+    def __init__(self, message):
+        self.message = message
+    
 class Statement:
     def __init__(self, text, worksheet, parent = None):
         self.__text = text
@@ -58,24 +63,28 @@ class Statement:
         else:
             scope = copy.copy(root_scope)
 
+        self.results = []
+        self.result_scope = scope
+        
         for mutation in self.__mutated:
             if isinstance(mutation, tuple):
                 variable, method = mutation
             else:
                 variable = mutation
 
-            scope[variable] = copy.copy(scope[variable])
+            try:
+                scope[variable] = copy.copy(scope[variable])
+            except:
+                self.results.append(WarningResult("Variable '%s' apparently modified, but can't copy it" % variable))
 
-        self.results = []
-        self.result_scope = scope
         root_scope['__reinteract_statement'] = self
         try:
             exec self.__compiled in scope, scope
         except:
             self.results = None
             self.result_scope = None
-            _, cause, traceback = sys.exc_info()
-            raise ExecutionError(cause, traceback)
+            type, value, traceback = sys.exc_info()
+            raise ExecutionError(type, value, traceback)
         finally:
             root_scope['__reinteract_statement'] = None
 
