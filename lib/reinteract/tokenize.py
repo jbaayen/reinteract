@@ -89,7 +89,9 @@ _TOKENIZE_RE = re.compile(r"""
 
 (?P<dot> \.) |                                            # isolated .
 (?P<white> \s+) |                                         # whitespace
-(?P<junk> .+?)                                            # Junk
+(?P<notvalid> [^\s!-#%->@-~]+) |                          # Not-valid outside of a string... needs to
+                                                          # be + not +? to avoid splitting UTF-8
+(?P<junk> .+?)                                            # Other junk (vacuum anything notmatched)
 
 """, re.VERBOSE)
 
@@ -216,7 +218,7 @@ def tokenize_line(str, stack=None):
                 token_type = TOKEN_COMMENT
             elif match.group('continuation'):
                 token_type = TOKEN_CONTINUATION
-            elif match.group('junk'):
+            elif match.group('notvalid') or match.group('junk'):
                 token_type = TOKEN_JUNK
 
             tokens.append((token_type, match.start(), match.end(), flags))
@@ -293,6 +295,11 @@ if __name__ == '__main__':
     expect('a.b', [(TOKEN_NAME, 'a'), (TOKEN_PUNCTUATION, '.'), (TOKEN_NAME, 'b')])
 
     expect('1a', [(TOKEN_JUNK, '1a')])
+
+    # Check that literal UTF-8 gets parsed correctly as a single token instead of split up
+    expect('\xc3\xa4', [(TOKEN_JUNK, '\xc3\xa4')])
+    # But doens't swallow up trailing valid characters
+    expect('\xc3\xa4foo', [(TOKEN_JUNK, '\xc3\xa4'), (TOKEN_NAME, "foo")])
 
     # Stack tests
     expect('()', [(TOKEN_LPAREN, '('), (TOKEN_RPAREN, ')')])
