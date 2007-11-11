@@ -284,7 +284,7 @@ def _rewrite_file_input(t, mutated):
     # file_input: (NEWLINE | stmt)* ENDMARKER
     return _rewrite_tree(t, mutated, { symbol.stmt: _rewrite_stmt })
 
-def rewrite_and_compile(code):
+def rewrite_and_compile(code, encoding="utf8"):
     """
     Compiles the supplied text into code, while rewriting the parse tree so:
 
@@ -306,10 +306,15 @@ def rewrite_and_compile(code):
         and sometimes not.
     """
     mutated = []
+
+    if (isinstance(code, unicode)):
+        code = code.encode("utf8")
+        encoding = "utf8"
     
     original = parser.suite(code)
     rewritten = _rewrite_file_input(original.totuple(), mutated)
-    compiled = parser.sequence2ast(rewritten).compile()
+    encoded = (symbol.encoding_decl, rewritten, encoding)
+    compiled = parser.sequence2ast(encoded).compile()
 
     return (compiled, mutated)
     
@@ -434,3 +439,25 @@ if __name__ == '__main__':
     test_mutated('a.b()', (('a','b'),))
     test_mutated('a.b(1,2)', (('a','b'),))
     test_mutated('a.b.c(1,2)', ())
+
+    #
+    # Test handling of encoding
+    #
+    def test_encoding(code, expected, encoding=None):
+        if encoding != None:
+            compiled, _ = rewrite_and_compile(code, encoding=encoding)
+        else:
+            compiled, _ = rewrite_and_compile(code)
+        
+        test_args = []
+        def set_test_args(*args): test_args[:] = args
+        scope = { 'reinteract_output': set_test_args }
+
+        exec compiled in scope
+
+        if test_args[0] != expected:
+            raise AssertionError("Got '%s', expected '%s'" % (test_args[0], expected))
+
+    test_encoding(u"u'\u00e4'".encode("utf8"), u'\u00e4')
+    test_encoding(u"u'\u00e4'", u'\u00e4')
+    test_encoding(u"u'\u00e4'".encode("iso-8859-1"), u'\u00e4', "iso-8859-1")
