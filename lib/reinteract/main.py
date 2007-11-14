@@ -225,7 +225,7 @@ ui_string="""
          <separator/>
          <menuitem action="calculate"/>
       </menu>
-   </menubar>
+   </%(menu_element)s>
    <toolbar name="ToolBar">
       <toolitem action="calculate"/>
    </toolbar>
