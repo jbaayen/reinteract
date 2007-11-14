@@ -272,7 +272,7 @@ class ShellView(gtk.TextView):
                 self.__reindent_line(insert, self.__find_default_indent(insert))
                 
             if isinstance(current_chunk, CommentChunk) and line > 0 and isinstance(buf.get_chunk(line - 1), CommentChunk):
-                self.get_buffer().insert_interactive_at_cursor("# ", -1)
+                self.get_buffer().insert_interactive_at_cursor("# ", True)
 
             buf.end_user_action()
                 
