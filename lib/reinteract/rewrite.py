@@ -1,6 +1,7 @@
 import parser
 import token
 import symbol
+import sys
 
 def _do_match(t, pattern):
     # Match an AST tree against a pattern. Along with symbol/token names, patterns
@@ -39,10 +40,31 @@ def _do_match(t, pattern):
 
     return result
 
-def _is_test_method_call(t):
-    # Check if the given AST is a "test" of the form 'v.m()' If it
-    # matches, returns { 'variable': 'v', "method": m }, otherwise returns None
-    args = _do_match(t,
+if sys.version_info < (2, 5, 0):
+    _method_call_pattern = \
+                     (symbol.test,
+                      (symbol.and_test,
+                       (symbol.not_test,
+                        (symbol.comparison,
+                         (symbol.expr,
+                          (symbol.xor_expr,
+                           (symbol.and_expr,
+                            (symbol.shift_expr,
+                             (symbol.arith_expr,
+                              (symbol.term,
+                               (symbol.factor,
+                                 
+                                (symbol.power,
+                                 (symbol.atom,
+                                  (token.NAME, 'variable')),
+                                 (symbol.trailer,
+                                  (token.DOT, ''),
+                                  (token.NAME, 'method')),
+                                 (symbol.trailer,
+                                  (token.LPAR, ''),
+                                  '*')))))))))))))
+else:
+    _method_call_pattern = \
                      (symbol.test,
                       (symbol.or_test,
                        (symbol.and_test,
@@ -64,16 +86,39 @@ def _is_test_method_call(t):
                                    (token.NAME, 'method')),
                                   (symbol.trailer,
                                    (token.LPAR, ''),
-                                   '*')))))))))))))))
+                                   '*'))))))))))))))
+
+def _is_test_method_call(t):
+    # Check if the given AST is a "test" of the form 'v.m()' If it
+    # matches, returns { 'variable': 'v', "method": m }, otherwise returns None
+    args = _do_match(t, _method_call_pattern)
     if args == None:
         return None
     else:
         return args['variable'], args['method']
 
-def _is_test_attribute(t):
-    # Check if the given AST is a attribute of the form 'v.a' If it
-    # matches, returns v, otherwise returns None
-    args = _do_match(t,
+if sys.version_info < (2, 5, 0):
+    _attribute_pattern = \
+                     (symbol.test,
+                      (symbol.and_test,
+                       (symbol.not_test,
+                        (symbol.comparison,
+                         (symbol.expr,
+                          (symbol.xor_expr,
+                           (symbol.and_expr,
+                            (symbol.shift_expr,
+                             (symbol.arith_expr,
+                              (symbol.term,
+                               (symbol.factor,
+                                
+                                (symbol.power,
+                                 (symbol.atom,
+                                  (token.NAME, 'variable')),
+                                 (symbol.trailer,
+                                  (token.DOT, ''),
+                                  (token.NAME, ''))))))))))))))
+else:
+    _attribute_pattern = \
                      (symbol.test,
                       (symbol.or_test,
                        (symbol.and_test,
@@ -92,16 +137,41 @@ def _is_test_attribute(t):
                                    (token.NAME, 'variable')),
                                   (symbol.trailer,
                                    (token.DOT, ''),
-                                   (token.NAME, ''))))))))))))))))
+                                   (token.NAME, '')))))))))))))))
+    
+    
+def _is_test_attribute(t):
+    # Check if the given AST is a attribute of the form 'v.a' If it
+    # matches, returns v, otherwise returns None
+    args = _do_match(t, _attribute_pattern)
+    
     if args == None:
         return None
     else:
         return args['variable']
 
-def _is_test_slice(t):
-    # Check if the given AST is a "test" of the form 'v[...]' If it
-    # matches, returns v, otherwise returns None
-    args = _do_match(t,
+if sys.version_info < (2, 5, 0):
+    _slice_pattern = \
+                     (symbol.test,
+                       (symbol.and_test,
+                        (symbol.not_test,
+                         (symbol.comparison,
+                          (symbol.expr,
+                           (symbol.xor_expr,
+                            (symbol.and_expr,
+                             (symbol.shift_expr,
+                              (symbol.arith_expr,
+                               (symbol.term,
+                                (symbol.factor,
+                                 
+                                 (symbol.power,
+                                  (symbol.atom,
+                                   (token.NAME, 'variable')),
+                                  (symbol.trailer,
+                                   (token.LSQB, ''),
+                                   '*')))))))))))))
+else:
+    _slice_pattern = \
                      (symbol.test,
                       (symbol.or_test,
                        (symbol.and_test,
@@ -120,13 +190,60 @@ def _is_test_slice(t):
                                    (token.NAME, 'variable')),
                                   (symbol.trailer,
                                    (token.LSQB, ''),
-                                   '*')))))))))))))))
+                                   '*'))))))))))))))
+    
+
+
+def _is_test_slice(t):
+    # Check if the given AST is a "test" of the form 'v[...]' If it
+    # matches, returns v, otherwise returns None
+    args = _do_match(t, _slice_pattern)
 
     if args == None:
         return None
     else:
         return args['variable']
 
+if sys.version_info < (2, 5, 0):
+    def _do_create_funccall_expr_stmt(name, trailer):
+        return (symbol.expr_stmt,
+                (symbol.testlist,
+                 (symbol.test,
+                  (symbol.and_test,
+                   (symbol.not_test,
+                    (symbol.comparison,
+                     (symbol.expr,
+                      (symbol.xor_expr,
+                       (symbol.and_expr,
+                        (symbol.shift_expr,
+                         (symbol.arith_expr,
+                          (symbol.term,
+                           (symbol.factor,
+                            (symbol.power,
+                             (symbol.atom,
+                              (token.NAME, name)),
+                             trailer))))))))))))))
+else:
+    def _do_create_funccall_expr_stmt(name, trailer):
+        return (symbol.expr_stmt,
+                (symbol.testlist,
+                 (symbol.test,
+                  (symbol.or_test,
+                   (symbol.and_test,
+                    (symbol.not_test,
+                     (symbol.comparison,
+                      (symbol.expr,
+                       (symbol.xor_expr,
+                        (symbol.and_expr,
+                         (symbol.shift_expr,
+                          (symbol.arith_expr,
+                           (symbol.term,
+                            (symbol.factor,
+                             (symbol.power,
+                              (symbol.atom,
+                               (token.NAME, name)),
+                              trailer)))))))))))))))
+    
 def _create_funccall_expr_stmt(name, args):
     # Creates an 'expr_stmt' that calls a function. args is a list of
     # "test" AST's to pass as arguments to the function
@@ -146,25 +263,7 @@ def _create_funccall_expr_stmt(name, args):
                    arglist,
                    (token.RPAR, ')'))
 
-    return (symbol.expr_stmt,
-            (symbol.testlist,
-             (symbol.test,
-              (symbol.or_test,
-               (symbol.and_test,
-                (symbol.not_test,
-                 (symbol.comparison,
-                  (symbol.expr,
-                   (symbol.xor_expr,
-                    (symbol.and_expr,
-                     (symbol.shift_expr,
-                      (symbol.arith_expr,
-                       (symbol.term,
-                        (symbol.factor,
-                         (symbol.power,
-                          (symbol.atom,
-                           (token.NAME, name)),
-                          trailer
-                          )))))))))))))))
+    return _do_create_funccall_expr_stmt(name, trailer)
 
 def _rewrite_tree(t, mutated, actions):
     # Generic rewriting of an AST, actions is a map of symbol/token type to function
@@ -332,23 +431,42 @@ if __name__ == '__main__':
                   (token.NEWLINE, '\n'))),
                 (token.ENDMARKER, '\n'))
 
-    def create_constant_test(c):
-        # Create a test symbol which is a constant number
-        return (symbol.test,
-                (symbol.or_test,
-                 (symbol.and_test,
-                  (symbol.not_test,
-                   (symbol.comparison,
-                    (symbol.expr,
-                     (symbol.xor_expr,
-                      (symbol.and_expr,
-                       (symbol.shift_expr,
-                        (symbol.arith_expr,
-                         (symbol.term,
-                          (symbol.factor,
-                           (symbol.power,
-                            (symbol.atom,
-                             (token.NUMBER, str(c))))))))))))))))
+    if sys.version_info < (2, 5, 0):
+        def create_constant_test(c):
+            # Create a test symbol which is a constant number
+            return (symbol.test,
+                    (symbol.and_test,
+                     (symbol.not_test,
+                      (symbol.comparison,
+                       (symbol.expr,
+                        (symbol.xor_expr,
+                         (symbol.and_expr,
+                          (symbol.shift_expr,
+                           (symbol.arith_expr,
+                            (symbol.term,
+                             (symbol.factor,
+                              (symbol.power,
+                               (symbol.atom,
+                                (token.NUMBER, str(c)))))))))))))))
+    else:
+        def create_constant_test(c):
+            # Create a test symbol which is a constant number
+            return (symbol.test,
+                    (symbol.or_test,
+                     (symbol.and_test,
+                      (symbol.not_test,
+                       (symbol.comparison,
+                        (symbol.expr,
+                         (symbol.xor_expr,
+                          (symbol.and_expr,
+                           (symbol.shift_expr,
+                            (symbol.arith_expr,
+                             (symbol.term,
+                              (symbol.factor,
+                               (symbol.power,
+                                (symbol.atom,
+                                 (token.NUMBER, str(c))))))))))))))))
+            
 
     #
     # Test _create_funccall_expr_stmt
