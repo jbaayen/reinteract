@@ -9,10 +9,30 @@ from shell_buffer import ShellBuffer
 from shell_view import ShellView
 
 from format_escaped import format_escaped
+from optparse import OptionParser
 
+usage = "usage: %prog [options]"
+op = OptionParser(usage=usage)
+op.add_option("-u", "--ui", type="choice", choices=("standard", "hildon"),
+              default="standard",  help=("which user interface to use (standard or "
+					 "hildon), default=%default"))
+
+options, args = op.parse_args()
+use_hildon = False
+
+if options.ui == "hildon":
+    try:
+        import hildon
+        use_hildon = True
+    except ImportError, e:
+        print "Error importing hildon. Falling back to standard ui."
 
 notebook = Notebook()
-w = gtk.Window()
+
+if use_hildon:
+    w = hildon.Window()
+else:
+    w = gtk.Window()
 
 v = gtk.VBox()
 w.add(v)
@@ -103,9 +123,12 @@ def on_open(action):
     if not confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
         return
     
-    chooser = gtk.FileChooserDialog("Open Worksheet...", w, gtk.FILE_CHOOSER_ACTION_OPEN,
-                                    (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                     gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
+    if use_hildon:
+        chooser = hildon.FileChooserDialog(w, gtk.FILE_CHOOSER_ACTION_OPEN)
+    else:
+        chooser = gtk.FileChooserDialog("Open Worksheet...", w, gtk.FILE_CHOOSER_ACTION_OPEN,
+                                        (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                         gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
     chooser.set_default_response(gtk.RESPONSE_OK)
     response = chooser.run()
     filename = None
@@ -124,9 +147,12 @@ def on_save(action):
         buf.save()
 
 def save_as():
-    chooser = gtk.FileChooserDialog("Save As...", w, gtk.FILE_CHOOSER_ACTION_SAVE,
-                                    (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                     gtk.STOCK_SAVE,   gtk.RESPONSE_OK))
+    if use_hildon:
+        chooser = hildon.FileChooserDialog(w, gtk.FILE_CHOOSER_ACTION_SAVE)
+    else:
+        chooser = gtk.FileChooserDialog("Save As...", w, gtk.FILE_CHOOSER_ACTION_SAVE,
+                                        (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                         gtk.STOCK_SAVE,   gtk.RESPONSE_OK))
     chooser.set_default_response(gtk.RESPONSE_OK)
     response = chooser.run()
     filename = None
@@ -174,9 +200,14 @@ action_group.add_actions([
 
 ui_manager.insert_action_group(action_group, 0)
 
-ui_manager.add_ui_from_string("""
+if use_hildon:
+    menu_element = 'popup'
+else:
+    menu_element = 'menubar'
+
+ui_string="""
 <ui>
-   <menubar name="MenuBar">
+   <%(menu_element)s name="TopMenu">
       <menu action="file">
          <menuitem action="new"/>
          <menuitem action="open"/>
@@ -199,12 +230,20 @@ ui_manager.add_ui_from_string("""
       <toolitem action="calculate"/>
    </toolbar>
 </ui>
-""")
+""" % { 'menu_element': menu_element }
 
+ui_manager.add_ui_from_string(ui_string)
 ui_manager.ensure_update()
 
-v.pack_start(ui_manager.get_widget("/MenuBar"), expand=False, fill=False)
-v.pack_start(ui_manager.get_widget("/ToolBar"), expand=False, fill=False)
+menu = ui_manager.get_widget("/TopMenu")
+toolbar = ui_manager.get_widget("/ToolBar")
+
+if use_hildon:
+    w.set_menu(menu)
+    w.add_toolbar(toolbar)
+else:
+    v.pack_start(menu, expand=False, fill=False)
+    v.pack_start(toolbar, expand=False, fill=False)
 
 sw = gtk.ScrolledWindow()
 sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -247,8 +286,13 @@ def on_key_press_event(window, event):
 
 w.connect('key-press-event', on_key_press_event)
 
-if len(sys.argv) > 1:
-    load(sys.argv[1])
+if len(args) > 0:
+    load(args[0])
+
+if use_hildon:
+    settings = w.get_settings()
+    settings.set_property("gtk-button-images", False)
+    settings.set_property("gtk-menu-images", False)
 
 w.show()
 
