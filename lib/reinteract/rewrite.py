@@ -364,14 +364,21 @@ def _rewrite_block_stmt(t, mutated):
     return _rewrite_tree(t, mutated,
                          { symbol.suite:      _rewrite_suite })
 
+_rewrite_compound_stmt_actions = {
+    symbol.if_stmt:    _rewrite_block_stmt,
+    symbol.while_stmt: _rewrite_block_stmt,
+    symbol.for_stmt:   _rewrite_block_stmt,
+    symbol.try_stmt:   _rewrite_block_stmt,
+}
+
+if sys.version_info >= (2, 5, 0):
+    # with statement is new in 2.5
+    _rewrite_compound_stmt_actions[symbol.with_stmt] = _rewrite_block_stmt
+    
+
 def _rewrite_compound_stmt(t, mutated):
     # compound_stmt: if_stmt | while_stmt | for_stmt | try_stmt | with_stmt | funcdef | classdef
-    return _rewrite_tree(t, mutated,
-                         { symbol.if_stmt:    _rewrite_block_stmt,
-                           symbol.while_stmt: _rewrite_block_stmt,
-                           symbol.for_stmt:   _rewrite_block_stmt,
-                           symbol.try_stmt:   _rewrite_block_stmt,
-                           symbol.with_stmt:  _rewrite_block_stmt })
+    return _rewrite_tree(t, mutated, _rewrite_compound_stmt_actions)
 
 def _rewrite_stmt(t, mutated):
     # stmt: simple_stmt | compound_stmt
