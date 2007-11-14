@@ -79,12 +79,13 @@ class Statement:
 
         root_scope['__reinteract_statement'] = self
         try:
-            exec self.__compiled in scope, scope
-        except:
-            self.results = None
-            self.result_scope = None
-            type, value, traceback = sys.exc_info()
-            raise ExecutionError(type, value, traceback)
+          try:
+              exec self.__compiled in scope, scope
+          except:
+              self.results = None
+              self.result_scope = None
+              type, value, traceback = sys.exc_info()
+              raise ExecutionError(type, value, traceback)
         finally:
             root_scope['__reinteract_statement'] = None
 
