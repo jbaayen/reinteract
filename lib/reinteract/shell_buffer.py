@@ -946,7 +946,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             return None
 
     def __calculate_pair_location(self):
-        if self.get_has_selection():
+        location = self.get_iter_at_mark(self.get_insert())
+
+        # GTK+-2.10 has fractionally-more-efficient buffer.get_has_selection()
+        selection_bound = self.get_iter_at_mark(self.get_selection_bound())
+        if location.compare(selection_bound) != 0:
             self.__set_pair_location(None)
             return
 
@@ -974,7 +978,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__set_pair_location(pair_iter)
 
     def do_mark_set(self, location, mark):
-        gtk.TextBuffer.do_mark_set(self, location, mark)
+        try:
+            gtk.TextBuffer.do_mark_set(self, location, mark)
+        except NotImplementedError:
+            # the default handler for ::mark-set was added in GTK+-2.10
+            pass
 
         if mark != self.get_insert() and mark != self.get_selection_bound():
             return
