@@ -48,6 +48,7 @@ class Notebook:
             pass
 
         if len(names) == 1:
+            parent = None
             try:
                 f, pathname, description = imp.find_module(name, self.__path)
                 local = True
@@ -64,7 +65,11 @@ class Notebook:
                 module = imp.load_module(self.__prefix + "." + name, f, pathname, description)
                 self.__modules[name] = module
             else:
-                module = imp.load_module(name, f, pathname, description) 
+                print name, f, pathname, description
+                module = imp.load_module(name, f, pathname, description)
+
+            if parent != None:
+                parent.__dict__[names[-1]] = module
         finally:
             if f != None:
                 f.close()
