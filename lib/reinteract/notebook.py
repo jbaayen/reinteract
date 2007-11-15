@@ -65,7 +65,6 @@ class Notebook:
                 module = imp.load_module(self.__prefix + "." + name, f, pathname, description)
                 self.__modules[name] = module
             else:
-                print name, f, pathname, description
                 module = imp.load_module(name, f, pathname, description)
 
             if parent != None:
