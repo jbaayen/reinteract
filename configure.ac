@@ -1,6 +1,6 @@
 AC_INIT(reinteract, 0.0.1)
 
-AM_INIT_AUTOMAKE([dist-bzip2])
+AM_INIT_AUTOMAKE([dist-bzip2 dist-zip])
 AM_MAINTAINER_MODE
 AM_PATH_PYTHON(2.4)
 IT_PROG_INTLTOOL

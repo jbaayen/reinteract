@@ -49,6 +49,7 @@ DISTCLEANFILES =                                                              \
 
 MAINTAINERCLEANFILES =                                                        \
                        aclocal.m4                                             \
+		       ChangeLog					      \
                        config.guess                                           \
                        config.sub                                             \
                        configure                                              \
@@ -59,6 +60,7 @@ MAINTAINERCLEANFILES =                                                        \
                        ltmain.sh                                              \
                        Makefile.in                                            \
                        missing                                                \
+		       NEWS						      \
                        po/Makefile                                            \
                        po/Makefile.in                                         \
                        po/Makefile.in.in                                      \
@@ -66,4 +68,3 @@ MAINTAINERCLEANFILES =                                                        \
                        po/stamp-it                                            \
                        py-compile                                             \
                        $(LIST_END)
-
