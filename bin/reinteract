@@ -1,4 +1,4 @@
-#!/usr/bin/python -E
+#!/usr/bin/python
 import reinteract
 
 if __name__ == "__main__":
