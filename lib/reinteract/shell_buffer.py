@@ -530,6 +530,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
     
     def do_insert_text(self, location, text, text_len):
         start_line = location.get_line()
+        start_offset = location.get_line_offset()
         is_pure_insert = False
         if self.__user_action_count > 0:
             current_chunk = self.__chunks[start_line]
@@ -575,15 +576,31 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 if chunk.end >= start_line:
                     chunk.end += (1 + end_line - start_line)
         else:
-            self.__chunks[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
-            self.__lines[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
+            # If we are inserting at the beginning of a line, then the insert moves the
+            # old chunk down, or leaves it in place, so insert new lines at the start position.
+            # If we insert elsewhere it either splits the chunk (and we consider
+            # that leaving the old chunk at the start) or inserts stuff after the chunk,
+            # so insert new lines after the start position.
+            if start_offset == 0:
+                self.__chunks[start_line:start_line] = [None for i in xrange(start_line, end_line)]
+                self.__lines[start_line:start_line] = [None for i in xrange(start_line, end_line)]
+                
+                for chunk in self.iterate_chunks(start_line):
+                    if chunk.start >= start_line:
+                        chunk.start += (end_line - start_line)
+                        chunk.nr_start += (end_line - start_line)
+                    if chunk.end >= start_line:
+                        chunk.end += (end_line - start_line)
+            else:
+                self.__chunks[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
+                self.__lines[start_line + 1:start_line + 1] = [None for i in xrange(start_line, end_line)]
 
-            for chunk in self.iterate_chunks(start_line):
-                if chunk.start > start_line:
-                    chunk.start += (end_line - start_line)
-                    chunk.nr_start += (end_line - start_line)
-                if chunk.end > start_line:
-                    chunk.end += (end_line - start_line)
+                for chunk in self.iterate_chunks(start_line):
+                    if chunk.start > start_line:
+                        chunk.start += (end_line - start_line)
+                        chunk.nr_start += (end_line - start_line)
+                    if chunk.end > start_line:
+                        chunk.end += (end_line - start_line)
 
         self.__rescan(start_line, end_line)
 
@@ -1344,6 +1361,11 @@ if __name__ == '__main__':
     expect([S(0,0), R(1,1), S(2,2), S(3,3), R(4,4), B(5,5)])
     buffer.calculate()
     expect([S(0,0), R(1,1), S(2,2), R(3, 3), S(4, 4), R(5,5), B(6,6)])
+
+    # Check that inserting a blank line at the beginning of a statement leaves
+    # the result behind
+    insert(2, 0, "\n")
+    expect([S(0,0), R(1,1), B(2,2), S(3,3), R(4,4), S(5,5), R(6,6), B(7,7)])
 
     # Undo tests
     clear()
