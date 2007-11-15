@@ -6,12 +6,32 @@ through the rest of the subsequent code. You might think of it as a Python 'work
 
 See:
 
- http://fishsoup.net/software/reinteract/
+ http://www.reinteract.org
 
 For more information.
 
 Reinteract is licensed under the terms of the GNU General Public License version 2 
 or later and Copyright 2007, Owen Taylor and Red Hat, Inc.
+
+Running
+=======
+
+To run Reinteract from this directory, just type:
+
+ bin/uninst
+ 
+At the command line. There's no need to run the configure script first.
+
+Installing
+==========
+
+The standard autotools setup here is meant for the people packaging
+Reinteract for system install on Linux and Unix systems. If you aren't
+doing that, just run Reinteract from this directory or create a
+symlink from bin/uninst to $HOME/bin/uninst.
+
+Latest Sources
+==============
 
 You can get the latest sources using git:
 
