@@ -43,13 +43,10 @@ DISTCLEANFILES =                                                              \
 MAINTAINERCLEANFILES =                                                        \
                        aclocal.m4                                             \
 		       ChangeLog					      \
-                       config.guess                                           \
-                       config.sub                                             \
+		       config/install-sh				      \
+		       config/missing					      \
+		       config/py-compile				      \
                        configure                                              \
-                       install-sh                                             \
-                       ltmain.sh                                              \
                        Makefile.in                                            \
-                       missing                                                \
 		       NEWS						      \
-                       py-compile                                             \
                        $(LIST_END)

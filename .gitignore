@@ -3,11 +3,9 @@
 /autom4te.cache
 /aclocal.m4
 /ChangeLog
+/config
 /config.*
 /configure
-/install-sh
 /Makefile
 /Makefile.in
 /NEWS
-/missing
-/py-compile
