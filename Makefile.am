@@ -1,4 +1,3 @@
-SUBDIRS = . po
 LIST_END =
 
 reinteractdir = $(bindir)
@@ -35,16 +34,10 @@ EXTRA_DIST =                                                                  \
              examples/imshow.pyw                                              \
              examples/play.pyw                                                \
              examples/plot.pyw                                                \
-             intltool-extract.in                                              \
-             intltool-merge.in                                                \
-             intltool-update.in                                               \
              README                                                           \
              $(LIST_END)
 
 DISTCLEANFILES =                                                              \
-                 intltool-extract                                             \
-                 intltool-merge                                               \
-                 intltool-update                                              \
                  $(LIST_END)
 
 MAINTAINERCLEANFILES =                                                        \
@@ -54,17 +47,9 @@ MAINTAINERCLEANFILES =                                                        \
                        config.sub                                             \
                        configure                                              \
                        install-sh                                             \
-                       intltool-extract.in                                    \
-                       intltool-merge.in                                      \
-                       intltool-update.in                                     \
                        ltmain.sh                                              \
                        Makefile.in                                            \
                        missing                                                \
 		       NEWS						      \
-                       po/Makefile                                            \
-                       po/Makefile.in                                         \
-                       po/Makefile.in.in                                      \
-                       po/POTFILES                                            \
-                       po/stamp-it                                            \
                        py-compile                                             \
                        $(LIST_END)

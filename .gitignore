@@ -1,5 +1,3 @@
-*.gmo
-*.mo
 *.pyc
 
 /autom4te.cache
@@ -8,14 +6,8 @@
 /config.*
 /configure
 /install-sh
-/intltool-*
 /Makefile
 /Makefile.in
 /NEWS
 /missing
 /py-compile
-po/Makefile.in.in
-po/Makefile.in
-po/Makefile
-po/POTFILES
-po/stamp-it
