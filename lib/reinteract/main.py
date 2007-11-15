@@ -3,6 +3,8 @@ import pango
 
 import os
 import sys
+import gettext
+from gettext import gettext as _
 
 from notebook import Notebook
 from shell_buffer import ShellBuffer
@@ -46,7 +48,7 @@ ui_manager = gtk.UIManager()
 w.add_accel_group(ui_manager.get_accel_group())
 
 def quit():
-    if not confirm_discard('Save the unchanged changes to worksheet "%s" before quitting?', '_Quit without saving'):
+    if not confirm_discard(_('Save the unchanged changes to worksheet "%s" before quitting?'), _('_Quit without saving')):
         return
     gtk.main_quit()
 
