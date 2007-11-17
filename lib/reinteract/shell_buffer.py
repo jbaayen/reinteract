@@ -424,12 +424,21 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 # is what happens for calculate()
                 return
 
-    def iterate_text(self):
-        iter = self.get_start_iter()
-        line = 0
-        chunk = self.__chunks[0]
+    def iterate_text(self, start=None, end=None):
+        result = ""
 
-        while chunk != None:
+        if start == None:
+            start = self.get_start_iter()
+        if end == None:
+            end = self.get_end_iter()
+            
+        start_chunk = self.__chunks[start.get_line()]
+        end_chunk = self.__chunks[end.get_line()]
+
+        chunk = start_chunk
+        iter = self.get_iter_at_line(chunk.start)
+
+        while True:
             next_line = chunk.end + 1
             if next_line < len(self.__chunks):
                 next_chunk = self.__chunks[chunk.end + 1]
@@ -451,12 +460,28 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 next_chunk = None
                 
             if not isinstance(chunk, ResultChunk):
-                chunk_text = self.get_slice(iter, next)
-                yield chunk_text
+                chunk_start, chunk_end = iter, next
+                if chunk == start_chunk:
+                    chunk_start = start
+                else:
+                    chunk_start = iter
+                    
+                if chunk == end_chunk:
+                    chunk_end = end
+                else:
+                    chunk_end = next
+                
+                yield self.get_slice(chunk_start, chunk_end)
 
             iter = next
             line = next_line
-            chunk = next_chunk
+            if chunk == end_chunk or next_chunk == None:
+                break
+            else:
+                chunk = next_chunk
+
+    def get_public_text(self, start=None, end=None):
+        return "".join(self.iterate_text(start, end))
             
     def do_begin_user_action(self):
         self.__user_action_count += 1
@@ -1217,24 +1242,28 @@ if __name__ == '__main__':
             raise AssertionError("\nGot:\n   %s\nExpected:\n   %s" % (chunks, expected))
         validate_nr_start()
 
-    def expect_text(expected):
-        text = ""
-        for chunk_text in buffer.iterate_text():
-            text += chunk_text
-
+    def expect_text(expected, start_line=None, start_offset=None, end_line=None, end_offset=None):
+        if start_offset != None:
+            i = buffer.get_iter_at_line_offset(start_line, start_offset)
+        else:
+            i = None
+            
+        if end_offset != None:
+            j = buffer.get_iter_at_line_offset(end_line, start_offset)
+        else:
+            j = None
+        
+        text = buffer.get_public_text(i, j)
         if (text != expected):
             raise AssertionError("\nGot:\n   '%s'\nExpected:\n   '%s'" % (text, expected))
 
     def insert(line, offset, text):
-        i = buffer.get_iter_at_line(line)
-        i.set_line_offset(offset)
+        i = buffer.get_iter_at_line_offset(line, offset)
         buffer.insert_interactive(i, text, True)
 
     def delete(start_line, start_offset, end_line, end_offset):
-        i = buffer.get_iter_at_line(start_line)
-        i.set_line_offset(start_offset)
-        j = buffer.get_iter_at_line(end_line)
-        j.set_line_offset(end_offset)
+        i = buffer.get_iter_at_line_offset(start_line, start_offset)
+        j = buffer.get_iter_at_line_offset(end_line, end_offset)
         buffer.delete_interactive(i, j, True)
 
     def clear():
@@ -1443,6 +1472,14 @@ if __name__ == '__main__':
     buffer.undo()
     expect([S(0,0), R(1,1), B(2,2)])
     expect_text("2\n")
+
+    # Tests of get_public_text()
+    clear()
+    insert(0, 0, "12\n34\n56")
+    buffer.calculate()
+
+    expect_text("12\n34\n56", 0, 0, 5, 2)
+    expect_text("4\n5", 2, 1, 4, 1)
 
     #
     # Try writing to a file, and reading it back
