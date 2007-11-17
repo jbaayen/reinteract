@@ -119,3 +119,82 @@ class Notebook:
             return self.__modules[names[0]]
         else:
             return sys.modules[names[0]]
+
+if __name__ == '__main__':
+    import copy
+    import os
+    import tempfile
+
+    base = tempfile.mkdtemp("", "shell_buffer")
+    
+    def cleanup():
+        for root, dirs, files in os.walk(base, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+
+    def cleanup_pyc():
+        # Not absolutely necessary, but makes things less confusing if we do
+        # this between tests
+        for root, dirs, files in os.walk(base, topdown=False):
+            for name in files:
+                if name.endswith(".pyc"):
+                    os.remove(os.path.join(root, name))
+                
+    def write_file(name, contents):
+        absname = os.path.join(base, name)
+        dirname = os.path.dirname(absname)
+        try:
+            os.makedirs(dirname)
+        except:
+            pass
+
+        f = open(absname, "w")
+        f.write(contents)
+        f.close()
+
+    def do_test(import_text, evaluate_text, expected):
+        nb = Notebook(path=[base])
+
+        # this works in a module like worksheet.py but not in __main__
+#       builtins = copy.copy(__builtins__)
+#       builtins['__import__'] = nb.do_import
+        
+        builtins = imp.new_module("__builtin__")
+        builtins.__dict__.update(__builtins__.__dict__)
+        builtins.__dict__['__import__'] = nb.do_import
+        
+        scope = { '__builtins__': builtins }
+        
+        exec import_text in scope
+        result = eval(evaluate_text, scope)
+
+        if result != expected:
+            raise AssertionError("Got '%s', expected '%s'" % (result, expected))
+
+        cleanup_pyc()
+
+    try:
+        write_file("mod1.py", "a = 1")
+        write_file("package1/__init__.py", "__all__ = ['mod2']")
+        write_file("package1/mod2.py", "b = 2")
+        write_file("package2/__init__.py", "")
+        write_file("package2/mod3.py", "import package1.mod2\nc = package1.mod2.b + 1")
+
+        do_test("import mod1", "mod1.__file__", os.path.join(base, "mod1.py"))
+
+        do_test("import mod1", "mod1.a", 1)
+        do_test("import mod1 as m", "m.a", 1)
+        do_test("from mod1 import a", "a", 1)
+        do_test("from mod1 import a as a2", "a2", 1)
+
+        do_test("import package1.mod2", "package1.mod2.b", 2)
+        do_test("import package1.mod2 as m", "m.b", 2)
+        do_test("from package1 import mod2", "mod2.b", 2)
+        do_test("from package1 import *", "mod2.b", 2)
+
+        # http://www.reinteract.org/trac/ticket/5
+        #do_test("import package2.mod3", "package2.mod3.c", 3)
+    finally:
+        cleanup()
