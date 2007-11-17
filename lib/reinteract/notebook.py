@@ -1,3 +1,4 @@
+import copy
 import imp
 import sys
 
@@ -34,6 +35,24 @@ class Notebook:
                 del self.__modules[name]
                 return module
 
+    def __load_local_module(self, fullname, f, pathname, description):
+        prefixed = self.__prefix + "." + fullname
+        
+        # Trick ... to change the builtins array for the module we are about
+        # to load, we stick an empty module initialized the way we want into
+        # sys.modules and count on imp.load_module() finding that and doing
+        # the rest of the loading into that module
+
+        new = imp.new_module(prefixed)
+        new.__dict__['__builtins__'] = self.create_builtins()
+        
+        assert not prefixed in sys.modules
+        sys.modules[prefixed] = new
+        result =  imp.load_module(prefixed, f, pathname, description)
+        assert result == new
+        
+        return result
+
     def __find_and_load(self, fullname, name, parent=None, local=None):
         if parent == None:
             assert local == None
@@ -49,7 +68,7 @@ class Notebook:
 
         try:
             if local:
-                module = imp.load_module(self.__prefix + "." + fullname, f, pathname, description)
+                module = self.__load_local_module(fullname, f, pathname, description)
                 self.__modules[name] = module
             else:
                 module = imp.load_module(name, f, pathname, description)
@@ -120,6 +139,18 @@ class Notebook:
         else:
             return sys.modules[names[0]]
 
+    def create_builtins(self):
+        # __builtins__ is a dict for a module, but a module for __main__
+        if isinstance(__builtins__, dict):
+            builtins = copy.copy(__builtins__)
+            builtins['__import__'] = self.do_import
+        else:
+            builtins = imp.new_module("__reinteract_builtin__")
+            builtins.__dict__.update(__builtins__.__dict__)
+            builtins.__dict__['__import__'] = self.do_import
+
+        return builtins
+
 if __name__ == '__main__':
     import copy
     import os
@@ -157,15 +188,7 @@ if __name__ == '__main__':
     def do_test(import_text, evaluate_text, expected):
         nb = Notebook(path=[base])
 
-        # this works in a module like worksheet.py but not in __main__
-#       builtins = copy.copy(__builtins__)
-#       builtins['__import__'] = nb.do_import
-        
-        builtins = imp.new_module("__builtin__")
-        builtins.__dict__.update(__builtins__.__dict__)
-        builtins.__dict__['__import__'] = nb.do_import
-        
-        scope = { '__builtins__': builtins }
+        scope = { '__builtins__': nb.create_builtins() }
         
         exec import_text in scope
         result = eval(evaluate_text, scope)
@@ -195,6 +218,6 @@ if __name__ == '__main__':
         do_test("from package1 import *", "mod2.b", 2)
 
         # http://www.reinteract.org/trac/ticket/5
-        #do_test("import package2.mod3", "package2.mod3.c", 3)
+        do_test("import package2.mod3", "package2.mod3.c", 3)
     finally:
         cleanup()

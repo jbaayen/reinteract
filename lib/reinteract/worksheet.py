@@ -1,4 +1,3 @@
-import copy
 import sys
 
 _DEFINE_GLOBALS = compile("""
@@ -11,10 +10,7 @@ def reinteract_print(*args):
 
 class Worksheet:
     def __init__(self, notebook):
-        builtins = copy.copy(__builtins__)
-        builtins['__import__'] = notebook.do_import
-        
-        self.global_scope = { '__builtins__': builtins }
+        self.global_scope = { '__builtins__': notebook.create_builtins() }
         exec _DEFINE_GLOBALS in self.global_scope
 
     def do_import(self, name, globals, locals, fromlist, level):
