@@ -101,8 +101,8 @@ class Notebook:
         module, local =  self.__import_recurse(names)
         
         if fromlist != None:
-            # In 'from a.b import c', if a.b.c doesn't exist after loading a.b, Python
-            # will try to load a.b.c as a module
+            # In 'from a.b import c', if a.b.c doesn't exist after loading a.b, The built-in
+            # __import__ will try to load a.b.c as a module; do the same here.
             for fromname in fromlist:
                 if fromname == "*":
                     try:

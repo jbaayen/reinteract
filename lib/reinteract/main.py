@@ -288,7 +288,13 @@ w.connect('key-press-event', on_key_press_event)
 
 if len(args) > 0:
     load(args[0])
-
+else:
+    # If you run reinteract from the command line, you'd expect to be able to
+    # create a worksheet, test it, then save it in the current directory, and
+    # have that act the same as loading the worksheet to start with. This is
+    # less obviously right when run from a menu item.
+    notebook.set_path([os.getcwd()])
+    
 if use_hildon:
     settings = w.get_settings()
     settings.set_property("gtk-button-images", False)
