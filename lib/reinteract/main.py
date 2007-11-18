@@ -59,6 +59,9 @@ def on_cut(action):
 def on_copy(action):
     view.emit('copy-clipboard')
 
+def on_copy_as_doctests(action):
+    view.get_buffer().copy_as_doctests(view.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD))
+
 def on_paste(action):
     view.emit('paste-clipboard')
 
@@ -193,6 +196,12 @@ action_group.add_actions([
     ('quit',    gtk.STOCK_QUIT,      None,         None,              None, on_quit),
     ('cut',     gtk.STOCK_CUT,       None,         None,              None, on_cut),
     ('copy',    gtk.STOCK_COPY,      None,         None,              None, on_copy),
+    ('copy-as-doctests',
+     gtk.STOCK_COPY,
+     "Copy as _Doctests",
+     "<control><shift>c",
+     None,
+     on_copy_as_doctests),
     ('paste',   gtk.STOCK_PASTE,     None,         None,              None, on_paste),
     ('delete',  gtk.STOCK_DELETE,    None,         None,              None, on_delete),
     ('calculate', gtk.STOCK_REFRESH, "_Calculate", '<control>Return', None, on_calculate),
@@ -220,6 +229,7 @@ ui_string="""
       <menu action="edit">
          <menuitem action="cut"/>
          <menuitem action="copy"/>
+         <menuitem action="copy-as-doctests"/>
          <menuitem action="paste"/>
          <menuitem action="delete"/>
          <separator/>

@@ -1053,6 +1053,33 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             end.forward_to_line_end()
         return start, end
 
+    def copy_as_doctests(self, clipboard):
+        bounds = self.get_selection_bounds()
+        if bounds == ():
+            start, end = self.get_iter_at_mark(self.get_insert())
+        else:
+            start, end = bounds
+
+        result = ""
+        for chunk in self.iterate_chunks(start.get_line(), end.get_line()):
+            chunk_text = self.get_text(*self.__get_chunk_bounds(chunk))
+            
+            if isinstance(chunk, ResultChunk) or isinstance(chunk, BlankChunk):
+                if chunk.end == len(self.__chunks) - 1:
+                    result += chunk_text
+                else:
+                    result += chunk_text + "\n"
+            else:
+                first = True
+                for line in chunk_text.split("\n"):
+                    if isinstance(chunk, StatementChunk) and not first:
+                        result += "... " + line + "\n"
+                    else:
+                        result += ">>> " + line + "\n"
+                    first = False
+
+        clipboard.set_text(result)
+                
     def __fontify_statement_lines(self, chunk, changed_lines):
         iter = self.get_iter_at_line(chunk.start)
         i = 0
