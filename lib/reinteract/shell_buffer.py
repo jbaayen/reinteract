@@ -239,8 +239,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                     self.__chunks[i] = None
 
                 chunk = old_statement
+                old_needs_compile = chunk.needs_compile
                 changed_lines = chunk.set_lines(chunk_lines)
-                changed = changed_lines != []
+                changed = chunk.needs_compile != old_needs_compile
 
                 # If we moved the statement with respect to the buffer, then the we
                 # need to refontify, even if the old statement didn't change
@@ -295,17 +296,24 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         
         return changed_chunks
 
-    def __mark_rest_for_execute(self, start_line):
+    def __mark_chunk_changed(self, chunk):
+        result = self.__find_result(chunk)
+        if result:
+            self.__apply_tag_to_chunk(self.__recompute_tag, result)
+            
+        self.emit("chunk-status-changed", chunk)
+        if result:
+            self.emit("chunk-status-changed", result)
+                
+    def __mark_rest_for_execute(self, changed_chunks, start_line):
+
+        changed_chunks = set(changed_chunks)
         for chunk in self.iterate_chunks(start_line):
-            if isinstance(chunk, StatementChunk):
+            if chunk in changed_chunks:
+                self.__mark_chunk_changed(chunk)
+            elif isinstance(chunk, StatementChunk):
                 if chunk.mark_for_execute():
-                    result = self.__find_result(chunk)
-                    if result:
-                        self.__apply_tag_to_chunk(self.__recompute_tag, result)
-                        
-                    self.emit("chunk-status-changed", chunk)
-                    if result:
-                        self.emit("chunk-status-changed", result)
+                    self.__mark_chunk_changed(chunk)
                             
     def __rescan(self, start_line, end_line, entire_statements_deleted=False):
         rescan_start = start_line
@@ -381,11 +389,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 if chunk.start < first_changed_line:
                     first_changed_line = chunk.start
 
-            self.__mark_rest_for_execute(first_changed_line)
+            self.__mark_rest_for_execute(changed_chunks, first_changed_line)
         elif entire_statements_deleted:
             # If the user deleted entire statements we need to mark subsequent chunks
             # as needing compilation even if all the remaining statements remained unchanged
-            self.__mark_rest_for_execute(end_line + 1)
+            self.__mark_rest_for_execute(changed_chunks, end_line + 1)
             
     def iterate_chunks(self, start_line=0, end_line=None):
         if end_line == None or end_line >= len(self.__chunks):
@@ -1088,7 +1096,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 iter.forward_line()
                 i += 1
             end = iter.copy()
-            end.forward_line()
+            if not end.ends_line():
+                end.forward_to_line_end()
             self.remove_all_tags(iter, end)
 
             end = iter.copy()
