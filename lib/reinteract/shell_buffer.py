@@ -435,6 +435,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         start_chunk = self.__chunks[start.get_line()]
         end_chunk = self.__chunks[end.get_line()]
 
+        # special case .. if start/end are in the same chunk, get the text
+        # between them, even if the chunk is a ResultChunk.
+        if start_chunk == end_chunk:
+            yield self.get_slice(start, end)
+            return
+        
         chunk = start_chunk
         iter = self.get_iter_at_line(chunk.start)
 
@@ -1249,7 +1255,7 @@ if __name__ == '__main__':
             i = None
             
         if end_offset != None:
-            j = buffer.get_iter_at_line_offset(end_line, start_offset)
+            j = buffer.get_iter_at_line_offset(end_line, end_offset)
         else:
             j = None
         
@@ -1487,6 +1493,9 @@ if __name__ == '__main__':
 
     expect_text("12\n34\n56", 0, 0, 5, 2)
     expect_text("4\n5", 2, 1, 4, 1)
+
+    # within a single result get_public_text() *does* include the text of the result
+    expect_text("1", 1, 0, 1, 1)
 
     #
     # Try writing to a file, and reading it back
