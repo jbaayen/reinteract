@@ -13,6 +13,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/main.py                                    \
                     lib/reinteract/notebook.py                                \
                     lib/reinteract/rewrite.py                                 \
+                    lib/reinteract/sanitize_textview_ipc.py                   \
                     lib/reinteract/shell_buffer.py                            \
                     lib/reinteract/shell_view.py                              \
                     lib/reinteract/statement.py                               \
