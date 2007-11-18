@@ -18,7 +18,7 @@ Running
 
 To run Reinteract from this directory, just type:
 
- bin/uninst
+ bin/uninst.py
  
 At the command line. There's no need to run the configure script first.
 
