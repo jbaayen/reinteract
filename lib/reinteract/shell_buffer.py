@@ -828,8 +828,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                     return
 
                 end.backward_line()
-                if not new_end.ends_line():
-                    new_end.forward_to_line_end()
+                if not end.ends_line():
+                    end.forward_to_line_end()
                 end_line -= 1
                 
         if start.starts_line() and end.starts_line():
@@ -1395,6 +1395,13 @@ if __name__ == '__main__':
     # the result behind
     insert(2, 0, "\n")
     expect([S(0,0), R(1,1), B(2,2), S(3,3), R(4,4), S(5,5), R(6,6), B(7,7)])
+
+    # Test deleting a range including a result and joining two statements
+    clear()
+    insert(0, 0, "12\n34")
+    buffer.calculate()
+    delete(0, 1, 2, 1)
+    expect_text("14")
 
     # Undo tests
     clear()
