@@ -57,10 +57,11 @@ class StatementChunk:
         return changed_lines
 
     def mark_for_execute(self):
-        if self.statement == None:
-            return
-
-        self.needs_execute = True
+        if self.statement == None or self.needs_execute:
+            return False
+        else:
+            self.needs_execute = True
+            return True
 
     def compile(self, worksheet):
         if self.statement != None:
@@ -297,16 +298,15 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
     def __mark_rest_for_execute(self, start_line):
         for chunk in self.iterate_chunks(start_line):
             if isinstance(chunk, StatementChunk):
-                chunk.mark_for_execute()
-
-                result = self.__find_result(chunk)
-                if result:
-                    self.__apply_tag_to_chunk(self.__recompute_tag, result)
+                if chunk.mark_for_execute():
+                    result = self.__find_result(chunk)
+                    if result:
+                        self.__apply_tag_to_chunk(self.__recompute_tag, result)
                         
-                self.emit("chunk-status-changed", chunk)
-                if result:
-                    self.emit("chunk-status-changed", result)
-    
+                    self.emit("chunk-status-changed", chunk)
+                    if result:
+                        self.emit("chunk-status-changed", result)
+                            
     def __rescan(self, start_line, end_line, entire_statements_deleted=False):
         rescan_start = start_line
         while rescan_start > 0:
