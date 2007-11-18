@@ -2,6 +2,7 @@
 import gtk
 import re
 from shell_buffer import ShellBuffer, StatementChunk, ResultChunk, CommentChunk, BlankChunk
+import sanitize_textview_ipc
 
 class ShellView(gtk.TextView):
     __gsignals__ = {
@@ -19,6 +20,10 @@ class ShellView(gtk.TextView):
         gtk.TextView.__init__(self, buf)
         self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, 10)
         self.set_left_margin(2)
+
+        # Attach a "behavior object" to the view which, by ugly hacks, makes it
+        # do simply and reasonable things for cut-and-paste and DND
+        sanitize_textview_ipc.sanitize_view(self)
 
     def paint_chunk(self, cr, area, chunk, fill_color, outline_color):
         buf = self.get_buffer()

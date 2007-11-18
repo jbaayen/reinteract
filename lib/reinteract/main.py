@@ -54,13 +54,13 @@ def on_quit(action):
     quit()
 
 def on_cut(action):
-    buf.cut_clipboard(view.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD), view.get_editable())
+    view.emit('cut-clipboard')
 
 def on_copy(action):
-    buf.copy_clipboard(view.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD))
+    view.emit('copy-clipboard')
 
 def on_paste(action):
-    buf.paste_clipboard(view.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD), None, view.get_editable())
+    view.emit('paste-clipboard')
 
 def on_delete(action):
     buf.delete_selection(True, view.get_editable())
