@@ -8,8 +8,8 @@ from custom_result import CustomResult
 
 # A wrapper so we don't have to trap all exceptions when running statement.Execute
 class ExecutionError(Exception):
-    def __init__(self, type, value, traceback):
-        self.type = type
+    def __init__(self, error_type, value, traceback):
+        self.type = error_type
         self.value = value
         self.traceback = traceback
 
@@ -73,7 +73,8 @@ class Statement:
                 variable = mutation
 
             try:
-                scope[variable] = copy.copy(scope[variable])
+                if type(scope[variable]) != type(sys):
+                    scope[variable] = copy.copy(scope[variable])
             except:
                 self.results.append(WarningResult("Variable '%s' apparently modified, but can't copy it" % variable))
 
@@ -84,8 +85,8 @@ class Statement:
           except:
               self.results = None
               self.result_scope = None
-              type, value, traceback = sys.exc_info()
-              raise ExecutionError(type, value, traceback)
+              error_type, value, traceback = sys.exc_info()
+              raise ExecutionError(error_type, value, traceback)
         finally:
             root_scope['__reinteract_statement'] = None
 
