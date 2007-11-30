@@ -16,7 +16,8 @@ TOKEN_LBRACE       = 12
 TOKEN_RBRACE       = 13
 TOKEN_BACKQUOTE    = 14
 TOKEN_COLON        = 15
-TOKEN_BUILTIN_CONSTANT = 16
+TOKEN_DOT          = 16
+TOKEN_BUILTIN_CONSTANT = 17
 
 FLAG_OPEN = 1
 FLAG_CLOSE = 2
@@ -213,7 +214,7 @@ def tokenize_line(str, stack=None):
                     stack.append(delim)
 
             elif match.group('dot'):
-                token_type = TOKEN_PUNCTUATION
+                token_type = TOKEN_DOT
             elif match.group('comment'):
                 token_type = TOKEN_COMMENT
             elif match.group('continuation'):
@@ -262,7 +263,7 @@ if __name__ == '__main__':
             print "For %s, in_stack=%s, got out_stack=%s, expected out_stack=%s" % (repr(str), in_stack, stack, expected_stack)
             failed = True
 
-    expect('.', [(TOKEN_PUNCTUATION, '.')])
+    expect('@', [(TOKEN_PUNCTUATION, '@')])
     expect('(', [(TOKEN_LPAREN, '(')], expected_stack=['('])
     expect('<<=', [(TOKEN_PUNCTUATION, '<<=')])
     expect('<<>', [(TOKEN_PUNCTUATION, '<<'), (TOKEN_PUNCTUATION, '>')])
@@ -291,8 +292,8 @@ if __name__ == '__main__':
 
     expect('1.1e0+3', [(TOKEN_NUMBER, '1.1e0'), (TOKEN_PUNCTUATION, '+'), (TOKEN_NUMBER, '3')])
 
-    expect('.', [(TOKEN_PUNCTUATION, '.')])
-    expect('a.b', [(TOKEN_NAME, 'a'), (TOKEN_PUNCTUATION, '.'), (TOKEN_NAME, 'b')])
+    expect('.', [(TOKEN_DOT, '.')])
+    expect('a.b', [(TOKEN_NAME, 'a'), (TOKEN_DOT, '.'), (TOKEN_NAME, 'b')])
 
     expect('1a', [(TOKEN_JUNK, '1a')])
 

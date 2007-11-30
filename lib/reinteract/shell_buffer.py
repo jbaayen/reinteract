@@ -191,6 +191,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             tokenize.TOKEN_RBRACE       : punctuation_tag,
             tokenize.TOKEN_BACKQUOTE    : punctuation_tag,
             tokenize.TOKEN_COLON        : punctuation_tag,
+            tokenize.TOKEN_DOT          : punctuation_tag,
             tokenize.TOKEN_NUMBER       : None,
             tokenize.TOKEN_JUNK         : self.create_tag(underline="error"),
         }
