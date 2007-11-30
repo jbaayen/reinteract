@@ -1249,6 +1249,43 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 f.close()
                 os.remove(tmpname)
 
+    def find_completions(self):
+        """Returns a list of possible completions at insertion cursor position.
+        Each element in the returned list is a tuple of
+        (display_form, text_to_insert)'"""
+        
+        insert = self.get_iter_at_mark(self.get_insert())
+        chunk = self.__chunks[insert.get_line()]
+        if not isinstance(chunk, StatementChunk) and not isinstance(chunk, BlankChunk):
+            return []
+
+        scope = None
+        line = chunk.start - 1
+        while line >= 0:
+            previous_chunk = self.__chunks[line]
+
+            # We intentionally don't check "needs_execute" ... if there is a result scope,
+            # it's fair game for completion, even if it's old
+            if isinstance(previous_chunk, StatementChunk) and previous_chunk.statement != None and previous_chunk.statement.result_scope != None:
+                scope = previous_chunk.statement.result_scope
+                break
+            
+            line = previous_chunk.start - 1
+
+        if scope == None:
+            scope = self.global_scope
+
+        if isinstance(chunk, StatementChunk):
+            return chunk.tokenized.find_completions(insert.get_line() - chunk.start,
+                                                    insert.get_line_index(),
+                                                    scope)
+        else: 
+            # A BlankChunk Create a dummy TokenizedStatement to get the completions
+            # appropriate for the start of a line
+            ts = TokenizedStatement()
+            ts.set_lines([''])
+            return ts.find_completions(0, 0, scope)
+
 if __name__ == '__main__':
     S = StatementChunk
     B = BlankChunk

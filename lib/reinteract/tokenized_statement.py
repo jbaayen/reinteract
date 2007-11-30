@@ -132,6 +132,8 @@ class TokenizedStatement(object):
         return self.tokens[line]
 
     def _get_iter(self, line, index):
+        # Get an iterator pointing to the token containing the specified
+        # position. Return None if there no such token
         for i, (token_type, start, end, _) in enumerate(self.tokens[line]):
             if start > index:
                 return None
@@ -140,6 +142,38 @@ class TokenizedStatement(object):
             
         return None
         
+    def _get_iter_before(self, line, index):
+        # Get an iterator pointing the last token that is not completely after
+        # the specified position. Returns None if the position is before any tokens
+        
+        tokens = self.tokens[line]
+        if len(tokens) == 0 or index <= tokens[0][1]:
+            while line > 0:
+                line -= 1
+                if len(self.tokens[line]) > 0:
+                    return _TokenIter(self, line, len(self.tokens[line]) - 1)
+                
+            return None
+        else:
+            for i, (token_type, start, end, _) in enumerate(tokens):
+                if index <= start:
+                    return _TokenIter(self, line, i - 1)
+
+            return _TokenIter(self, line, len(tokens) - 1)
+
+    def _get_start_iter(self):
+        # Get an iterator pointing to the first token, or None if the statement
+        # is empty
+
+        line = 0
+        while line < len(self.lines) and len(self.tokens[line]) == 0:
+            line += 1
+
+        if line == len(self.lines) or len(self.tokens[line]) == 0:
+            return None
+
+        return _TokenIter(self, line, 0)
+                  
     def get_pair_location(self, line, index):
         iter = self._get_iter(line, index)
         if iter == None:
@@ -207,6 +241,148 @@ class TokenizedStatement(object):
             indent_text += " " * extra_indent
             
         return indent_text
+
+    def __sort_completions(self, completions):
+        # Sort a set of completions with _ and __ names at the end.
+        # (modifies completions and then returns it for convenience)
+        
+        def compare_completions(a, b):
+            n_a = a[0]
+            n_b = b[0]
+
+            if n_a.startswith("__") and not n_b.startswith("__"):
+                return 1
+            elif n_b.startswith("__") and not n_a.startswith("__"):
+                return -1
+            elif n_a.startswith("_") and not n_b.startswith("_"):
+                return 1
+            elif n_b.startswith("_") and not n_a.startswith("_"):
+                return -1
+            else:
+                return cmp(n_a, n_b)
+
+        completions.sort(compare_completions)
+        
+        return completions
+
+    def __list_scope(self, scope):
+        # List possible completions given a scope directionary
+        
+        possible = scope.keys()
+        if '__builtins__' in scope:
+            builtins = scope['__builtins__']
+            if not isinstance(builtins, dict):
+                builtins = dir(builtins)
+                
+            for k in builtins:
+                if not k in scope:
+                    possible.append(k)
+
+        return possible
+    
+    def __find_no_symbol_completions(self, scope):
+        # Return the completions to offer when we don't have a start at a symbol
+        
+        result = []
+        for completion in self.__list_scope(scope):
+            result.append((completion, completion))
+
+        return self.__sort_completions(result)
+    
+    def find_completions(self, line, index, scope):
+        """Returns a list of possible completions at the given line and index, starting
+        with the specified scope. Each element in the returned list is a tuple of
+        (display_form, text_to_insert)'"""
+
+        # We turn off completion within an import statement, since it's less
+        # than useful to complete to symbols in the current scope. Better would be to
+        # actually examine the path and complete to real imports.
+        iter = self._get_start_iter()
+        if iter != None:
+            while iter.token_type == TOKEN_CONTINUATION:
+                try:
+                    iter.next()
+                except StopIteration:
+                    break
+            if iter.token_type == TOKEN_KEYWORD and self.lines[iter.line][iter.start:iter.end] == 'import':
+                return []
+
+        # We can offer completions if we are at a position of the form:
+        # ([TOKEN_NAME|TOKEN_BUILTIN_CONSTANT] TOKEN_DOT)* (TOKEN_NAME|TOKEN_KEYWORD|TOKEN_BUILTIN_CONSTANT)?
+        #
+        # We work backwards from the last name, and build a list of names, then match
+        # against the list of names
+        
+        # Look for a token right before the specified position.  index - 1 is OK here
+        # even though that byte may note b a character start since we are just
+        # interested in a position inside the token
+        iter = self._get_iter(line, index - 1)
+        if iter != None and (iter.token_type == TOKEN_KEYWORD or
+                             iter.token_type == TOKEN_NAME or
+                             iter.token_type == TOKEN_BUILTIN_CONSTANT):
+            end = min(iter.end, index)
+            names = [self.lines[iter.line][iter.start:end]]
+            try:
+                iter.prev()
+            except StopIteration:
+                pass
+        else:
+            # For a TOKEN_DOT, we can be more forgiving and accept white space between the
+            # token and the current position
+            iter = self._get_iter_before(line, index)
+            if iter != None and iter.token_type == TOKEN_DOT:
+                names = ['']
+            # This is a non-exhaustive list of places where we know that we shouldn't complete to the
+            # the scope. (We could do better by special casing actual completions for TOKEN_RSQB, TOKEN_RBRACE,
+            # TOKEN_STRING)
+            elif iter != None and iter.token_type in (TOKEN_NAME, TOKEN_BUILTIN_CONSTANT, TOKEN_RPAREN, TOKEN_RSQB, TOKEN_RBRACE,
+                                                      TOKEN_STRING, TOKEN_NUMBER):
+                return []
+            
+            else:
+                return self.__find_no_symbol_completions(scope)
+
+        while iter.token_type == TOKEN_DOT:
+            try:
+                iter.prev()
+            except StopIteration:
+                return []
+
+            if iter.token_type != TOKEN_NAME and iter.token_type != TOKEN_BUILTIN_CONSTANT:
+                return []
+
+            names.insert(0, self.lines[iter.line][iter.start:iter.end])
+
+        # We resolve the leading portion of the name path
+        object = None
+        for i in range(len(names) - 1):
+            # First name is resolved against the scope
+            if object == None:
+                try:
+                    object = scope[names[i]]
+                except KeyError:
+                    return []
+            # Subsequent names resolved
+            else:
+                try:
+                    object = getattr(object, names[i])
+                except AttributeError:
+                    return []
+
+        # Then we complete the last element of the name path against what we resolved
+        # to, or against the scope (if there was just one name)
+        to_complete = names[-1]
+        if object == None:
+            possible = self.__list_scope(scope)
+        else:
+            possible = dir(object)
+
+        result = []
+        for completion in possible:
+            if completion.startswith(to_complete):
+                result.append((completion, completion[len(to_complete):]))
+
+        return self.__sort_completions(result)
             
     def __repr__(self):
         return "TokenizedStatement" + repr([([(t[0], line[t[1]:t[2]]) for t in tokens], stack) for line, tokens, stack in zip(self.lines, self.tokens, self.stacks)])
@@ -356,6 +532,58 @@ if __name__ == '__main__':
         if next_line_indent != expected:
             print "For %s, got next_line_indent=%d, expected %d" % (text, next_line_indent, expected)
             failed = True
+
+    ### Tests of find_completions()
+
+    class MyObject:
+        def method(self):
+            pass
+            
+    scope = {
+        '__builtins__': {
+            'len': len
+        },
+        'a': 1,
+        'abcd': 2,
+        'bcde': 3,
+        'obj': MyObject()
+    }
+            
+    def test_completion(line, expected, index = -1):
+        if index == -1:
+            index = len(line)
+        
+        ts = TokenizedStatement()
+        ts.set_lines([line])
+        completions = [n for n, _ in ts.find_completions(0, index, scope)]
+        if completions != expected:
+            print "For %s/%d, got %s, expected %s" % (line,index,completions,expected)
+            failed = True
+
+    def test_multiline_completion(lines, line, index, expected):
+        ts = TokenizedStatement()
+        ts.set_lines(lines)
+        completions = [n for n, _ in ts.find_completions(line, index, scope)]
+        if completions != expected:
+            print "For %s/%d/%d, got %s, expected %s" % (lines,line,index,completions,expected)
+            failed = True
+
+    test_completion("a", ['a', 'abcd'])
+    test_completion("ab", ['abcd']) 
+    test_completion("ab", ['a', 'abcd'], index=1) 
+    test_completion("foo.", []) 
+    test_completion("(a + b)", []) 
+    test_completion("", ['a', 'abcd', 'bcde', 'len', 'obj', "__builtins__"])
+    test_completion("foo + ", ['a', 'abcd', 'bcde', 'len', 'obj', "__builtins__"])
+    test_completion("l", ['len'])
+    test_completion("obj.", ['method', '__doc__', '__module__'])
+    test_completion("obj.m", ['method', '__doc__', '__module__'], index=4)
+    test_completion("obj.m", ['method'])
+    test_completion("obj.m().n", [])
+    test_completion("import a", [])
+
+    test_multiline_completion(["(obj.", "m"], 1, 0, ['method', '__doc__', '__module__'])
+    test_multiline_completion(["(obj.", "m"], 1, 1, ['method'])
     
     if failed:
         sys.exit(1)
