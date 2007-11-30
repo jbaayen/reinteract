@@ -2,12 +2,14 @@
 import gtk
 import re
 from shell_buffer import ShellBuffer, StatementChunk, ResultChunk, CommentChunk, BlankChunk
+from completion_popup import CompletionPopup
 import sanitize_textview_ipc
 
 class ShellView(gtk.TextView):
     __gsignals__ = {
         'backspace' : 'override',
         'expose-event': 'override',
+        'focus-out-event': 'override',
         'key-press-event': 'override',
         'realize': 'override'
    }
@@ -24,6 +26,8 @@ class ShellView(gtk.TextView):
         # Attach a "behavior object" to the view which, by ugly hacks, makes it
         # do simply and reasonable things for cut-and-paste and DND
         sanitize_textview_ipc.sanitize_view(self)
+
+        self.__completion_popup = CompletionPopup(self)
 
     def paint_chunk(self, cr, area, chunk, fill_color, outline_color):
         buf = self.get_buffer()
@@ -243,12 +247,28 @@ class ShellView(gtk.TextView):
             iter = buf.get_iter_at_line(line)
             current_indent = self.__count_indent(self.__get_line_text(iter))
             self.__reindent_line(iter, max(0, " " * (current_indent + diff)))
-    
+
+    def __hide_completion(self):
+        if self.__completion_popup.showing:
+            self.__completion_popup.popdown()
+            
+    def __update_completion(self):
+        if self.__completion_popup.showing:
+            self.__completion_popup.update()
+            
+    def do_focus_out_event(self, event):
+        self.__hide_completion()
+        return gtk.TextView.do_focus_out_event(self, event)
+
     def do_key_press_event(self, event):
         buf = self.get_buffer()
+
+        if self.__completion_popup.showing and self.__completion_popup.on_key_press_event(event):
+            return True
         
         if event.keyval in (gtk.keysyms.KP_Enter, gtk.keysyms.Return):
-
+            self.__hide_completion()
+            
             increase_indent = False
             insert = buf.get_iter_at_mark(buf.get_insert())
 
@@ -286,26 +306,49 @@ class ShellView(gtk.TextView):
             buf.begin_user_action()
             self.__reindent_selection(outdent=False)
             buf.end_user_action()
+            
+            self.__update_completion()
             return True
         elif event.keyval == gtk.keysyms.ISO_Left_Tab and event.state & gtk.gdk.CONTROL_MASK == 0:
             buf.begin_user_action()
             self.__reindent_selection(outdent=True)
             buf.end_user_action()
+            
+            self.__update_completion()
+            return True
+        elif event.keyval == gtk.keysyms.space and event.state & gtk.gdk.CONTROL_MASK != 0:
+            if self.__completion_popup.showing:
+                self.__completion_popup.popdown()
+            else:
+                self.__completion_popup.popup()
             return True
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
                 (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
                 (event.state & gtk.gdk.SHIFT_MASK) == 0:
             buf.undo()
+            
+            self.__update_completion()
+            return True
         # This is the gedit/gtksourceview binding to cause your hands to fall off
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
                 (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
                 (event.state & gtk.gdk.SHIFT_MASK) != 0:
             buf.redo()
+            
+            self.__update_completion()
+            return True
         # This is the familiar binding (Eclipse, etc). Firefox supports both
         elif event.keyval in (gtk.keysyms.y, gtk.keysyms.Y) and event.state & gtk.gdk.CONTROL_MASK != 0:
             buf.redo()
+
+            self.__update_completion()            
+            return True
         
-        return gtk.TextView.do_key_press_event(self, event)
+        if gtk.TextView.do_key_press_event(self, event):
+            self.__update_completion()
+            return True
+        else:
+            return False
 
     def do_backspace(self):
         buf = self.get_buffer()
