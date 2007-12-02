@@ -268,7 +268,7 @@ class TokenizedStatement(object):
     def __list_scope(self, scope):
         # List possible completions given a scope directionary
         
-        possible = scope.keys()
+        possible = scope.items()
         if '__builtins__' in scope:
             builtins = scope['__builtins__']
             if not isinstance(builtins, dict):
@@ -276,7 +276,7 @@ class TokenizedStatement(object):
                 
             for k in builtins:
                 if not k in scope:
-                    possible.append(k)
+                    possible.append((k, builtins[k]))
 
         return possible
     
@@ -284,15 +284,20 @@ class TokenizedStatement(object):
         # Return the completions to offer when we don't have a start at a symbol
         
         result = []
-        for completion in self.__list_scope(scope):
-            result.append((completion, completion))
+        for completion, obj in self.__list_scope(scope):
+            result.append((completion, completion, obj))
 
         return self.__sort_completions(result)
     
     def find_completions(self, line, index, scope):
-        """Returns a list of possible completions at the given line and index, starting
-        with the specified scope. Each element in the returned list is a tuple of
-        (display_form, text_to_insert)'"""
+        """Returns a list of possible completions at the given line and index.
+
+        Scope is the scope to start calculating the comptions from. Each element
+        in the returned list is a tuple of (display_form, text_to_insert, object_completed_to)'
+        where object_completed_to can be used to determine the type of the completion
+        or get docs about it.
+
+        """
 
         # We turn off completion within an import statement, since it's less
         # than useful to complete to symbols in the current scope. Better would be to
@@ -371,16 +376,17 @@ class TokenizedStatement(object):
 
         # Then we complete the last element of the name path against what we resolved
         # to, or against the scope (if there was just one name)
+        result = []
+        
         to_complete = names[-1]
         if object == None:
-            possible = self.__list_scope(scope)
+            for completion, obj in self.__list_scope(scope):
+                if completion.startswith(to_complete):
+                    result.append((completion, completion[len(to_complete):], obj))
         else:
-            possible = dir(object)
-
-        result = []
-        for completion in possible:
-            if completion.startswith(to_complete):
-                result.append((completion, completion[len(to_complete):]))
+            for completion in dir(object):
+                if completion.startswith(to_complete):
+                    result.append((completion, completion[len(to_complete):], getattr(object, completion)))
 
         return self.__sort_completions(result)
             
@@ -555,7 +561,7 @@ if __name__ == '__main__':
         
         ts = TokenizedStatement()
         ts.set_lines([line])
-        completions = [n for n, _ in ts.find_completions(0, index, scope)]
+        completions = [n for n, _, _ in ts.find_completions(0, index, scope)]
         if completions != expected:
             print "For %s/%d, got %s, expected %s" % (line,index,completions,expected)
             failed = True
@@ -563,7 +569,7 @@ if __name__ == '__main__':
     def test_multiline_completion(lines, line, index, expected):
         ts = TokenizedStatement()
         ts.set_lines(lines)
-        completions = [n for n, _ in ts.find_completions(line, index, scope)]
+        completions = [n for n, _, _ in ts.find_completions(line, index, scope)]
         if completions != expected:
             print "For %s/%d/%d, got %s, expected %s" % (lines,line,index,completions,expected)
             failed = True

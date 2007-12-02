@@ -1266,8 +1266,13 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 
     def find_completions(self):
         """Returns a list of possible completions at insertion cursor position.
-        Each element in the returned list is a tuple of
-        (display_form, text_to_insert)'"""
+
+        Each element in the returned list is a tuple of (display_form,
+        text_to_insert, object_completed_to)' where
+        object_completed_to can be used to determine the type of the
+        completion or get docs about it.
+
+        """
         
         insert = self.get_iter_at_mark(self.get_insert())
         chunk = self.__chunks[insert.get_line()]

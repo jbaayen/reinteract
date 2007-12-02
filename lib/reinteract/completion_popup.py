@@ -67,7 +67,7 @@ class CompletionPopup(gtk.Window):
         buf = self.__view.get_buffer()
 
         self.__tree_model.clear()
-        for display, completion in buf.find_completions():
+        for display, completion, obj in buf.find_completions():
             self.__tree_model.append([display, completion])
         
         self.__tree.set_cursor(0)
