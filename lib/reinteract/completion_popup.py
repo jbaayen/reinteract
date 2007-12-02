@@ -1,5 +1,7 @@
 import gtk
 
+from doc_popup import DocPopup
+
 # Space between the line of text where the cursor is and the popup
 VERTICAL_GAP = 5
 
@@ -24,17 +26,19 @@ class CompletionPopup(gtk.Window):
     def __init__(self, view):
         gtk.Window.__init__(self, gtk.WINDOW_POPUP)
         self.__view = view
+        self.set_border_width(1)
 
         sw = gtk.ScrolledWindow()
         self.add(sw)
 
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        sw.set_border_width(1)
         
-        self.__tree_model = gtk.ListStore(str, str)
+        self.__tree_model = gtk.ListStore(str, str, object)
         self.__tree = gtk.TreeView(self.__tree_model)
         self.__tree.set_headers_visible(False)
         
+        self.__tree.get_selection().connect('changed', self.__on_selection_changed)
+
         cell = gtk.CellRendererText()
         column = gtk.TreeViewColumn(None, cell, text=0)
         self.__tree.append_column(column)
@@ -49,6 +53,9 @@ class CompletionPopup(gtk.Window):
         # the window background to white
         self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(65535, 65535, 65535))
 
+        self.__doc_popup= DocPopup()
+
+        self._in_change = False
         self.showing = False
 
     def do_expose_event(self, event):
@@ -66,11 +73,14 @@ class CompletionPopup(gtk.Window):
     def __update_completions(self):
         buf = self.__view.get_buffer()
 
+        self.__in_change = True
         self.__tree_model.clear()
         for display, completion, obj in buf.find_completions():
-            self.__tree_model.append([display, completion])
+            self.__tree_model.append([display, completion, obj])
         
         self.__tree.set_cursor(0)
+        self.__in_change = False
+        self.__update_doc_popup()
 
     def __update_position(self):
         buf = self.__view.get_buffer()
@@ -93,8 +103,26 @@ class CompletionPopup(gtk.Window):
         # be more confusing than not doing so.
         if y + HEIGHT > window.get_screen().get_height():
             y = cursor_rect.y - VERTICAL_GAP - HEIGHT
-        
+
+        if self.showing:
+            old_x, old_y = self.window.get_position()
+            if y == old_y or x >= old_x:
+                return
         self.move(x, y)
+
+    def __update_doc_popup(self):
+        if not self.showing:
+            self.__doc_popup.popdown()
+            return
+
+        model, iter = self.__tree.get_selection().get_selected()
+        if not iter:
+            self.__doc_popup.popdown()
+            return
+
+        obj = model.get_value(iter, 2)
+        self.__doc_popup.set_target(obj)
+        self.__doc_popup.popup()
 
     def __insert_selected(self):
         model, iter = self.__tree.get_selection().get_selected()
@@ -102,6 +130,10 @@ class CompletionPopup(gtk.Window):
 
         self.__view.get_buffer().insert_interactive_at_cursor(completion, True)
             
+    def __on_selection_changed(self, selection):
+        if not self.__in_change:
+            self.__update_doc_popup()
+        
     def popup(self):
         """Pop up the completion popup.
 
@@ -125,6 +157,10 @@ class CompletionPopup(gtk.Window):
         self.__update_position()
 
         self.show()
+        self.showing = True
+
+        self.__doc_popup.position_next_to_window(self)
+        self.__update_doc_popup()
         
         # Send a synthetic focus in so that the TreeView thinks it is
         # focused
@@ -132,8 +168,6 @@ class CompletionPopup(gtk.Window):
         focus_in.window = self.window
         focus_in.in_ = True
         self.event(focus_in)
-
-        self.showing = True
 
     def update(self):
         """Update the completion popup after the cursor is moved, or text is inserted.
@@ -158,8 +192,12 @@ class CompletionPopup(gtk.Window):
 
         if not self.showing:
             return
-        
+
         self.showing = False
+
+        if self.__doc_popup.showing:
+            self.__doc_popup.popdown()
+        
         self.hide()
 
     def on_key_press_event(self, event):
