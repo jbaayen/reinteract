@@ -1,15 +1,18 @@
 import gtk
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_cairo import RendererCairo
+from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
 import numpy
 
-from reinteract.custom_result import CustomResult
+import reinteract.custom_result as custom_result
 
-class _DummyCanvas:
+class _PlotResultCanvas(FigureCanvasCairo):
     def draw_event(*args):
+        # Since we never change anything about the figure, the only time we
+        # need to redraw is in response to an expose event, which we handle
+        # ourselves
         pass
 
-class PlotResult(CustomResult):
+class PlotResult(custom_result.CustomResult):
     def __init__(self, *args, **kwargs):
         self.__args = args
         self.__kwargs = kwargs
@@ -20,7 +23,7 @@ class PlotResult(CustomResult):
 
         return widget
     
-class ImshowResult(CustomResult):
+class ImshowResult(custom_result.CustomResult):
     def __init__(self, *args, **kwargs):
         self.__args = args
         self.__kwargs = kwargs
@@ -41,7 +44,7 @@ class PlotWidget(gtk.DrawingArea):
     def __init__(self, result):
         gtk.DrawingArea.__init__(self)
         self.figure = Figure(facecolor='white', figsize=(6,4.5))
-        self.figure.set_canvas(_DummyCanvas())
+        self.canvas = _PlotResultCanvas(self.figure)
 
         self.axes = self.figure.add_axes((0.05,0.05,0.9,0.9))
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
@@ -61,14 +64,39 @@ class PlotWidget(gtk.DrawingArea):
         self.figure.draw(renderer)
 
     def do_button_press_event(self, event):
-        return True
+        if event.button == 3:
+            custom_result.show_menu(self, event, save_callback=self.__save)
+            return True
+        else:
+            return True
     
     def do_button_release_event(self, event):
         return True
 
+    def do_realize(self):
+        gtk.DrawingArea.do_realize(self)
+        cursor = gtk.gdk.Cursor(gtk.gdk.LEFT_PTR)
+        self.window.set_cursor(cursor)
+    
     def do_size_request(self, requisition):
         requisition.width = self.figure.bbox.width()
         requisition.height = self.figure.bbox.height()
+
+    def __save(self, filename):
+        # The save/restore here was added to matplotlib's after 0.90. We duplicate
+        # it for compatibility with older versions.
+        
+        orig_dpi = self.figure.dpi.get()
+        orig_facecolor = self.figure.get_facecolor()
+        orig_edgecolor = self.figure.get_edgecolor()
+
+        try:
+            self.canvas.print_figure(filename)
+        finally:
+            self.figure.dpi.set(orig_dpi)
+            self.figure.set_facecolor(orig_facecolor)
+            self.figure.set_edgecolor(orig_edgecolor)
+            self.figure.set_canvas(self.canvas)
 
 #    def do_size_allocate(self, allocation):
 #        gtk.DrawingArea.do_size_allocate(self, allocation)
