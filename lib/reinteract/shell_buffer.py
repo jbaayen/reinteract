@@ -1,10 +1,12 @@
 #!/usr/bin/python
 import gobject
 import gtk
+import pango
 import traceback
 import os
 import re
-from notebook import Notebook
+import doc_format
+from notebook import Notebook, HelpResult
 from statement import Statement, ExecutionError, WarningResult
 from worksheet import Worksheet
 from custom_result import CustomResult
@@ -172,6 +174,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__error_tag = self.create_tag(foreground="#aa0000")
         self.__recompute_tag = self.create_tag(foreground="#888888")
         self.__comment_tag = self.create_tag(foreground="#3f7f5f")
+        self.__bold_tag = self.create_tag(weight=pango.WEIGHT_BOLD)
+        self.__help_tag = self.create_tag(family="sans",
+                                          style=pango.STYLE_NORMAL,
+                                          paragraph_background="#ffff88",
+                                          left_margin=10,
+                                          right_margin=10)
 
         punctuation_tag = None
 
@@ -572,7 +580,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         start_line = location.get_line()
         start_offset = location.get_line_offset()
         is_pure_insert = False
-        if self.__user_action_count > 0:
+        if self.__user_action_count > 0 and not self.__modifying_results:
             current_chunk = self.__chunks[start_line]
             if isinstance(current_chunk, ResultChunk):
                 # The only thing that's valid to do with a ResultChunk is insert
@@ -1144,6 +1152,13 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 start = self.get_iter_at_mark(start_mark)
                 self.delete_mark(start_mark)
                 self.apply_tag(self.__warning_tag, start, location)
+            elif isinstance(result, HelpResult):
+                self.insert(location, "\n")
+                start_mark = self.create_mark(None, location, True)
+                doc_format.insert_docs(self, location, result.arg, self.__bold_tag)
+                start = self.get_iter_at_mark(start_mark)
+                self.delete_mark(start_mark)
+                self.apply_tag(self.__help_tag, start, location)
             elif isinstance(result, CustomResult):
                 self.insert(location, "\n")
                 anchor = self.create_child_anchor(location)

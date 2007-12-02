@@ -5,6 +5,7 @@ import sys
 
 import rewrite
 from custom_result import CustomResult
+from notebook import HelpResult
 
 # A wrapper so we don't have to trap all exceptions when running statement.Execute
 class ExecutionError(Exception):
@@ -44,7 +45,7 @@ class Statement:
             
             if args[0] == None:
                 return
-            elif isinstance(args[0], CustomResult):
+            elif isinstance(args[0], CustomResult) or isinstance(args[0], HelpResult):
                 self.results.append(args[0])
             else:
                 self.results.append(repr(args[0]))

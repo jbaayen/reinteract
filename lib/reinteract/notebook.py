@@ -4,6 +4,22 @@ import sys
 
 _counter = 1
 
+class HelpResult:
+    def __init__(self, arg):
+        self.arg = arg
+
+class _Helper:
+    # We use a callable object here rather than a function so that we handle
+    # help without arguments, just like the help builtin
+    def __repr__(self):
+        return "Type help(object) for help about object"
+
+    def __call__(self, arg=None):
+        if arg == None:
+            return self
+        
+        return HelpResult(arg)
+
 class Notebook:
     def __init__(self, path=[]):
         global _counter
@@ -143,11 +159,14 @@ class Notebook:
         # __builtins__ is a dict for a module, but a module for __main__
         if isinstance(__builtins__, dict):
             builtins = copy.copy(__builtins__)
-            builtins['__import__'] = self.do_import
+            d = builtins
         else:
             builtins = imp.new_module("__reinteract_builtin__")
             builtins.__dict__.update(__builtins__.__dict__)
-            builtins.__dict__['__import__'] = self.do_import
+            d = builtins.__dict__
+
+        d['__import__'] = self.do_import
+        d['help'] = _Helper()
 
         return builtins
 
