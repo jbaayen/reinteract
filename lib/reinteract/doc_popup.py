@@ -1,26 +1,31 @@
-import doc_format
 import pango
 import gtk
 
-# Space between a window the popup is "next to" and the popup
-HORIZONTAL_GAP = 5
+import doc_format
+from popup import Popup
 
-class DocPopup(gtk.Window):
+MAX_HEIGHT=300
+
+class DocPopup(Popup):
     
     """Class implementing a popup showing docs about an object"""
     
     __gsignals__ = {
-        'expose-event': 'override',
+        'size-request': 'override',
     }
     
-    def __init__(self):
-        gtk.Window.__init__(self, gtk.WINDOW_POPUP)
+    def __init__(self, fixed_height=False, fixed_width=False, max_height=MAX_HEIGHT):
+        Popup.__init__(self)
 
-        self.set_default_size(300, 300)
+        self.__fixed_height = fixed_height
+        self.__fixed_width = fixed_width
+        self.__max_height = max_height
+
+        self.__font = pango.FontDescription("Sans 9")
 
         self.__view = gtk.TextView()
         self.__view.set_editable(False)
-        self.__view.modify_font(pango.FontDescription("Sans 9"))
+        self.__view.modify_font(self.__font)
         self.__view.modify_base(gtk.STATE_NORMAL, gtk.gdk.Color(0xffff, 0xffff, 0xbfbf))
         self.__view.modify_text(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
 
@@ -30,8 +35,7 @@ class DocPopup(gtk.Window):
             sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
             sw.add(self.__view)
         else:
-            self.set_border_width(1)
-            self.set_size_request(-1, 300)
+            self.set_resizable(False)
             self.add(self.__view)
             
         buf = self.__view.get_buffer()
@@ -40,19 +44,6 @@ class DocPopup(gtk.Window):
         self.get_child().show_all()
         
         self.__target = None
-        self.showing = False
-
-    def do_expose_event(self, event):
-        gtk.Window.do_expose_event(self, event)
-
-        # Draw a black rectangle around the popup
-        cr = event.window.cairo_create()
-        cr.set_line_width(1)
-        cr.set_source_rgb(0., 0., 0.)
-        cr.rectangle(0.5, 0.5, self.allocation.width - 1, self.allocation.height - 1)
-        cr.stroke()
-        
-        return False
 
     def set_target(self, target):
         """Set the object that the popup is showing documentation about"""
@@ -67,19 +58,31 @@ class DocPopup(gtk.Window):
         if target != None:
             doc_format.insert_docs(buf, buf.get_start_iter(), target, self.__bold_tag)
 
-    def position_next_to_window(self, window):
-        """Position the popup so that it is immediately to the right of the specified window
+    def do_size_request(self, request):
+        child_width, child_height = self.child.size_request()
 
-        This only works properly if the window is undecorated, since we don't take the
-        decorations into account.
+        bw = self.get_border_width()
 
-        """
+        metrics = self.get_pango_context().get_metrics(self.__font)
+
+        request.width = child_width + 2 * bw
         
-        x, y = window.window.get_origin()
-        width, height = window.window.get_size()
+        # fixed_width doesn't mean completely fixed, it means to put a floor on it so we don't bounce
+        # the size too much
+        if self.__fixed_width:
+            request.width = max(request.width, metrics.get_approximate_char_width() * (90. / pango.SCALE))
 
-        self.move(x + width + HORIZONTAL_GAP, y)
-        
+        # We always want a maximum width so that faulty docs don't cause us to have widths many times
+        # the width of the screen
+        request.width = min(request.width, metrics.get_approximate_char_width() * (120. / pango.SCALE))
+
+        if self.__fixed_height:
+            request.height = self.__max_height
+        else:
+            request.height = child_height + 2 * bw
+            if self.__max_height > 0:
+                request.height = min(request.height, self.__max_height)
+
     def popup(self):
         """Show the popup"""
         

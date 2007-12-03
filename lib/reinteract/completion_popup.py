@@ -1,6 +1,7 @@
 import inspect
 import gtk
 
+from popup import Popup
 from doc_popup import DocPopup
 
 # Space between the line of text where the cursor is and the popup
@@ -10,7 +11,7 @@ VERTICAL_GAP = 5
 WIDTH = 300
 HEIGHT = 300
 
-class CompletionPopup(gtk.Window):
+class CompletionPopup(Popup):
     
     """Class implementing a completion popup for ShellView
 
@@ -20,14 +21,11 @@ class CompletionPopup(gtk.Window):
     
     """
     
-    __gsignals__ = {
-        'expose-event': 'override',
-    }
-    
     def __init__(self, view):
-        gtk.Window.__init__(self, gtk.WINDOW_POPUP)
+        Popup.__init__(self)
+        self.set_size_request(WIDTH, HEIGHT)
+        
         self.__view = view
-        self.set_border_width(1)
 
         sw = gtk.ScrolledWindow()
         self.add(sw)
@@ -54,22 +52,10 @@ class CompletionPopup(gtk.Window):
         # the window background to white
         self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(65535, 65535, 65535))
 
-        self.__doc_popup= DocPopup()
+        self.__doc_popup= DocPopup(fixed_width=True, fixed_height=True, max_height=HEIGHT)
 
         self._in_change = False
         self.showing = False
-
-    def do_expose_event(self, event):
-        gtk.Window.do_expose_event(self, event)
-
-        # Draw a black rectangle around the popup
-        cr = event.window.cairo_create()
-        cr.set_line_width(1)
-        cr.set_source_rgb(0., 0., 0.)
-        cr.rectangle(0.5, 0.5, self.allocation.width - 1, self.allocation.height - 1)
-        cr.stroke()
-        
-        return False
 
     def __update_completions(self):
         buf = self.__view.get_buffer()
@@ -85,31 +71,9 @@ class CompletionPopup(gtk.Window):
 
     def __update_position(self):
         buf = self.__view.get_buffer()
-
-        insert = buf.get_iter_at_mark(buf.get_insert())
-
-        cursor_rect = self.__view.get_iter_location(insert)
-        cursor_rect.x, cursor_rect.y = self.__view.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, cursor_rect.x, cursor_rect.y)
-
-        window = self.__view.get_window(gtk.TEXT_WINDOW_LEFT)
-        window_x, window_y = window.get_origin()
-        cursor_rect.x += window_x
-        cursor_rect.y += window_y
         
-        x = cursor_rect.x
-        y = cursor_rect.y + cursor_rect.height + VERTICAL_GAP
-
-        # If the popup would go off the screen, pop it up above instead; should we
-        # reverse the direction of the items here, as for a menu? I think that would
-        # be more confusing than not doing so.
-        if y + HEIGHT > window.get_screen().get_height():
-            y = cursor_rect.y - VERTICAL_GAP - HEIGHT
-
-        if self.showing:
-            old_x, old_y = self.window.get_position()
-            if y == old_y or x >= old_x:
-                return
-        self.move(x, y)
+        self.position_at_location(self.__view,
+                                  buf.get_iter_at_mark(buf.get_insert()))
 
     def __update_doc_popup(self):
         if not self.showing:
