@@ -1264,6 +1264,26 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 f.close()
                 os.remove(tmpname)
 
+    def __get_last_scope(self, chunk):
+        # Get the last result scope we have that precedes the specified chunk
+        
+        scope = None
+        line = chunk.start - 1
+        while line >= 0:
+            previous_chunk = self.__chunks[line]
+
+            # We intentionally don't check "needs_execute" ... if there is a result scope,
+            # it's fair game for completion/help, even if it's old
+            if isinstance(previous_chunk, StatementChunk) and previous_chunk.statement != None and previous_chunk.statement.result_scope != None:
+                return previous_chunk.statement.result_scope
+                break
+            
+            line = previous_chunk.start - 1
+
+        return self.global_scope
+
+        
+
     def find_completions(self):
         """Returns a list of possible completions at insertion cursor position.
 
@@ -1279,21 +1299,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         if not isinstance(chunk, StatementChunk) and not isinstance(chunk, BlankChunk):
             return []
 
-        scope = None
-        line = chunk.start - 1
-        while line >= 0:
-            previous_chunk = self.__chunks[line]
-
-            # We intentionally don't check "needs_execute" ... if there is a result scope,
-            # it's fair game for completion, even if it's old
-            if isinstance(previous_chunk, StatementChunk) and previous_chunk.statement != None and previous_chunk.statement.result_scope != None:
-                scope = previous_chunk.statement.result_scope
-                break
-            
-            line = previous_chunk.start - 1
-
-        if scope == None:
-            scope = self.global_scope
+        scope = self.__get_last_scope(chunk)
 
         if isinstance(chunk, StatementChunk):
             return chunk.tokenized.find_completions(insert.get_line() - chunk.start,
@@ -1305,6 +1311,17 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             ts = TokenizedStatement()
             ts.set_lines([''])
             return ts.find_completions(0, 0, scope)
+
+    def get_object_at_location(self, location):
+        """Returns the object at a particular location within the buffer"""
+        
+        chunk = self.__chunks[location.get_line()]
+        if not isinstance(chunk, StatementChunk):
+            return None
+
+        return chunk.tokenized.get_object_at_location(location.get_line() - chunk.start,
+                                                      location.get_line_index(),
+                                                      self.__get_last_scope(chunk))
 
 if __name__ == '__main__':
     S = StatementChunk

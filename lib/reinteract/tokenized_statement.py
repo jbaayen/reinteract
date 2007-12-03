@@ -242,6 +242,37 @@ class TokenizedStatement(object):
             
         return indent_text
 
+    def __statement_is_import(self):
+        iter = self._get_start_iter()
+        if iter != None:
+            while iter.token_type == TOKEN_CONTINUATION:
+                try:
+                    iter.next()
+                except StopIteration:
+                    break
+            if iter.token_type == TOKEN_KEYWORD and self.lines[iter.line][iter.start:iter.end] == 'import':
+                return True
+
+        return False
+
+    def __resolve_names(self, names, scope):
+        obj = None
+        for name in names:
+            # First name is resolved against the scope
+            if obj == None:
+                try:
+                    obj = scope[name]
+                except KeyError:
+                    return None
+            # Subsequent names resolved
+            else:
+                try:
+                    obj = getattr(obj, name)
+                except AttributeError:
+                    return None
+
+        return obj
+                
     def __sort_completions(self, completions):
         # Sort a set of completions with _ and __ names at the end.
         # (modifies completions and then returns it for convenience)
@@ -302,21 +333,14 @@ class TokenizedStatement(object):
         # We turn off completion within an import statement, since it's less
         # than useful to complete to symbols in the current scope. Better would be to
         # actually examine the path and complete to real imports.
-        iter = self._get_start_iter()
-        if iter != None:
-            while iter.token_type == TOKEN_CONTINUATION:
-                try:
-                    iter.next()
-                except StopIteration:
-                    break
-            if iter.token_type == TOKEN_KEYWORD and self.lines[iter.line][iter.start:iter.end] == 'import':
-                return []
+        if self.__statement_is_import():
+            return []
 
         # We can offer completions if we are at a position of the form:
         # ([TOKEN_NAME|TOKEN_BUILTIN_CONSTANT] TOKEN_DOT)* (TOKEN_NAME|TOKEN_KEYWORD|TOKEN_BUILTIN_CONSTANT)?
         #
-        # We work backwards from the last name, and build a list of names, then match
-        # against the list of names
+        # We work backwards from the last name, and build a list of names, then resolve
+        # that list of names against the scope.
         
         # Look for a token right before the specified position.  index - 1 is OK here
         # even though that byte may note b a character start since we are just
@@ -359,20 +383,12 @@ class TokenizedStatement(object):
             names.insert(0, self.lines[iter.line][iter.start:iter.end])
 
         # We resolve the leading portion of the name path
-        object = None
-        for i in range(len(names) - 1):
-            # First name is resolved against the scope
+        if len(names) > 1:
+            object = self.__resolve_names(names[0:-1], scope)
             if object == None:
-                try:
-                    object = scope[names[i]]
-                except KeyError:
-                    return []
-            # Subsequent names resolved
-            else:
-                try:
-                    object = getattr(object, names[i])
-                except AttributeError:
-                    return []
+                return []
+        else:
+            object = None
 
         # Then we complete the last element of the name path against what we resolved
         # to, or against the scope (if there was just one name)
@@ -399,6 +415,51 @@ class TokenizedStatement(object):
 
         return self.__sort_completions(result)
             
+    def get_object_at_location(self, line, index, scope):
+        """Returns the object at a particular location within the statement
+
+        scope -- scope dictionary to start resolving names from.
+
+        """
+
+        # Names within an import statement aren't there yet
+        if self.__statement_is_import():
+            return None
+        
+        # We can resolve the object if we are inside the final token of a sequence of the form:
+        # ([TOKEN_NAME|TOKEN_BUILTIN_CONSTANT] TOKEN_DOT)* (TOKEN_NAME|TOKEN_KEYWORD|TOKEN_BUILTIN_CONSTANT)
+        #
+        # We work backwards from the last name, and build a list of names, then resolve
+        # that list of names against the scope
+        
+        iter = self._get_iter(line, index)
+        if iter == None:
+            return None
+        
+        if not (iter.token_type == TOKEN_KEYWORD or
+                iter.token_type == TOKEN_NAME or
+                iter.token_type == TOKEN_BUILTIN_CONSTANT):
+            return None
+
+        names = [self.lines[iter.line][iter.start:iter.end]]
+        try:
+            iter.prev()
+        except StopIteration:
+            pass
+
+        while iter.token_type == TOKEN_DOT:
+            try:
+                iter.prev()
+            except StopIteration:
+                return None
+
+            if iter.token_type != TOKEN_NAME and iter.token_type != TOKEN_BUILTIN_CONSTANT:
+                return None
+
+            names.insert(0, self.lines[iter.line][iter.start:iter.end])
+
+        return self.__resolve_names(names, scope)
+
     def __repr__(self):
         return "TokenizedStatement" + repr([([(t[0], line[t[1]:t[2]]) for t in tokens], stack) for line, tokens, stack in zip(self.lines, self.tokens, self.stacks)])
             
@@ -600,6 +661,23 @@ if __name__ == '__main__':
     test_multiline_completion(["(obj.", "m"], 1, 0, ['method', '__doc__', '__module__'])
     test_multiline_completion(["(obj.", "m"], 1, 1, ['method'])
     
+    ### Tests of get_object_at_location()
+
+    def test_object_at_location(line, index, expected):
+        ts = TokenizedStatement()
+        ts.set_lines([line])
+        obj = ts.get_object_at_location(0, index, scope)
+        if obj != expected:
+            print "For %s/%d, got %s, expected %s" % (line,index,obj,expected)
+            failed = True
+
+    test_object_at_location("a", 0, 1)
+    test_object_at_location("a", 1, None)
+    test_object_at_location("obj.method", 0, scope['obj'])
+    test_object_at_location("obj.method", 1, scope['obj'])
+    test_object_at_location("obj.method", 4, scope['obj'].method)
+    test_object_at_location("obj.met", 4, None)
+
     if failed:
         sys.exit(1)
     else:
