@@ -200,6 +200,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             tokenize.TOKEN_BACKQUOTE    : punctuation_tag,
             tokenize.TOKEN_COLON        : punctuation_tag,
             tokenize.TOKEN_DOT          : punctuation_tag,
+            tokenize.TOKEN_EQUAL        : punctuation_tag,
+            tokenize.TOKEN_AUGEQUAL     : punctuation_tag,            
             tokenize.TOKEN_NUMBER       : None,
             tokenize.TOKEN_JUNK         : self.create_tag(underline="error"),
         }
@@ -1323,10 +1325,16 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         if not isinstance(chunk, StatementChunk):
             return None, None, None
 
+        if chunk.statement != None and chunk.statement.result_scope != None:
+            result_scope = chunk.statement.result_scope
+        else:
+            result_scope = None
+        
         obj, start_line, start_index, end_line, end_index = \
             chunk.tokenized.get_object_at_location(location.get_line() - chunk.start,
                                                    location.get_line_index(),
-                                                   self.__get_last_scope(chunk))
+                                                   self.__get_last_scope(chunk),
+                                                   result_scope)
 
         if obj == None:
             return None, None, None

@@ -420,13 +420,14 @@ class TokenizedStatement(object):
 
         return self.__sort_completions(result)
             
-    def get_object_at_location(self, line, index, scope):
+    def get_object_at_location(self, line, index, scope, result_scope=None):
         """Find the object at a particular location within the statement.
 
         Returns a tuple of (object, token_start_line, token_start_index, token_end_line, token_end_index)
         or None, None, None, None, None if there is no object
 
         scope -- scope dictionary to start resolving names from.
+        result_scope -- scope to resolve names from on the left side of an assignment
 
         """
 
@@ -470,6 +471,17 @@ class TokenizedStatement(object):
                 return NO_RESULT
 
             names.insert(0, self.lines[iter.line][iter.start:iter.end])
+
+        if result_scope != None:
+            while True:
+                try:
+                    iter.next()
+                except StopIteration:
+                    break
+                
+                if iter.token_type == TOKEN_EQUAL or iter.token_type == TOKEN_AUGEQUAL:
+                    scope = result_scope
+                    break
 
         obj = self.__resolve_names(names, scope)
         if obj != None:

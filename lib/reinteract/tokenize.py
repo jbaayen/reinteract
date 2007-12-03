@@ -17,7 +17,9 @@ TOKEN_RBRACE       = 13
 TOKEN_BACKQUOTE    = 14
 TOKEN_COLON        = 15
 TOKEN_DOT          = 16
-TOKEN_BUILTIN_CONSTANT = 17
+TOKEN_EQUAL        = 17
+TOKEN_AUGEQUAL     = 18
+TOKEN_BUILTIN_CONSTANT = 19
 
 FLAG_OPEN = 1
 FLAG_CLOSE = 2
@@ -42,7 +44,20 @@ _PUNCTUATION_TOKENS = {
     '{' : TOKEN_LBRACE,
     '}' : TOKEN_RBRACE,
     '`' : TOKEN_BACKQUOTE,
-    ':' : TOKEN_COLON
+    ':' : TOKEN_COLON,
+    '=' : TOKEN_EQUAL,
+    '+=' : TOKEN_AUGEQUAL,
+    '-=' : TOKEN_AUGEQUAL,
+    '*=' : TOKEN_AUGEQUAL,
+    '/=' : TOKEN_AUGEQUAL,
+    '%=' : TOKEN_AUGEQUAL,
+    '&=' : TOKEN_AUGEQUAL,
+    '|=' : TOKEN_AUGEQUAL,
+    '^=' : TOKEN_AUGEQUAL,
+    '<<=' : TOKEN_AUGEQUAL,
+    '>>=' : TOKEN_AUGEQUAL,
+    '**=' : TOKEN_AUGEQUAL,
+    '//=' : TOKEN_AUGEQUAL
 }
 
 _PUNCTUATION_MATCH = {
