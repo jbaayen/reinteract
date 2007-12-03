@@ -1,3 +1,4 @@
+import inspect
 import gtk
 
 from doc_popup import DocPopup
@@ -121,6 +122,21 @@ class CompletionPopup(gtk.Window):
             return
 
         obj = model.get_value(iter, 2)
+
+        # Long term it would be nice to preview the value of the
+        # object, but it's distracting to show the class docs on int
+        # for every integer constant, etc, which is what the DocPopup
+        # does currently.
+        if (obj == None or
+            not (inspect.ismodule(obj) or
+                 inspect.isclass(obj) or
+                 inspect.isroutine(obj) or
+                 inspect.isgetsetdescriptor(obj) or
+                 inspect.ismemberdescriptor(obj) or
+                 isinstance(obj, property))):
+            self.__doc_popup.popdown()
+            return
+        
         self.__doc_popup.set_target(obj)
         self.__doc_popup.popup()
 

@@ -386,7 +386,16 @@ class TokenizedStatement(object):
         else:
             for completion in dir(object):
                 if completion.startswith(to_complete):
-                    result.append((completion, completion[len(to_complete):], getattr(object, completion)))
+                    klass = getattr(object, '__class__')
+                    
+                    # We special case these because obj.__class__.__module__/__doc__
+                    # are also a strings, not a method/property
+                    if completion != '__module__' and completion != '__doc__':
+                        object_completed_to = getattr(klass, completion, None)
+                    else:
+                        object_completed_to = None
+                        
+                    result.append((completion, completion[len(to_complete):], object_completed_to))
 
         return self.__sort_completions(result)
             
