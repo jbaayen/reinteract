@@ -1,8 +1,10 @@
 #!/usr/bin/python
+import gobject
 import gtk
 import re
 from shell_buffer import ShellBuffer, StatementChunk, ResultChunk, CommentChunk, BlankChunk
 from completion_popup import CompletionPopup
+from doc_popup import DocPopup
 import sanitize_textview_ipc
 
 class ShellView(gtk.TextView):
@@ -11,6 +13,8 @@ class ShellView(gtk.TextView):
         'expose-event': 'override',
         'focus-out-event': 'override',
         'key-press-event': 'override',
+        'leave-notify-event': 'override',
+        'motion-notify-event': 'override',
         'realize': 'override'
    }
         
@@ -27,7 +31,15 @@ class ShellView(gtk.TextView):
         # do simply and reasonable things for cut-and-paste and DND
         sanitize_textview_ipc.sanitize_view(self)
 
+        self.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
+
         self.__completion_popup = CompletionPopup(self)
+        self.__doc_popup = DocPopup()
+        self.__mouse_over_object = None
+        self.__mouse_over_timeout = None
+
+        buf = self.get_buffer()
+        self.__mouse_over_start = buf.create_mark(None, buf.get_start_iter(), True)
 
     def paint_chunk(self, cr, area, chunk, fill_color, outline_color):
         buf = self.get_buffer()
@@ -258,6 +270,7 @@ class ShellView(gtk.TextView):
             
     def do_focus_out_event(self, event):
         self.__hide_completion()
+        self.__doc_popup.popdown()
         return gtk.TextView.do_focus_out_event(self, event)
 
     def do_key_press_event(self, event):
@@ -320,6 +333,8 @@ class ShellView(gtk.TextView):
             if self.__completion_popup.showing:
                 self.__completion_popup.popdown()
             else:
+                if self.__doc_popup.showing:
+                    self.__doc_popup.popdown()
                 self.__completion_popup.popup()
             return True
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
@@ -349,6 +364,46 @@ class ShellView(gtk.TextView):
             return True
         else:
             return False
+
+    def __show_mouse_over(self):
+        if self.__completion_popup.showing:
+            return
+        
+        self.__doc_popup.set_target(self.__mouse_over_object)
+        location = self.get_buffer().get_iter_at_mark(self.__mouse_over_start)
+        self.__doc_popup.position_at_location(self, location)
+        self.__doc_popup.popup()
+        
+    def __stop_mouse_over(self):
+        if self.__mouse_over_timeout:
+            gobject.source_remove(self.__mouse_over_timeout)
+            self.__mouse_over_timeout = None
+            
+        self.__mouse_over_object = None
+        
+    def do_motion_notify_event(self, event):
+        if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT):
+            iter, _ = self.get_iter_at_position(int(event.x), int(event.y))
+            obj, start, end = self.get_buffer().get_object_at_location(iter)
+
+            if obj is self.__mouse_over_object:
+                return
+            
+            self.__stop_mouse_over()
+            self.__doc_popup.popdown()
+            if obj != None:
+                self.get_buffer().move_mark(self.__mouse_over_start, start)
+                
+                self.__mouse_over_object = obj
+                self.__mouse_over_timeout = gobject.timeout_add(self.get_settings().get_property('gtk-tooltip-timeout'),
+                                                                self.__show_mouse_over)
+
+        return gtk.TextView.do_motion_notify_event(self, event)
+
+    def do_leave_notify_event(self, event):
+        self.__stop_mouse_over()
+        self.__doc_popup.popdown()
+        return False
 
     def do_backspace(self):
         buf = self.get_buffer()
