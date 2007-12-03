@@ -1313,15 +1313,28 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             return ts.find_completions(0, 0, scope)
 
     def get_object_at_location(self, location):
-        """Returns the object at a particular location within the buffer"""
+        """Find the object at a particular location within the buffer
+
+        Returns a tuple of (location, tuple_start_iter, tuple_end_iter) or (None, None, None)
+
+        """
         
         chunk = self.__chunks[location.get_line()]
         if not isinstance(chunk, StatementChunk):
-            return None
+            return None, None, None
 
-        return chunk.tokenized.get_object_at_location(location.get_line() - chunk.start,
-                                                      location.get_line_index(),
-                                                      self.__get_last_scope(chunk))
+        obj, start_line, start_index, end_line, end_index = \
+            chunk.tokenized.get_object_at_location(location.get_line() - chunk.start,
+                                                   location.get_line_index(),
+                                                   self.__get_last_scope(chunk))
+
+        if obj == None:
+            return None, None, None
+
+        start_iter = self.get_iter_at_line_index(chunk.start + start_line, start_index)
+        end_iter = self.get_iter_at_line_index(chunk.end + end_line, end_index)
+
+        return obj, start_iter, end_iter
 
 if __name__ == '__main__':
     S = StatementChunk

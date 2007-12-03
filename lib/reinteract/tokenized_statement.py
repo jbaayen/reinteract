@@ -1,3 +1,4 @@
+import inspect
 from tokenize import *
 
 class _TokenIter(object):
@@ -20,6 +21,7 @@ class _TokenIter(object):
                     raise StopIteration("Already at beginning")
                 if len(self.statement.tokens[l]) > 0:
                     break
+                l -= 1
             self.line = l
             self.i = len(self.statement.tokens[l]) - 1
         self.__update()
@@ -34,6 +36,7 @@ class _TokenIter(object):
                     raise StopIteration("Already at end")
                 if len(self.statement.tokens[l]) > 0:
                     break
+                l += 1
             self.line = l
             self.i = 0
         self.__update()
@@ -402,11 +405,13 @@ class TokenizedStatement(object):
         else:
             for completion in dir(object):
                 if completion.startswith(to_complete):
-                    klass = getattr(object, '__class__')
-                    
+
+                    if inspect.ismodule(object):
+                        object_completed_to = getattr(object, completion, None)
                     # We special case these because obj.__class__.__module__/__doc__
                     # are also a strings, not a method/property
-                    if completion != '__module__' and completion != '__doc__':
+                    elif completion != '__module__' and completion != '__doc__':
+                        klass = getattr(object, '__class__')
                         object_completed_to = getattr(klass, completion, None)
                     else:
                         object_completed_to = None
@@ -416,15 +421,20 @@ class TokenizedStatement(object):
         return self.__sort_completions(result)
             
     def get_object_at_location(self, line, index, scope):
-        """Returns the object at a particular location within the statement
+        """Find the object at a particular location within the statement.
+
+        Returns a tuple of (object, token_start_line, token_start_index, token_end_line, token_end_index)
+        or None, None, None, None, None if there is no object
 
         scope -- scope dictionary to start resolving names from.
 
         """
 
+        NO_RESULT = None, None, None, None, None
+
         # Names within an import statement aren't there yet
         if self.__statement_is_import():
-            return None
+            return NO_RESULT
         
         # We can resolve the object if we are inside the final token of a sequence of the form:
         # ([TOKEN_NAME|TOKEN_BUILTIN_CONSTANT] TOKEN_DOT)* (TOKEN_NAME|TOKEN_KEYWORD|TOKEN_BUILTIN_CONSTANT)
@@ -434,12 +444,15 @@ class TokenizedStatement(object):
         
         iter = self._get_iter(line, index)
         if iter == None:
-            return None
+            return NO_RESULT
         
         if not (iter.token_type == TOKEN_KEYWORD or
                 iter.token_type == TOKEN_NAME or
                 iter.token_type == TOKEN_BUILTIN_CONSTANT):
-            return None
+            return NO_RESULT
+
+        start_index = iter.start
+        end_index = iter.end
 
         names = [self.lines[iter.line][iter.start:iter.end]]
         try:
@@ -451,14 +464,18 @@ class TokenizedStatement(object):
             try:
                 iter.prev()
             except StopIteration:
-                return None
+                return NO_RESULT
 
             if iter.token_type != TOKEN_NAME and iter.token_type != TOKEN_BUILTIN_CONSTANT:
-                return None
+                return NO_RESULT
 
             names.insert(0, self.lines[iter.line][iter.start:iter.end])
 
-        return self.__resolve_names(names, scope)
+        obj = self.__resolve_names(names, scope)
+        if obj != None:
+            return obj, line, start_index, line, end_index
+        else:
+            return NO_RESULT
 
     def __repr__(self):
         return "TokenizedStatement" + repr([([(t[0], line[t[1]:t[2]]) for t in tokens], stack) for line, tokens, stack in zip(self.lines, self.tokens, self.stacks)])
@@ -666,7 +683,7 @@ if __name__ == '__main__':
     def test_object_at_location(line, index, expected):
         ts = TokenizedStatement()
         ts.set_lines([line])
-        obj = ts.get_object_at_location(0, index, scope)
+        obj, _, _, _, _ = ts.get_object_at_location(0, index, scope)
         if obj != expected:
             print "For %s/%d, got %s, expected %s" % (line,index,obj,expected)
             failed = True
