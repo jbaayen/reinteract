@@ -25,9 +25,15 @@ class DocPopup(Popup):
 
         self.__view = gtk.TextView()
         self.__view.set_editable(False)
-        self.__view.modify_font(self.__font)
-        self.__view.modify_base(gtk.STATE_NORMAL, gtk.gdk.Color(0xffff, 0xffff, 0xbfbf))
+        self.__view.set_border_width(5)
+        
+        bg_color = gtk.gdk.Color(0xffff, 0xffff, 0xbfbf)
+        self.__view.modify_base(gtk.STATE_NORMAL, bg_color)
+        # The background color is used for the text view's border width
+        self.__view.modify_bg(gtk.STATE_NORMAL, bg_color)
+        
         self.__view.modify_text(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
+        self.__view.modify_font(self.__font)
 
         if False:
             sw = gtk.ScrolledWindow()
