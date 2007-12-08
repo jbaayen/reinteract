@@ -420,7 +420,7 @@ class TokenizedStatement(object):
 
         return self.__sort_completions(result)
             
-    def get_object_at_location(self, line, index, scope, result_scope=None):
+    def get_object_at_location(self, line, index, scope, result_scope=None, include_adjacent=False):
         """Find the object at a particular location within the statement.
 
         Returns a tuple of (object, token_start_line, token_start_index, token_end_line, token_end_index)
@@ -428,6 +428,9 @@ class TokenizedStatement(object):
 
         scope -- scope dictionary to start resolving names from.
         result_scope -- scope to resolve names from on the left side of an assignment
+        include_adjacent -- if False, then line/index identifies a character in the buffer. If True,
+           then line/index identifies a position between characters, and symbols before or after that
+           position are included.
 
         """
 
@@ -444,6 +447,8 @@ class TokenizedStatement(object):
         # that list of names against the scope
         
         iter = self._get_iter(line, index)
+        if iter == None and include_adjacent and index > 0:
+            iter = self._get_iter(line, index - 1)
         if iter == None:
             return NO_RESULT
         
@@ -692,10 +697,10 @@ if __name__ == '__main__':
     
     ### Tests of get_object_at_location()
 
-    def test_object_at_location(line, index, expected):
+    def test_object_at_location(line, index, expected, include_adjacent=False):
         ts = TokenizedStatement()
         ts.set_lines([line])
-        obj, _, _, _, _ = ts.get_object_at_location(0, index, scope)
+        obj, _, _, _, _ = ts.get_object_at_location(0, index, scope, include_adjacent=include_adjacent)
         if obj != expected:
             print "For %s/%d, got %s, expected %s" % (line,index,obj,expected)
             failed = True
@@ -706,6 +711,10 @@ if __name__ == '__main__':
     test_object_at_location("obj.method", 1, scope['obj'])
     test_object_at_location("obj.method", 4, scope['obj'].method)
     test_object_at_location("obj.met", 4, None)
+
+    test_object_at_location("c a b", 2, 1, include_adjacent=True)
+    test_object_at_location("c a b", 3, None, include_adjacent=False)
+    test_object_at_location("c a b", 3, 1, include_adjacent=True)
 
     if failed:
         sys.exit(1)

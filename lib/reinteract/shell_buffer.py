@@ -1317,6 +1317,10 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
     def get_object_at_location(self, location):
         """Find the object at a particular location within the buffer
 
+        include_adjacent -- if False, then location identifies a character in the buffer. If True,
+           then location identifies a position between characters, and symbols before or after that
+           position are included.
+           
         Returns a tuple of (location, tuple_start_iter, tuple_end_iter) or (None, None, None)
 
         """
