@@ -1,6 +1,7 @@
 import pango
 import gtk
 
+import data_format
 import doc_format
 from popup import Popup
 
@@ -46,6 +47,9 @@ class DocPopup(Popup):
             
         buf = self.__view.get_buffer()
         self.__bold_tag = buf.create_tag(None, weight=pango.WEIGHT_BOLD)
+        self.__heading_type_tag = buf.create_tag(None, weight=pango.WEIGHT_BOLD, pixels_below_lines=5)
+        self.__inline_type_tag = self.__bold_tag
+        self.__value_tag = buf.create_tag(None, family="monospace")
 
         self.get_child().show_all()
         
@@ -62,7 +66,10 @@ class DocPopup(Popup):
         buf.delete(buf.get_start_iter(), buf.get_end_iter())
 
         if target != None:
-            doc_format.insert_docs(buf, buf.get_start_iter(), target, self.__bold_tag)
+            if data_format.is_data_object(target):
+                data_format.insert_formatted(buf, buf.get_start_iter(), target, self.__heading_type_tag, self.__inline_type_tag, self.__value_tag)
+            else:
+                doc_format.insert_docs(buf, buf.get_start_iter(), target, self.__bold_tag)
 
     def do_size_request(self, request):
         child_width, child_height = self.child.size_request()

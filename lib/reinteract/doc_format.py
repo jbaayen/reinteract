@@ -1,17 +1,11 @@
 import re
-import inspect
 import pydoc
 import gtk
 
+from data_format import insert_with_tag, is_data_object
+
 BOLD_RE = re.compile("(?:(.)\b(.))+")
 STRIP_BOLD_RE = re.compile("(.)\b(.)")
-
-def _insert_with_tag(buf, iter, text, tag):
-    mark = buf.create_mark(None, iter, True)
-    buf.insert(iter, text)
-    start = buf.get_iter_at_mark(mark)
-    buf.apply_tag(tag, start, iter)
-    buf.delete_mark(mark)
 
 def insert_docs(buf, iter, obj, bold_tag):
     """Insert documentation about obj into a gtk.TextBuffer
@@ -24,13 +18,7 @@ def insert_docs(buf, iter, obj, bold_tag):
     """
     
     # If the routine is an instance, we get help on the type instead
-    # (Test borrowed from pydoc.py)
-    if not (inspect.ismodule(obj) or
-            inspect.isclass(obj) or
-            inspect.isroutine(obj) or
-            inspect.isgetsetdescriptor(obj) or
-            inspect.ismemberdescriptor(obj) or
-            isinstance(obj, property)):
+    if not is_data_object(obj):
         obj = type(obj)
         
     name = getattr(obj, '__name__', None)
@@ -51,5 +39,5 @@ def insert_docs(buf, iter, obj, bold_tag):
             break
 
         buf.insert(iter, document[pos:m.start()])
-        _insert_with_tag(buf, iter, STRIP_BOLD_RE.sub(lambda m: m.group(1), m.group()), bold_tag)
+        insert_with_tag(buf, iter, STRIP_BOLD_RE.sub(lambda m: m.group(1), m.group()), bold_tag)
         pos = m.end()

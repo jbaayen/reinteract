@@ -1,8 +1,8 @@
-import inspect
 import gtk
 
 from popup import Popup
 from doc_popup import DocPopup
+from data_format import is_data_object
 
 # Space between the line of text where the cursor is and the popup
 VERTICAL_GAP = 5
@@ -91,13 +91,7 @@ class CompletionPopup(Popup):
         # object, but it's distracting to show the class docs on int
         # for every integer constant, etc, which is what the DocPopup
         # does currently.
-        if (obj == None or
-            not (inspect.ismodule(obj) or
-                 inspect.isclass(obj) or
-                 inspect.isroutine(obj) or
-                 inspect.isgetsetdescriptor(obj) or
-                 inspect.ismemberdescriptor(obj) or
-                 isinstance(obj, property))):
+        if (obj == None or is_data_object(obj)):
             self.__doc_popup.popdown()
             return
         
