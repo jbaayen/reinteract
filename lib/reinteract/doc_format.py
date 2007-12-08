@@ -18,7 +18,7 @@ def insert_docs(buf, iter, obj, bold_tag):
     """
     
     # If the routine is an instance, we get help on the type instead
-    if not is_data_object(obj):
+    if is_data_object(obj):
         obj = type(obj)
         
     name = getattr(obj, '__name__', None)
