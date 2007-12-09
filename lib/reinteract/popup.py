@@ -19,6 +19,7 @@ class Popup(gtk.Window):
         self.set_border_width(1)
 
         self.showing = False
+        self.focused = False
 
     def do_expose_event(self, event):
         gtk.Window.do_expose_event(self, event)
@@ -78,5 +79,12 @@ class Popup(gtk.Window):
 
         self.move(x + width + HORIZONTAL_GAP, y)
 
+    def focus(self):
+        """Act as if the focus is on the popup (the parent still needs to send events to it )"""
 
-    
+        focus_in = gtk.gdk.Event(gtk.gdk.FOCUS_CHANGE)
+        focus_in.window = self.window
+        focus_in.in_ = True
+        self.event(focus_in)
+        
+        self.focused = True

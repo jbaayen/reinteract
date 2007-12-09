@@ -52,7 +52,7 @@ class CompletionPopup(Popup):
         # the window background to white
         self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(65535, 65535, 65535))
 
-        self.__doc_popup= DocPopup(fixed_width=True, fixed_height=True, max_height=HEIGHT)
+        self.__doc_popup= DocPopup(fixed_width=True, fixed_height=True, max_height=HEIGHT, can_focus=False)
 
         self._in_change = False
         self.showing = False
@@ -135,13 +135,8 @@ class CompletionPopup(Popup):
 
         self.__doc_popup.position_next_to_window(self)
         self.__update_doc_popup()
-        
-        # Send a synthetic focus in so that the TreeView thinks it is
-        # focused
-        focus_in = gtk.gdk.Event(gtk.gdk.FOCUS_CHANGE)
-        focus_in.window = self.window
-        focus_in.in_ = True
-        self.event(focus_in)
+
+        self.focus()
 
     def update(self):
         """Update the completion popup after the cursor is moved, or text is inserted.
@@ -168,7 +163,8 @@ class CompletionPopup(Popup):
             return
 
         self.showing = False
-
+        self.focused = False
+        
         if self.__doc_popup.showing:
             self.__doc_popup.popdown()
         
@@ -197,6 +193,3 @@ class CompletionPopup(Popup):
             return True
 
         return False
-
-    
-    

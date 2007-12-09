@@ -12,6 +12,7 @@ class ShellView(gtk.TextView):
         'backspace' : 'override',
         'expose-event': 'override',
         'focus-out-event': 'override',
+        'button-press-event': 'override',
         'key-press-event': 'override',
         'leave-notify-event': 'override',
         'motion-notify-event': 'override',
@@ -273,11 +274,38 @@ class ShellView(gtk.TextView):
         self.__doc_popup.popdown()
         return gtk.TextView.do_focus_out_event(self, event)
 
+    def do_button_press_event(self, event):
+        self.__doc_popup.popdown()
+            
+        return gtk.TextView.do_button_press_event(self, event)
+    
     def do_key_press_event(self, event):
         buf = self.get_buffer()
 
-        if self.__completion_popup.showing and self.__completion_popup.on_key_press_event(event):
+        if self.__completion_popup.focused and self.__completion_popup.on_key_press_event(event):
             return True
+        
+        if self.__doc_popup.focused:
+            self.__doc_popup.on_key_press_event(event)
+            return True
+
+        if event.keyval in (gtk.keysyms.F2, gtk.keysyms.KP_F2):
+            self.__hide_completion()
+
+            if self.__doc_popup.showing:
+                self.__doc_popup.focus()
+            else:
+                insert = buf.get_iter_at_mark(buf.get_insert())
+                obj, start, end = buf.get_object_at_location(insert, include_adjacent=True)
+                if obj != None:
+                    self.__stop_mouse_over()
+                    self.__doc_popup.set_target(obj)
+                    self.__doc_popup.position_at_location(self, start)
+                    self.__doc_popup.popup_focused()
+            
+            return True
+        
+        self.__doc_popup.popdown()
         
         if event.keyval in (gtk.keysyms.KP_Enter, gtk.keysyms.Return):
             self.__hide_completion()
@@ -366,6 +394,8 @@ class ShellView(gtk.TextView):
             return False
 
     def __show_mouse_over(self):
+        self.__mouse_over_timeout = None
+        
         if self.__completion_popup.showing:
             return
         
@@ -373,6 +403,8 @@ class ShellView(gtk.TextView):
         location = self.get_buffer().get_iter_at_mark(self.__mouse_over_start)
         self.__doc_popup.position_at_location(self, location)
         self.__doc_popup.popup()
+
+        return False
         
     def __stop_mouse_over(self):
         if self.__mouse_over_timeout:
@@ -382,7 +414,7 @@ class ShellView(gtk.TextView):
         self.__mouse_over_object = None
         
     def do_motion_notify_event(self, event):
-        if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT):
+        if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT) and not self.__doc_popup.focused:
             iter, _ = self.get_iter_at_position(int(event.x), int(event.y))
             obj, start, end = self.get_buffer().get_object_at_location(iter)
 
@@ -402,7 +434,8 @@ class ShellView(gtk.TextView):
 
     def do_leave_notify_event(self, event):
         self.__stop_mouse_over()
-        self.__doc_popup.popdown()
+        if not self.__doc_popup.focused:
+            self.__doc_popup.popdown()
         return False
 
     def do_backspace(self):
