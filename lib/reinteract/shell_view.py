@@ -418,18 +418,16 @@ class ShellView(gtk.TextView):
             iter, _ = self.get_iter_at_position(int(event.x), int(event.y))
             obj, start, end = self.get_buffer().get_object_at_location(iter)
 
-            if obj is self.__mouse_over_object:
-                return
-            
-            self.__stop_mouse_over()
-            self.__doc_popup.popdown()
-            if obj != None:
-                self.get_buffer().move_mark(self.__mouse_over_start, start)
+            if not obj is self.__mouse_over_object:
+                self.__stop_mouse_over()
+                self.__doc_popup.popdown()
+                if obj != None:
+                    self.get_buffer().move_mark(self.__mouse_over_start, start)
                 
-                self.__mouse_over_object = obj
-                self.__mouse_over_timeout = gobject.timeout_add(self.get_settings().get_property('gtk-tooltip-timeout'),
-                                                                self.__show_mouse_over)
-
+                    self.__mouse_over_object = obj
+                    self.__mouse_over_timeout = gobject.timeout_add(self.get_settings().get_property('gtk-tooltip-timeout'),
+                                                                    self.__show_mouse_over)
+                
         return gtk.TextView.do_motion_notify_event(self, event)
 
     def do_leave_notify_event(self, event):
