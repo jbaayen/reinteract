@@ -447,14 +447,20 @@ class TokenizedStatement(object):
         # that list of names against the scope
         
         iter = self._get_iter(line, index)
+        if iter != None and not (iter.token_type == TOKEN_KEYWORD or
+                                 iter.token_type == TOKEN_NAME or
+                                 iter.token_type == TOKEN_BUILTIN_CONSTANT):
+            iter = None
+        
         if iter == None and include_adjacent and index > 0:
             iter = self._get_iter(line, index - 1)
+            
+            if iter != None and not (iter.token_type == TOKEN_KEYWORD or
+                                     iter.token_type == TOKEN_NAME or
+                                     iter.token_type == TOKEN_BUILTIN_CONSTANT):
+                iter = None
+                
         if iter == None:
-            return NO_RESULT
-        
-        if not (iter.token_type == TOKEN_KEYWORD or
-                iter.token_type == TOKEN_NAME or
-                iter.token_type == TOKEN_BUILTIN_CONSTANT):
             return NO_RESULT
 
         start_index = iter.start
