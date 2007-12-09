@@ -1314,7 +1314,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             ts.set_lines([''])
             return ts.find_completions(0, 0, scope)
 
-    def get_object_at_location(self, location):
+    def get_object_at_location(self, location, include_adjacent=False):
         """Find the object at a particular location within the buffer
 
         include_adjacent -- if False, then location identifies a character in the buffer. If True,
@@ -1333,12 +1333,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             result_scope = chunk.statement.result_scope
         else:
             result_scope = None
-        
+
         obj, start_line, start_index, end_line, end_index = \
             chunk.tokenized.get_object_at_location(location.get_line() - chunk.start,
                                                    location.get_line_index(),
                                                    self.__get_last_scope(chunk),
-                                                   result_scope)
+                                                   result_scope, include_adjacent)
 
         if obj == None:
             return None, None, None
