@@ -303,7 +303,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 self.__chunks[i] = chunk
                 self.__lines[i] = lines[i - chunk_start]
                 # This is O(n^2) inefficient
-                self.__apply_tag_to_chunk(self.__comment_tag, chunk)
+                self.__apply_tag_to_chunk(self.__comment_tag, chunk, remove_old=True)
         
         return changed_chunks
 
@@ -1119,8 +1119,10 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                     end.set_line_index(end_index)
                     self.apply_tag(tag, iter, end)
                 
-    def __apply_tag_to_chunk(self, tag, chunk):
+    def __apply_tag_to_chunk(self, tag, chunk, remove_old=False):
         start, end = self.__get_chunk_bounds(chunk)
+        if remove_old:
+            self.remove_all_tags(start, end)
         self.apply_tag(tag, start, end)
 
     def __remove_tag_from_chunk(self, tag, chunk):
