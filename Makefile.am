@@ -2,7 +2,7 @@ LIST_END =
 
 reinteractdir = $(bindir)
 dist_reinteract_SCRIPTS = bin/reinteract
-dist_noinst_SCRIPTS = bin/uninst
+dist_noinst_SCRIPTS = bin/uninst.py
 
 reinteractpkgdir = $(REINTERACT_PACKAGE_DIR)
 reinteractpkg_PYTHON =                                                        \
