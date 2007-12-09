@@ -411,8 +411,13 @@ class TokenizedStatement(object):
                     # We special case these because obj.__class__.__module__/__doc__
                     # are also a strings, not a method/property
                     elif completion != '__module__' and completion != '__doc__':
-                        klass = getattr(object, '__class__')
-                        object_completed_to = getattr(klass, completion, None)
+                        # Using the attribute of the class over the attribute of
+                        # the object gives us better docs on properties
+                        try:
+                            klass = getattr(object, '__class__')
+                            object_completed_to = getattr(klass, completion)
+                        except AttributeError:
+                            object_completed_to = getattr(object, completion)
                     else:
                         object_completed_to = None
                         
