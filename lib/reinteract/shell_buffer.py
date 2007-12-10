@@ -284,7 +284,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                     self.__changed_chunks.remove(chunk)
                 except KeyError:
                     pass
-                self.__mark_rest_for_execute(line + 1)
+                if isinstance(chunk, StatementChunk):
+                    self.__mark_rest_for_execute(line + 1)
 
     def __set_line(self, i, chunk, text):
         old_chunk = self.__chunks[i]
