@@ -118,9 +118,12 @@ def on_new(action):
 
 def load(filename):
     notebook.set_path([os.path.dirname(os.path.abspath(filename))])
-    
-    buf.load(filename)
-    calculate()
+    if not os.path.exists(filename):
+        buf.filename = filename
+        update_title()
+    else:
+        buf.load(filename)
+        calculate()
 
 def on_open(action):
     if not confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
