@@ -171,10 +171,38 @@ def save_as():
 def on_save_as(action):
     save_as()
 
+def find_program_in_path(progname):
+    try:
+        path = os.environ['PATH']
+    except KeyError:
+        path = os.defpath
+
+    for dir in path.split(os.pathsep):
+        p = os.path.join(dir, progname)
+        if os.path.exists(p):
+            return p
+
+    return None
+
+def find_url_open_program():
+    for progname in ['xdg-open', 'htmlview', 'gnome-open']:
+        path = find_program_in_path(progname)
+        if path != None:
+            return path
+    return None
+    
+def open_url(dialog, url):
+    prog = find_url_open_program()
+    os.spawnl(os.P_NOWAIT, prog, prog, url)
+    
 def on_about(action):
+    if find_url_open_program() != None:
+        gtk.about_dialog_set_url_hook(open_url)
+    
     dialog = gtk.AboutDialog()
+    dialog.set_transient_for(w)
     dialog.set_name("Reinteract")
-    dialog.set_copyright("Copyright \302\251 2007 Owen Taylor")
+    dialog.set_copyright("Copyright \302\251 2007 Owen Taylor, Red Hat, Inc., and others")
     dialog.set_website("http://www.reinteract.org")
     dialog.connect("response", lambda d, r: d.destroy())
     dialog.run()
