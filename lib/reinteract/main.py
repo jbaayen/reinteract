@@ -171,6 +171,14 @@ def save_as():
 def on_save_as(action):
     save_as()
 
+def on_about(action):
+    dialog = gtk.AboutDialog()
+    dialog.set_name("Reinteract")
+    dialog.set_copyright("Copyright \302\251 2007 Owen Taylor")
+    dialog.set_website("http://www.reinteract.org")
+    dialog.connect("response", lambda d, r: d.destroy())
+    dialog.run()
+
 def calculate():
     buf.calculate()
 
@@ -189,6 +197,7 @@ action_group = gtk.ActionGroup("main")
 action_group.add_actions([
     ('file',    None,                "_File"),
     ('edit',    None,                "_Edit"),
+    ('help',   	None,                "_Help"),
     ('new',     gtk.STOCK_NEW,       None,         None,              None, on_new),
     ('open',    gtk.STOCK_OPEN,      None,         None,              None, on_open),
     ('save',    gtk.STOCK_SAVE,      None,         None,              None, on_save),
@@ -204,6 +213,7 @@ action_group.add_actions([
      on_copy_as_doctests),
     ('paste',   gtk.STOCK_PASTE,     None,         None,              None, on_paste),
     ('delete',  gtk.STOCK_DELETE,    None,         None,              None, on_delete),
+    ('about',   gtk.STOCK_ABOUT,      None,         None,              None, on_about),
     ('calculate', gtk.STOCK_REFRESH, "_Calculate", '<control>Return', None, on_calculate),
 ])
 
@@ -234,6 +244,9 @@ ui_string="""
          <menuitem action="delete"/>
          <separator/>
          <menuitem action="calculate"/>
+      </menu>
+	<menu action="help">
+        <menuitem action="about"/>
       </menu>
    </%(menu_element)s>
    <toolbar name="ToolBar">
