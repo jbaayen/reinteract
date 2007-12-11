@@ -1397,7 +1397,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             return None, None, None
 
         start_iter = self.get_iter_at_line_index(chunk.start + start_line, start_index)
-        end_iter = self.get_iter_at_line_index(chunk.end + end_line, end_index)
+        end_iter = self.get_iter_at_line_index(chunk.start + end_line, end_index)
 
         return obj, start_iter, end_iter
 
