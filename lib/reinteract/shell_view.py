@@ -425,8 +425,11 @@ class ShellView(gtk.TextView):
                     self.get_buffer().move_mark(self.__mouse_over_start, start)
                 
                     self.__mouse_over_object = obj
-                    self.__mouse_over_timeout = gobject.timeout_add(self.get_settings().get_property('gtk-tooltip-timeout'),
-                                                                    self.__show_mouse_over)
+                    try:
+                        timeout = self.get_settings().get_property('gtk-tooltip-timeout')
+                    except TypeError: # GTK+ < 2.12
+                        timeout = 500
+                    self.__mouse_over_timeout = gobject.timeout_add(timeout, self.__show_mouse_over)
                 
         return gtk.TextView.do_motion_notify_event(self, event)
 
