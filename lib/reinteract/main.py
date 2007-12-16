@@ -216,8 +216,9 @@ def calculate():
     # This is a hack to work around the fact that scroll_mark_onscreen()
     # doesn't wait for a size-allocate cycle, so doesn't properly handle
     # embedded request widgets
-    w, h = view.size_request()
-    view.size_allocate((view.allocation.x, view.allocation.y, w, h))
+    view.size_request()
+    view.size_allocate((view.allocation.x, view.allocation.y,
+                        view.allocation.width, view.allocation.height))
     
     view.scroll_mark_onscreen(buf.get_insert())
     
