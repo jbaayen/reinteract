@@ -280,7 +280,8 @@ if __name__ == '__main__':
 
     expect('@', [(TOKEN_PUNCTUATION, '@')])
     expect('(', [(TOKEN_LPAREN, '(')], expected_stack=['('])
-    expect('<<=', [(TOKEN_PUNCTUATION, '<<=')])
+    expect('<<', [(TOKEN_PUNCTUATION, '<<')])
+    expect('<<=', [(TOKEN_AUGEQUAL, '<<=')])
     expect('<<>', [(TOKEN_PUNCTUATION, '<<'), (TOKEN_PUNCTUATION, '>')])
 
     expect("#foo", [(TOKEN_COMMENT, "#foo")])
