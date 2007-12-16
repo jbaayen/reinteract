@@ -54,6 +54,14 @@ class TokenizedStatement(object):
         self.stacks = []
 
     def set_lines(self, lines):
+        """Set the lines in the Tokenized statement
+
+        Returns None if nothing changed, otherwise returns a list of
+        lines that were added or changed. A return of [] means that
+        some lines were deleted, but none added or changed.
+
+        """
+        
         # We want to avoid retokenizing everything on pure insertions
         # to make editing not egregiously O(n^2); we don't care much
         # if we have to retokenize on other cases.
@@ -80,8 +88,8 @@ class TokenizedStatement(object):
             stacks[i] = old_stacks[i]
             i += 1
 
-        if i == len(lines): # Nothing to do
-            return changed_lines
+        if i == len(lines) and i == len(old_lines): # Nothing to do
+            return None
 
         # Iterate backwards, find an unchanged segment of lines at the end
 
@@ -541,7 +549,7 @@ if __name__ == '__main__':
     assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == [0, 1]
     expect(ts, [['(', '1', '+', '2', ['(']], ['+', '3', '+', '4', ')']])
     
-    assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == []
+    assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == None
     expect(ts, [['(', '1', '+', '2', ['(']], ['+', '3', '+', '4', ')']])
 
     assert ts.set_lines(['(1 + 2','+ 5 + 6)']) == [1]
@@ -555,6 +563,8 @@ if __name__ == '__main__':
 
     assert ts.set_lines(['((1 + 2', '+ 3 + 4)', '+ 5 + 6)']) == [1, 2]
     expect(ts, [['(', '(', '1', '+', '2', ['(', '(']], ['+', '3', '+', '4', ')', ['(']], ['+', '5', '+', '6', ')']])
+
+    assert ts.set_lines(['((1 + 2', '+ 3 + 4)']) == [] # truncation
 
     ### Tests of iterator functionality
     

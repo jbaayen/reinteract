@@ -52,8 +52,8 @@ class StatementChunk:
 
     def set_lines(self, lines):
         changed_lines = self.tokenized.set_lines(lines)
-        if changed_lines == []:
-            return changed_lines
+        if changed_lines == None:
+            return None
         
         self.needs_compile = True
         self.needs_execute = False
@@ -143,7 +143,7 @@ class ResultChunk:
     
 BLANK = re.compile(r'^\s*$')
 COMMENT = re.compile(r'^\s*#')
-CONTINUATION = re.compile(r'^\s+')
+CONTINUATION = re.compile(r'^(?:\s+|(?:except|finally)[^A-Za-z0-9_])')
 
 class ResultChunkFixupState:
     pass
@@ -219,7 +219,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__applying_undo = False
         self.__user_action_count = 0
 
-        self.__changed_chunks = set()
+        self.__changed_chunks = {}
         self.__freeze_changes_count = 0
 
         self.__have_pair = False
@@ -237,8 +237,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__freeze_changes_count -= 1
         if self.__freeze_changes_count == 0 and len(self.__changed_chunks) > 0:
             changed = self.__changed_chunks
-            self.__changed_chunks = set()
-            for chunk in sorted(changed, lambda a,  b: cmp(a.start, b.start)):
+            self.__changed_chunks = {}
+            for chunk in sorted(changed.keys(), lambda a,  b: cmp(a.start, b.start)):
+                changed_lines = changed[chunk]
+                if (changed_lines != None and len(changed_lines) > 0):
+                    self.__fontify_statement_lines(chunk, changed_lines)
+                
                 result = self.__find_result(chunk)
                 if result:
                     self.__apply_tag_to_chunk(self.__recompute_tag, result)
@@ -247,13 +251,23 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 if result:
                     self.emit("chunk-status-changed", result)
 
-    def __chunk_changed(self, chunk):
+    def __chunk_changed(self, chunk, changed_lines):
         if self.__freeze_changes_count == 0:
             # We could add a free/thaw pair, but it's better to catch our mistakes
             # and add the freeze/thaw pair at the outer level
             raise RuntimeException("Chunks changed without a __freeze_changes() pair")
         else:
-            self.__changed_chunks.add(chunk)
+            if chunk in self.__changed_chunks:
+                if changed_lines != None:
+                    old = self.__changed_chunks[chunk]
+                    if old == None:
+                        self.__changed_chunks[chunk] = changed_lines
+                    else:
+                        s = set(changed_lines)
+                        s.update(old)
+                        self.__changed_chunks[chunk] = sorted(s)
+            else:
+                self.__changed_chunks[chunk] = changed_lines
 
     def __mark_rest_for_execute(self, start_line):
         # Mark all statements starting from start_line as needing execution.
@@ -265,15 +279,15 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         for chunk in self.iterate_chunks(start_line):
             if isinstance(chunk, StatementChunk):
                 if chunk.mark_for_execute():
-                    self.__chunk_changed(chunk)
+                    self.__chunk_changed(chunk, None)
                 else:
                     # Everything after the first chunk that was previously
                     # marked for execution must also have been marked for
                     # execution, so we can stop
                     break
 
-    def __mark_for_compile(self, chunk):
-        self.__chunk_changed(chunk)
+    def __mark_changed_statement(self, chunk, changed_lines):
+        self.__chunk_changed(chunk, changed_lines)
         self.__mark_rest_for_execute(chunk.end + 1)
                             
     def __decrement_line_count(self, chunk, line):
@@ -281,7 +295,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             chunk.line_count -= 1
             if chunk.line_count == 0:
                 try:
-                    self.__changed_chunks.remove(chunk)
+                    del self.__changed_chunks[chunk]
                 except KeyError:
                     pass
                 if isinstance(chunk, StatementChunk):
@@ -341,7 +355,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             if old_statement != None:
                 # An old statement can only be turned into *one* new statement; this
                 # prevents us getting fooled if we split a statement
-                self.__clear_line_chunks(old_statement.start, old_statement.end)
+                self.__clear_line_chunks(max(old_statement.start, statement_end + 1), old_statement.end)
 
                 chunk = old_statement
                 old_needs_compile = chunk.needs_compile
@@ -360,13 +374,12 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             chunk.start = chunk_start
             chunk.end = statement_end
             self.__compute_nr_start(chunk)
-            self.__fontify_statement_lines(chunk, changed_lines)
             
             for i in xrange(chunk_start, statement_end + 1):
                 self.__set_line(i, chunk, lines[i - chunk_start])
 
-            if changed:
-                self.__mark_for_compile(chunk)
+            if changed or changed_lines != None and len(changed_lines) > 0:
+                self.__mark_changed_statement(chunk, changed_lines)
                 
         for i in xrange(statement_end + 1, chunk_start + len(lines)):
             line = lines[i - chunk_start]
@@ -565,9 +578,11 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
     def do_begin_user_action(self):
         self.__user_action_count += 1
         self.__undo_stack.begin_user_action()
+        self.__freeze_changes()
         
     def do_end_user_action(self):
         self.__user_action_count -= 1
+        self.__thaw_changes()
         self.__undo_stack.end_user_action()
 
     def __compute_nr_pos_from_chunk_offset(self, chunk, line, offset):
@@ -1605,6 +1620,21 @@ if __name__ == '__main__':
     buffer.calculate()
     delete(0, 1, 2, 1)
     expect_text("14")
+
+    # Test a deletion that splits the buffer into two (invalid) pieces
+    clear()
+    insert(0, 0, "try:\n    a = 1\nfinally:\n   print 'Done'")
+    buffer.calculate()
+    expect([S(0,3), R(4,4)])
+    delete(2, 7, 2, 8)
+    buffer.calculate()
+    expect([S(0,1), R(2,2), S(3,4), R(5,5)])
+
+    # Try an insertion that combines the two pieces and makes them valid
+    # again (combining across the error result chunk)
+    insert(3, 7, ":")
+    buffer.calculate()
+    expect([S(0,3), R(4,4)])
 
     # Undo tests
     clear()
