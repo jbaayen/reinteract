@@ -7,11 +7,16 @@ dist_noinst_SCRIPTS = bin/uninst.py
 reinteractpkgdir = $(REINTERACT_PACKAGE_DIR)
 reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/__init__.py                                \
+                    lib/reinteract/completion_popup.py                        \
                     lib/reinteract/custom_result.py                           \
+                    lib/reinteract/data_format.py                             \
+                    lib/reinteract/doc_format.py                              \
+                    lib/reinteract/doc_popup.py                               \
                     lib/reinteract/format_escaped.py                          \
                     lib/reinteract/iter_copy_from.py                          \
                     lib/reinteract/main.py                                    \
                     lib/reinteract/notebook.py                                \
+                    lib/reinteract/popup.py                                   \
                     lib/reinteract/rewrite.py                                 \
                     lib/reinteract/sanitize_textview_ipc.py                   \
                     lib/reinteract/shell_buffer.py                            \
