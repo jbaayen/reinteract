@@ -2,6 +2,7 @@
 import gobject
 import gtk
 import pango
+import logging
 import traceback
 import os
 import re
@@ -21,8 +22,8 @@ try:
         dest.copy_from(src)
 except AttributeError:
     from iter_copy_from import iter_copy_from as _copy_iter
-        
-_verbose = False
+
+_debug = logging.getLogger("ShellBuffer").debug
 
 class StatementChunk:
     def __init__(self, start=-1, end=-1, nr_start=-1):
@@ -664,9 +665,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 start_line += 1
                 is_pure_insert = True
 
-        if _verbose:
-            if not self.__modifying_results:
-                print "Inserting '%s' at %s" % (text, (location.get_line(), location.get_line_offset()))
+        if not self.__modifying_results:
+            _debug("Inserting '%s' at %s", text, (location.get_line(), location.get_line_offset()))
 
         if not self.__modifying_results:
             start_pos = self.__compute_nr_pos_from_iter(location)
@@ -728,8 +728,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__thaw_changes()
         self.__calculate_pair_location()
 
-        if _verbose:
-            print "After insert, chunks are", self.__chunks
+        _debug("After insert, chunks are %s", self.__chunks)
 
     def __delete_chunk(self, chunk):
         self.__modifying_results = True
@@ -841,8 +840,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         if not (move_before or delete_after or move_after):
             return
 
-        if _verbose:
-            print "Result fixups: move_before=%s, delete_after=%s, move_after=%s" % (move_before, delete_after, move_after)
+        _debug("Result fixups: move_before=%s, delete_after=%s, move_after=%s", move_before, delete_after, move_after)
 
         revalidate = map(lambda iter: (iter, self.create_mark(None, iter, True)), revalidate_iters)
 
@@ -872,9 +870,8 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         # the text view give worse feedback. So, I'm just leaving the problem for now,
         # (and have committed the fix to GTK+)
         #
-        if _verbose:
-            if not self.__modifying_results:
-                print "Request to delete range %s" % (((start.get_line(), start.get_line_offset()), (end.get_line(), end.get_line_offset())),)
+        if not self.__modifying_results:
+            _debug("Request to delete range (%s,%s)-(%s,%s)", start.get_line(), start.get_line_offset(), end.get_line(), end.get_line_offset())
         start_line = start.get_line()
         end_line = end.get_line()
 
@@ -944,10 +941,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
             (new_start, new_end) = (start_line, start_line)
             last_modified_line = end_line
 
-        if _verbose:
-            if not self.__modifying_results:
-                print "Deleting range %s" % (((start.get_line(), start.get_line_offset()), (end.get_line(), end.get_line_offset())),)
-                print "first_deleted_line=%d, last_deleted_line=%d, new_start=%d, new_end=%d, last_modified_line=%d" % (first_deleted_line, last_deleted_line, new_start, new_end, last_modified_line)
+        if not self.__modifying_results:
+            _debug("Deleting range (%s,%s)-(%s,%s)", start.get_line(), start.get_line_offset(), end.get_line(), end.get_line_offset())
+            _debug("first_deleted_line=%d, last_deleted_line=%d, new_start=%d, new_end=%d, last_modified_line=%d", first_deleted_line, last_deleted_line, new_start, new_end, last_modified_line)
 
         start_pos = self.__compute_nr_pos_from_iter(start)
         end_pos = self.__compute_nr_pos_from_iter(end)
@@ -1011,8 +1007,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         self.__thaw_changes()
         self.__calculate_pair_location()
         
-        if _verbose:
-            print "After delete, chunks are", self.__chunks
+        _debug("After delete, chunks are %s", self.__chunks)
 
     def calculate(self):
         parent = None
@@ -1047,8 +1042,7 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 
                 parent = chunk.statement
 
-        if _verbose:
-            print "After calculate, chunks are", self.__chunks
+        _debug("After calculate, chunks are %s", self.__chunks)
 
     def __set_pair_location(self, location):
         changed = False

@@ -1,6 +1,7 @@
 import gtk
 import pango
 
+import logging
 import os
 import sys
 
@@ -16,16 +17,21 @@ op = OptionParser(usage=usage)
 op.add_option("-u", "--ui", type="choice", choices=("standard", "hildon"),
               default="standard",  help=("which user interface to use (standard or "
 					 "hildon), default=%default"))
+op.add_option("-d", "--debug", action="store_true",
+              help=("enable internal debug messages"))
 
 options, args = op.parse_args()
 use_hildon = False
+
+if options.debug:
+    logging.basicConfig(level=logging.DEBUG)
 
 if options.ui == "hildon":
     try:
         import hildon
         use_hildon = True
     except ImportError, e:
-        print "Error importing hildon. Falling back to standard ui."
+        print >>sys.stderr, "Error importing hildon. Falling back to standard ui."
 
 notebook = Notebook()
 
