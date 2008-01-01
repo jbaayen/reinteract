@@ -6,6 +6,7 @@ import logging
 import traceback
 import os
 import re
+import sys
 import doc_format
 from notebook import Notebook, HelpResult
 from statement import Statement, ExecutionError, WarningResult
@@ -1411,6 +1412,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         return obj, start_iter, end_iter
 
 if __name__ == '__main__':
+    if "-d" in sys.argv:
+        logging.basicConfig(level=logging.DEBUG, format="DEBUG: %(message)s")
+    
     S = StatementChunk
     B = BlankChunk
     C = CommentChunk
