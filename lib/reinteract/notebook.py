@@ -87,7 +87,7 @@ class Notebook:
                 module = self.__load_local_module(fullname, f, pathname, description)
                 self.__modules[name] = module
             else:
-                module = imp.load_module(name, f, pathname, description)
+                module = imp.load_module(fullname, f, pathname, description)
 
             if parent != None:
                 parent.__dict__[name] = module
