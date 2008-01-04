@@ -6,6 +6,7 @@ import sys
 import rewrite
 from custom_result import CustomResult
 from notebook import HelpResult
+from stdout_capture import StdoutCapture
 
 # A wrapper so we don't have to trap all exceptions when running statement.Execute
 class ExecutionError(Exception):
@@ -27,9 +28,10 @@ class Statement:
         self.__worksheet = worksheet
         self.result_scope = None
         self.results = None
+        self.stdout_buffer = None
 
         # May raise SyntaxError
-        self.__compiled, self.__mutated = rewrite.rewrite_and_compile(self.__text)
+        self.__compiled, self.__mutated = rewrite.rewrite_and_compile(self.__text, output_func_name='reinteract_output')
 
         self.set_parent(parent)
 
@@ -57,6 +59,23 @@ class Statement:
     def do_print(self, *args):
         self.results.append(" ".join(map(str, args)))
 
+    def stdout_write(self, str):
+        if self.stdout_buffer == None:
+            self.stdout_buffer = str
+        else:
+            self.stdout_buffer += str
+
+        pos = 0
+        while True:
+            next = self.stdout_buffer.find("\n", pos)
+            if next < 0:
+                break
+            self.results.append(self.stdout_buffer[pos:next])
+            pos = next + 1
+            
+        if pos > 0:
+            self.stdout_buffer = self.stdout_buffer[pos:]
+
     def execute(self):
         root_scope = self.__worksheet.global_scope
         if self.__parent:
@@ -66,6 +85,7 @@ class Statement:
 
         self.results = []
         self.result_scope = scope
+        self.stdout_buffer = None
         
         for mutation in self.__mutated:
             if isinstance(mutation, tuple):
@@ -80,9 +100,13 @@ class Statement:
                 self.results.append(WarningResult("Variable '%s' apparently modified, but can't copy it" % variable))
 
         root_scope['__reinteract_statement'] = self
+        capture = StdoutCapture(self.stdout_write)
+        capture.push()
         try:
           try:
               exec self.__compiled in scope, scope
+              if self.stdout_buffer != None and self.stdout_buffer != '':
+                  self.results.append(self.stdout_buffer)
           except:
               self.results = None
               self.result_scope = None
@@ -90,34 +114,51 @@ class Statement:
               raise ExecutionError(error_type, value, traceback)
         finally:
             root_scope['__reinteract_statement'] = None
+            self.stdout_buffer = None
+            capture.pop()
 
 if __name__=='__main__':
+    import stdout_capture
+    from notebook import Notebook
+    from worksheet import Worksheet
+
+    stdout_capture.init()
+
+    notebook = Notebook()
+    worksheet = Worksheet(notebook)
+    
     def expect(actual,expected):
         if actual != expected:
             raise AssertionError("Got: '%s'; Expected: '%s'" % (actual, expected))
 
     def expect_result(text, result):
-        s = Statement(text)
+        s = Statement(text, worksheet)
         s.execute()
-        expect(s.results[0], result)
+        if isinstance(result, basestring):
+            expect(s.results[0], result)
+        else:
+            expect(s.results, result)
 
     # A bare expression should give the repr of the expression
     expect_result("'a'", repr('a'))
     expect_result("1,2", repr((1,2)))
 
-    # Print, on the other hand, gives the string form of the expression
+    # Print, on the other hand, gives the string form of the expression, with
+    # one result object per output line
     expect_result("print 'a'", 'a')
+    expect_result("print 'a', 'b'", ['a b'])
+    expect_result("print 'a\\nb'", ['a','b'])
 
     # Test that we copy a variable before mutating it (when we can detect
     # the mutation)
-    s1 = Statement("b = [0]")
+    s1 = Statement("b = [0]", worksheet)
     s1.execute()
-    s2 = Statement("b[0] = 1", parent=s1)
+    s2 = Statement("b[0] = 1", worksheet, parent=s1)
     s2.execute()
-    s3 = Statement("b[0]", parent = s2)
+    s3 = Statement("b[0]", worksheet, parent = s2)
     s3.execute()
     expect(s3.results[0], "1")
     
-    s2a = Statement("b[0]", parent=s1)
+    s2a = Statement("b[0]", worksheet, parent=s1)
     s2a.execute()
     expect(s2a.results[0], "0")

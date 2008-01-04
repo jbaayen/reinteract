@@ -3,6 +3,16 @@ import token
 import symbol
 import sys
 
+class _RewriteState(object):
+    def __init__(self, output_func_name=None, print_func_name=None):
+        self.mutated = []
+        self.output_func_name = output_func_name
+        self.print_func_name = print_func_name
+
+    def add_mutated(self, method_spec):
+        if not method_spec in self.mutated:
+            self.mutated.append(method_spec)
+
 def _do_match(t, pattern):
     # Match an AST tree against a pattern. Along with symbol/token names, patterns
     # can contain strings:
@@ -265,7 +275,7 @@ def _create_funccall_expr_stmt(name, args):
 
     return _do_create_funccall_expr_stmt(name, trailer)
 
-def _rewrite_tree(t, mutated, actions):
+def _rewrite_tree(t, state, actions):
     # Generic rewriting of an AST, actions is a map of symbol/token type to function
     # to call to produce a modified version of the the subtree
     result = t
@@ -273,7 +283,7 @@ def _rewrite_tree(t, mutated, actions):
         subnode = t[i]
         subtype = subnode[0]
         if actions.has_key(subtype):
-            filtered = actions[subtype](subnode, mutated)
+            filtered = actions[subtype](subnode, state)
             if filtered != subnode:
                 if result is t:
                     result = list(t)
@@ -281,7 +291,7 @@ def _rewrite_tree(t, mutated, actions):
                 
     return result
         
-def _rewrite_expr_stmt(t, mutated):
+def _rewrite_expr_stmt(t, state):
     # expr_stmt: testlist (augassign (yield_expr|testlist) |
     #                      ('=' (yield_expr|testlist))*)
     
@@ -296,10 +306,12 @@ def _rewrite_expr_stmt(t, mutated):
             if subsubnode[0] == symbol.test:
                 method_spec = _is_test_method_call(subsubnode)
                 if (method_spec != None):
-                    if not method_spec in mutated:
-                        mutated.append(method_spec)
-        
-        return _create_funccall_expr_stmt('reinteract_output', filter(lambda x: type(x) != int and x[0] == symbol.test, subnode))
+                    state.add_mutated(method_spec)
+
+        if state.output_func_name != None:
+            return _create_funccall_expr_stmt(state.output_func_name, filter(lambda x: type(x) != int and x[0] == symbol.test, subnode))
+        else:
+            return t
     else:
         if (t[2][0] == symbol.augassign):
             # testlist augassign (yield_expr|testlist)
@@ -311,8 +323,7 @@ def _rewrite_expr_stmt(t, mutated):
                 variable = _is_test_attribute(subnode[1])
             
             if variable != None:
-                if not variable in mutated:
-                    mutated.append(variable)
+                state.add_mutated(variable)
         else:
             # testlist ('=' (yield_expr|testlist))+
             for i in xrange(1, len(t) - 1):
@@ -327,41 +338,40 @@ def _rewrite_expr_stmt(t, mutated):
                                 variable = _is_test_attribute(subnode[1])
                                 
                             if variable != None:
-                                if not variable in mutated:
-                                    mutated.append(variable)
+                                state.add_mutated(variable)
         return t
 
-def _rewrite_print_stmt(t, mutated):
+def _rewrite_print_stmt(t, state):
     # print_stmt: 'print' ( [ test (',' test)* [','] ] |
     #                       '>>' test [ (',' test)+ [','] ] )
-    if t[2][0] == symbol.test:
-        return _create_funccall_expr_stmt('reinteract_print', filter(lambda x: type(x) != int and x[0] == symbol.test, t))
+    if state.print_func_name !=None and t[2][0] == symbol.test:
+        return _create_funccall_expr_stmt(state.print_func_name, filter(lambda x: type(x) != int and x[0] == symbol.test, t))
     else:
         return t
     
-def _rewrite_small_stmt(t, mutated):
+def _rewrite_small_stmt(t, state):
     # small_stmt: (expr_stmt | print_stmt  | del_stmt | pass_stmt | flow_stmt |
-    #              import_stmt | global_stmt | exec_stmt | assert_stmt)
-    return _rewrite_tree(t, mutated,
+    #              import_stmt | global_stmt | exec_stmt | assert_return)
+    return _rewrite_tree(t, state,
                          { symbol.expr_stmt:  _rewrite_expr_stmt,
                            symbol.print_stmt: _rewrite_print_stmt })
 
     # Future special handling: import_stmt
     # Not valid: flow_stmt, global_stmt
 
-def _rewrite_simple_stmt(t, mutated):
+def _rewrite_simple_stmt(t, state):
     # simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
-    return _rewrite_tree(t, mutated,
+    return _rewrite_tree(t, state,
                          { symbol.small_stmt: _rewrite_small_stmt })
 
-def _rewrite_suite(t, mutated):
+def _rewrite_suite(t, state):
     # suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
-    return _rewrite_tree(t, mutated,
+    return _rewrite_tree(t, state,
                          { symbol.simple_stmt: _rewrite_simple_stmt,
                            symbol.stmt:        _rewrite_stmt })
 
-def _rewrite_block_stmt(t, mutated):
-    return _rewrite_tree(t, mutated,
+def _rewrite_block_stmt(t, state):
+    return _rewrite_tree(t, state,
                          { symbol.suite:      _rewrite_suite })
 
 _rewrite_compound_stmt_actions = {
@@ -376,30 +386,30 @@ if sys.version_info >= (2, 5, 0):
     _rewrite_compound_stmt_actions[symbol.with_stmt] = _rewrite_block_stmt
     
 
-def _rewrite_compound_stmt(t, mutated):
+def _rewrite_compound_stmt(t, state):
     # compound_stmt: if_stmt | while_stmt | for_stmt | try_stmt | with_stmt | funcdef | classdef
-    return _rewrite_tree(t, mutated, _rewrite_compound_stmt_actions)
+    return _rewrite_tree(t, state, _rewrite_compound_stmt_actions)
 
-def _rewrite_stmt(t, mutated):
+def _rewrite_stmt(t, state):
     # stmt: simple_stmt | compound_stmt
-    return _rewrite_tree(t, mutated,
+    return _rewrite_tree(t, state,
                          { symbol.simple_stmt:   _rewrite_simple_stmt,
                            symbol.compound_stmt: _rewrite_compound_stmt })
 
-def _rewrite_file_input(t, mutated):
+def _rewrite_file_input(t, state):
     # file_input: (NEWLINE | stmt)* ENDMARKER
-    return _rewrite_tree(t, mutated, { symbol.stmt: _rewrite_stmt })
+    return _rewrite_tree(t, state, { symbol.stmt: _rewrite_stmt })
 
-def rewrite_and_compile(code, encoding="utf8"):
+def rewrite_and_compile(code, output_func_name=None, print_func_name=None, encoding="utf8"):
     """
     Compiles the supplied text into code, while rewriting the parse tree so:
 
      * Print statements without a destination file are transformed into calls to
-       reinteract_print(*args),
+      <print_func_name>(*args), if print_func_name is not None
        
      * Statements which are simply expressions are transformed into calls to
-       reinteract_output(*args). (More than one argument is passed if the statement
-       is in the form of a list; for example '1,2'.)
+       <output_func_name>(*args), if output_fnuc_name is not None
+       (More than one argument is passed if the statement is in the form of a list; for example '1,2'.)
 
     At the same time, the code is scanned for possible mutations, and a list is returned.
     In the list:
@@ -411,18 +421,18 @@ def rewrite_and_compile(code, encoding="utf8"):
         on the variable; this will sometimes be a mutation (e.g., list.append(value)),
         and sometimes not.
     """
-    mutated = []
+    state = _RewriteState(output_func_name=output_func_name, print_func_name=print_func_name)
 
     if (isinstance(code, unicode)):
         code = code.encode("utf8")
         encoding = "utf8"
     
     original = parser.suite(code)
-    rewritten = _rewrite_file_input(original.totuple(), mutated)
+    rewritten = _rewrite_file_input(original.totuple(), state)
     encoded = (symbol.encoding_decl, rewritten, encoding)
     compiled = parser.sequence2ast(encoded).compile()
 
-    return (compiled, mutated)
+    return (compiled, state.mutated)
     
 
 ##################################################3
@@ -497,7 +507,7 @@ if __name__ == '__main__':
     # Test that our intercepting of bare expressions to save the output works
     #
     def test_output(code, expected):
-        compiled, _ = rewrite_and_compile(code)
+        compiled, _ = rewrite_and_compile(code, output_func_name='reinteract_output')
         
         test_args = []
         def set_test_args(*args): test_args[:] = args
@@ -518,7 +528,7 @@ if __name__ == '__main__':
     # Test that our intercepting of print works
     #
     def test_print(code, expected):
-        compiled, _ = rewrite_and_compile(code)
+        compiled, _ = rewrite_and_compile(code, print_func_name='reinteract_print')
         
         test_args = []
         def set_test_args(*args): test_args[:] = args
@@ -570,9 +580,9 @@ if __name__ == '__main__':
     #
     def test_encoding(code, expected, encoding=None):
         if encoding != None:
-            compiled, _ = rewrite_and_compile(code, encoding=encoding)
+            compiled, _ = rewrite_and_compile(code, encoding=encoding, output_func_name='reinteract_output')
         else:
-            compiled, _ = rewrite_and_compile(code)
+            compiled, _ = rewrite_and_compile(code, output_func_name='reinteract_output')
         
         test_args = []
         def set_test_args(*args): test_args[:] = args

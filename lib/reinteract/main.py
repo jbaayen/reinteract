@@ -3,6 +3,7 @@ import pango
 
 import logging
 import os
+import stdout_capture
 import sys
 
 from notebook import Notebook
@@ -11,6 +12,8 @@ from shell_view import ShellView
 
 from format_escaped import format_escaped
 from optparse import OptionParser
+
+stdout_capture.init()
 
 usage = "usage: %prog [options]"
 op = OptionParser(usage=usage)

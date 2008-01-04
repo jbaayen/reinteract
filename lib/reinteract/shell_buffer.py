@@ -1414,6 +1414,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
 if __name__ == '__main__':
     if "-d" in sys.argv:
         logging.basicConfig(level=logging.DEBUG, format="DEBUG: %(message)s")
+
+    import stdout_capture
+    stdout_capture.init()
     
     S = StatementChunk
     B = BlankChunk
