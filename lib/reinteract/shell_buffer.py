@@ -1323,7 +1323,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 f.write(chunk_text)
             
             f.close()
+            os.rename(filename, filename+'.bak')
             os.rename(tmpname, filename)
+            os.unlink(filename+'.bak')
             success = True
 
             self.__set_filename_and_modified(filename, False)
