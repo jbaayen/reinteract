@@ -23,6 +23,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/shell_view.py                              \
                     lib/reinteract/statement.py                               \
                     lib/reinteract/tokenized_statement.py                     \
+                    lib/reinteract/stdout_capture.py                          \
                     lib/reinteract/tokenize.py                                \
                     lib/reinteract/undo_stack.py                              \
                     lib/reinteract/worksheet.py                               \
