@@ -11,4 +11,5 @@ AC_SUBST(REINTERACT_PACKAGE_DIR)
 
 AC_OUTPUT([ 
   Makefile
+  data/Makefile
 ])

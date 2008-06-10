@@ -1,5 +1,7 @@
 LIST_END =
 
+SUBDIRS = data
+
 reinteractdir = $(bindir)
 dist_reinteract_SCRIPTS = bin/reinteract
 dist_noinst_SCRIPTS = bin/uninst.py
