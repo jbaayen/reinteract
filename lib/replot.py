@@ -46,7 +46,7 @@ class PlotWidget(gtk.DrawingArea):
         self.figure = Figure(facecolor='white', figsize=(6,4.5))
         self.canvas = _PlotResultCanvas(self.figure)
 
-        self.axes = self.figure.add_axes((0.05,0.05,0.9,0.9))
+        self.axes = self.figure.add_subplot(111)
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
 
     def do_expose_event(self, event):
