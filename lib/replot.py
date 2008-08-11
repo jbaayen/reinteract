@@ -79,8 +79,15 @@ class PlotWidget(gtk.DrawingArea):
         self.window.set_cursor(cursor)
     
     def do_size_request(self, requisition):
-        requisition.width = self.figure.bbox.width()
-        requisition.height = self.figure.bbox.height()
+        try:
+            # matplotlib < 0.98
+            requisition.width = self.figure.bbox.width()
+            requisition.height = self.figure.bbox.height()
+        except TypeError:
+            # matplotlib >= 0.98
+            requisition.width = self.figure.bbox.width
+            requisition.height = self.figure.bbox.height
+            
 
     def __save(self, filename):
         # The save/restore here was added to matplotlib's after 0.90. We duplicate
