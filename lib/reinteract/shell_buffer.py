@@ -1323,6 +1323,9 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
                 f.write(chunk_text)
             
             f.close()
+            # Windows can't save over an existing filename; we might want to check os.name to
+            # see if we have to do this, but it's unlikely that the unlink will succeed and
+            # the rename fail, so I think it's 'atomic' enough this way.
             if os.path.exists(filename):
                 os.unlink(filename)
             os.rename(tmpname, filename)
