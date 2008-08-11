@@ -3,6 +3,13 @@ import token
 import symbol
 import sys
 
+class UnsupportedSyntaxError(Exception):
+    """Exception thrown when some type of Python code that we can't support was used"""
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class _RewriteState(object):
     def __init__(self, output_func_name=None, print_func_name=None):
         self.mutated = []
@@ -348,13 +355,17 @@ def _rewrite_print_stmt(t, state):
         return _create_funccall_expr_stmt(state.print_func_name, filter(lambda x: type(x) != int and x[0] == symbol.test, t))
     else:
         return t
+
+def _rewrite_global_stmt(t, state):
+    raise UnsupportedSyntaxError("The global statement is not supported")
     
 def _rewrite_small_stmt(t, state):
     # small_stmt: (expr_stmt | print_stmt  | del_stmt | pass_stmt | flow_stmt |
     #              import_stmt | global_stmt | exec_stmt | assert_return)
     return _rewrite_tree(t, state,
                          { symbol.expr_stmt:  _rewrite_expr_stmt,
-                           symbol.print_stmt: _rewrite_print_stmt })
+                           symbol.print_stmt: _rewrite_print_stmt,
+                           symbol.global_stmt: _rewrite_global_stmt })
 
     # Future special handling: import_stmt
     # Not valid: flow_stmt, global_stmt
@@ -379,6 +390,7 @@ _rewrite_compound_stmt_actions = {
     symbol.while_stmt: _rewrite_block_stmt,
     symbol.for_stmt:   _rewrite_block_stmt,
     symbol.try_stmt:   _rewrite_block_stmt,
+    symbol.funcdef:    _rewrite_block_stmt,
 }
 
 if sys.version_info >= (2, 5, 0):
@@ -421,7 +433,8 @@ def rewrite_and_compile(code, output_func_name=None, print_func_name=None, encod
         on the variable; this will sometimes be a mutation (e.g., list.append(value)),
         and sometimes not.
     """
-    state = _RewriteState(output_func_name=output_func_name, print_func_name=print_func_name)
+    state = _RewriteState(output_func_name=output_func_name,
+                          print_func_name=print_func_name)
 
     if (isinstance(code, unicode)):
         code = code.encode("utf8")

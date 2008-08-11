@@ -30,7 +30,7 @@ class Statement:
         self.results = None
         self.stdout_buffer = None
 
-        # May raise SyntaxError
+        # May raise SyntaxError, UnsupportedSyntaxError
         self.__compiled, self.__mutated = rewrite.rewrite_and_compile(self.__text, output_func_name='reinteract_output')
 
         self.set_parent(parent)

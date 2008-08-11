@@ -9,6 +9,7 @@ import re
 import sys
 import doc_format
 from notebook import Notebook, HelpResult
+from rewrite import UnsupportedSyntaxError
 from statement import Statement, ExecutionError, WarningResult
 from worksheet import Worksheet
 from custom_result import CustomResult
@@ -90,6 +91,8 @@ class StatementChunk:
             self.error_message = e.msg
             self.error_line = e.lineno
             self.error_offset = e.offset
+        except UnsupportedSyntaxError, e:
+            self.error_message = e.value
 
     def execute(self, parent):
         assert(self.statement != None)
