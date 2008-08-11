@@ -60,7 +60,8 @@ class Notebook:
         # the rest of the loading into that module
 
         new = imp.new_module(prefixed)
-        new.__dict__['__builtins__'] = self.create_builtins()
+        #Is this still necessary???
+        #new.__dict__['__builtins__'] = self.create_builtins()
         
         assert not prefixed in sys.modules
         sys.modules[prefixed] = new
@@ -155,20 +156,11 @@ class Notebook:
         else:
             return sys.modules[names[0]]
 
-    def create_builtins(self):
-        # __builtins__ is a dict for a module, but a module for __main__
-        if isinstance(__builtins__, dict):
-            builtins = copy.copy(__builtins__)
-            d = builtins
-        else:
-            builtins = imp.new_module("__reinteract_builtin__")
-            builtins.__dict__.update(__builtins__.__dict__)
-            d = builtins.__dict__
-
-        d['__import__'] = self.do_import
-        d['help'] = _Helper()
-
-        return builtins
+    def create_globals(self):
+        g = copy.copy(globals())
+        g['__reinteract_notebook'] = self
+        g['help'] = _Helper()
+        return g
 
 if __name__ == '__main__':
     import copy
@@ -207,7 +199,7 @@ if __name__ == '__main__':
     def do_test(import_text, evaluate_text, expected):
         nb = Notebook(path=[base])
 
-        scope = { '__builtins__': nb.create_builtins() }
+        scope = create_globals()
         
         exec import_text in scope
         result = eval(evaluate_text, scope)

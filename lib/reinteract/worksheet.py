@@ -10,7 +10,7 @@ def reinteract_print(*args):
 
 class Worksheet:
     def __init__(self, notebook):
-        self.global_scope = { '__builtins__': notebook.create_builtins() }
+        self.global_scope = notebook.create_globals()
         exec _DEFINE_GLOBALS in self.global_scope
 
     def do_import(self, name, globals, locals, fromlist, level):
