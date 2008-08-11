@@ -4,6 +4,19 @@ import sys
 
 _counter = 1
 
+# Hook the import function in the global __builtin__ module; this is used to make
+# imports from a notebook locally scoped to that notebook. We do it this way
+# rather than replacing __builtins__ to avoid triggering restricted mode.
+import __builtin__
+saved_import = __builtin__.__import__
+def reinteract_import(name, globals=None, locals=None, fromlist=None, level=-1):
+    if globals and '__reinteract_notebook' in globals:
+        return globals['__reinteract_notebook'].do_import(name, globals, locals, fromlist, level)
+    else:
+        return saved_import(name, globals, locals, fromlist, level)
+
+__builtin__.__import__ = reinteract_import
+
 class HelpResult:
     def __init__(self, arg):
         self.arg = arg
@@ -60,8 +73,7 @@ class Notebook:
         # the rest of the loading into that module
 
         new = imp.new_module(prefixed)
-        #Is this still necessary???
-        #new.__dict__['__builtins__'] = self.create_builtins()
+        self.setup_globals(new.__dict__)
         
         assert not prefixed in sys.modules
         sys.modules[prefixed] = new
@@ -156,11 +168,9 @@ class Notebook:
         else:
             return sys.modules[names[0]]
 
-    def create_globals(self):
-        g = copy.copy(globals())
-        g['__reinteract_notebook'] = self
-        g['help'] = _Helper()
-        return g
+    def setup_globals(self, globals):
+        globals['__reinteract_notebook'] = self
+        globals['help'] = _Helper()
 
 if __name__ == '__main__':
     import copy
@@ -199,7 +209,8 @@ if __name__ == '__main__':
     def do_test(import_text, evaluate_text, expected):
         nb = Notebook(path=[base])
 
-        scope = create_globals()
+        scope = {}
+        nb.setup_globals(scope)
         
         exec import_text in scope
         result = eval(evaluate_text, scope)

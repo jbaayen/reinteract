@@ -13,18 +13,6 @@ from shell_view import ShellView
 from format_escaped import format_escaped
 from optparse import OptionParser
 
-import __builtin__
-saved_import = __builtin__.__import__
-def reinteract_import(name, globals=None, locals=None, fromlist=None,\
-                      level=-1):
-    if globals and '__reinteract_notebook' in globals:
-        return globals['__reinteract_notebook'].do_import(name, globals,\
-                                                   locals, fromlist, level)
-    else:
-        return saved_import(name, globals, locals, fromlist, level)
-
-__builtin__.__import__ = reinteract_import
-
 stdout_capture.init()
 
 usage = "usage: %prog [options]"
