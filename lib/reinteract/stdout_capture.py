@@ -4,6 +4,8 @@ import sys
 
 def init():
     """Initialize the stdout_capture module. This must be called before using the StdoutCapture class"""
+    global _saved_stdout
+    _saved_stdout = sys.stdout
     sys.stdout = _StdoutStack()
 
 class _StdoutStack(threading.local):
@@ -11,7 +13,7 @@ class _StdoutStack(threading.local):
     
     def __init__(self):
         self.stack = []
-        self.current = sys.stdout
+        self.current = _saved_stdout
 
     def write(self, str):
         self.current.write(str)
