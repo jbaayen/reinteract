@@ -447,7 +447,6 @@ class ShellBuffer(gtk.TextBuffer, Worksheet):
         statement_end = rescan_start - 1
         chunk_lines = []
 
-        line = rescan_start
         i = self.get_iter_at_line(rescan_start)
 
         for line in xrange(rescan_start, rescan_end + 1):

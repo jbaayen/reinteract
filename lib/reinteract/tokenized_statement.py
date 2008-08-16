@@ -145,7 +145,7 @@ class TokenizedStatement(object):
     def _get_iter(self, line, index):
         # Get an iterator pointing to the token containing the specified
         # position. Return None if there no such token
-        for i, (token_type, start, end, _) in enumerate(self.tokens[line]):
+        for i, (_, start, end, _) in enumerate(self.tokens[line]):
             if start > index:
                 return None
             if start <= index and end > index:
@@ -166,7 +166,7 @@ class TokenizedStatement(object):
                 
             return None
         else:
-            for i, (token_type, start, end, _) in enumerate(tokens):
+            for i, (_, start, end, _) in enumerate(tokens):
                 if index <= start:
                     return _TokenIter(self, line, i - 1)
 

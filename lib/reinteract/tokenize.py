@@ -105,17 +105,17 @@ _TOKENIZE_RE = re.compile(r"""
 
 (?P<dot> \.) |                                            # isolated .
 (?P<white> \s+) |                                         # whitespace
-(?P<notvalid> [^\s!-#%->@-~]+) |                          # Not-valid outside of a string... needs to
+(?P<notvalid> [^\s!-\#%->@-~]+) |                         # Not-valid outside of a string... needs to
                                                           # be + not +? to avoid splitting UTF-8
 (?P<junk> .+?)                                            # Other junk (vacuum anything notmatched)
 
 """, re.VERBOSE)
 
 _CLOSE_STRING_RE = {
-    "'''": re.compile(r"(?:\\.|[^\'\\]|\'(?!\'\'))*(?:\'\'\'|(?=\\$)|$)"),
-    '"""': re.compile(r"(?:\\.|[^\"\\]|\"(?!\"\"))*(?:\"\"\"|(?=\\$)|$)"),
-    "'": re.compile(r"(?:\\.|[^\'\\])*(?:\'|(?=\\$)|$)"),
-    '"': re.compile(r"(?:\\.|[^\"\\])*(?:\"|(?=\\$)|$)")
+    "'''": re.compile(r"(?:\\.|[^\'\\]|\'(?!\'\'))*(?:(\'\'\')|(?=\\$)|$)"),
+    '"""': re.compile(r"(?:\\.|[^\"\\]|\"(?!\"\"))*(?:(\"\"\")|(?=\\$)|$)"),
+    "'": re.compile(r"(?:\\.|[^\'\\])*(?:(\')|(?=\\$)|$)"),
+    '"': re.compile(r"(?:\\.|[^\"\\])*(?:(\")|(?=\\$)|$)")
  }
 
 # A valid number; the idea is that when tokenizing, we want to keep
@@ -151,12 +151,7 @@ def tokenize_line(str, stack=None):
 
             flags = 0
 
-            s  = match.group()
-            if (len(s) >= len(delim) and s.endswith(delim) and
-                (len(s) == len(delim) or
-                 not s[len(s)-len(delim)-1] == '\\' or
-                 (len(s) > len(delim) + 1 and
-                  s[len(s)-len(delim)-2] == '\\'))):
+            if match.group(1):
                 flags |= FLAG_CLOSE
                 stack.pop()
                 
@@ -205,7 +200,6 @@ def tokenize_line(str, stack=None):
                     token_type = TOKEN_NAME
             elif match.group('number'):
                 s = match.group()
-                m2 = _NUMBER_RE.match(s)
                 if _NUMBER_RE.match(s):
                     token_type = TOKEN_NUMBER
                 else:
