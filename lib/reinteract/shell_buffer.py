@@ -9,6 +9,7 @@ from custom_result import CustomResult
 from chunks import StatementChunk
 import doc_format
 from notebook import HelpResult
+from statement import WarningResult
 import tokenize
 from worksheet import Worksheet, NEW_LINE_RE
 
@@ -903,3 +904,23 @@ Done""")
     expect(""">>> 2
 2
 """)
+
+    # Test insertion of WarningResult
+
+    clear()
+
+    insert(0, 0, """class A(object):
+    def __copy__(self): raise RuntimeError("Can't copy")
+    def __repr__(a): return 'A()'
+    def foo(x): return x
+a = A()
+a.foo()""")
+    calculate()
+    expect(""">>> class A(object):
+...     def __copy__(self): raise RuntimeError("Can't copy")
+...     def __repr__(a): return 'A()'
+...     def foo(x): return x
+>>> a = A()
+>>> a.foo()
+Variable 'a' apparently modified, but can't copy it
+A()""")

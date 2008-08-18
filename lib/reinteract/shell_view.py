@@ -24,7 +24,7 @@ class ShellView(gtk.TextView):
         buf.worksheet.connect('chunk-changed', self.on_chunk_changed)
         buf.worksheet.connect('chunk-status-changed', self.on_chunk_status_changed)
         buf.connect('add-custom-result', self.on_add_custom_result)
-#        buf.connect('pair-location-changed', self.on_pair_location_changed)
+        buf.connect('pair-location-changed', self.on_pair_location_changed)
             
         gtk.TextView.__init__(self, buf)
         self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, 10)
