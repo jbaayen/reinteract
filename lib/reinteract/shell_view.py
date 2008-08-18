@@ -2,7 +2,8 @@
 import gobject
 import gtk
 import re
-from shell_buffer import ShellBuffer, StatementChunk, ResultChunk, CommentChunk, BlankChunk
+from shell_buffer import ShellBuffer, ADJUST_NONE, ADJUST_BEFORE, ADJUST_AFTER
+from chunks import StatementChunk, CommentChunk, BlankChunk
 from completion_popup import CompletionPopup
 from doc_popup import DocPopup
 import sanitize_textview_ipc
@@ -20,9 +21,10 @@ class ShellView(gtk.TextView):
    }
         
     def __init__(self, buf):
-        buf.connect('chunk-status-changed', self.on_chunk_status_changed)
+        buf.worksheet.connect('chunk-changed', self.on_chunk_changed)
+        buf.worksheet.connect('chunk-status-changed', self.on_chunk_status_changed)
         buf.connect('add-custom-result', self.on_add_custom_result)
-        buf.connect('pair-location-changed', self.on_pair_location_changed)
+#        buf.connect('pair-location-changed', self.on_pair_location_changed)
             
         gtk.TextView.__init__(self, buf)
         self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, 10)
@@ -42,11 +44,20 @@ class ShellView(gtk.TextView):
         buf = self.get_buffer()
         self.__mouse_over_start = buf.create_mark(None, buf.get_start_iter(), True)
 
+    def __get_worksheet_line_yrange(self, line):
+        buffer_line = self.get_buffer().pos_to_iter(line)
+        return self.get_line_yrange(buffer_line)
+
+    def __get_worksheet_line_at_y(self, y, adjust):
+        buf = self.get_buffer()
+        (buffer_line, _) = self.get_line_at_y(y)
+        return buf.iter_to_pos(buffer_line, adjust)[0]
+
     def paint_chunk(self, cr, area, chunk, fill_color, outline_color):
         buf = self.get_buffer()
         
-        (y, _) = self.get_line_yrange(buf.get_iter_at_line(chunk.start))
-        (end_y, end_height) = self.get_line_yrange(buf.get_iter_at_line(chunk.end))
+        (y, _) = self.__get_worksheet_line_yrange(chunk.start)
+        (end_y, end_height) = self.__get_worksheet_line_yrange(chunk.end - 1)
         height = end_y + end_height - y
         
         (_, window_y) = self.buffer_to_window_coords(gtk.TEXT_WINDOW_LEFT, 0, y)
@@ -66,16 +77,16 @@ class ShellView(gtk.TextView):
 
     def __expose_window_left(self, event):
         (_, start_y) = self.window_to_buffer_coords(gtk.TEXT_WINDOW_LEFT, 0, event.area.y)
-        (start_line, _) = self.get_line_at_y(start_y)
+        start_line = self.__get_worksheet_line_at_y(start_y, adjust=ADJUST_AFTER)
         
         (_, end_y) = self.window_to_buffer_coords(gtk.TEXT_WINDOW_LEFT, 0, event.area.y + event.area.height - 1)
-        (end_line, _) = self.get_line_at_y(end_y)
+        end_line = self.__get_worksheet_line_at_y(end_y, adjust=ADJUST_BEFORE)
 
         buf = self.get_buffer()
 
         cr = event.window.cairo_create()
-        
-        for chunk in buf.iterate_chunks(start_line.get_line(), end_line.get_line()):
+
+        for chunk in buf.worksheet.iterate_chunks(start_line, end_line + 1):
             if isinstance(chunk, StatementChunk):
                 if chunk.error_message != None:
                     self.paint_chunk(cr, event.area, chunk, (1, 0, 0), (0.5, 0, 0))
@@ -140,38 +151,32 @@ class ShellView(gtk.TextView):
 
     def __find_outdent(self, iter):
         buf = self.get_buffer()
-        line = iter.get_line()
+        line, _ = buf.iter_to_pos(iter)
 
-        current_indent = self.__count_indent(self.__get_line_text(iter))
+        current_indent = self.__count_indent(buf.worksheet.get_line(line))
 
-        previous_line = iter.copy()
-        while  line > 0:
+        while line > 0:
             line -= 1
-            previous_line.backward_line()
-            if not isinstance(buf.get_chunk(line), ResultChunk):
-                line_text = self.__get_line_text(previous_line)
-                
-                indent = self.__count_indent(line_text)
-                if indent < current_indent:
-                    indent_text = re.match(r"^[\t ]*", line_text).group(0)
-                        
-                    return indent_text
-                
+            line_text = buf.worksheet.get_line(line)
+
+            indent = self.__count_indent(line_text)
+            if indent < current_indent:
+                return re.match(r"^[\t ]*", line_text).group(0)
+
         return ""
 
     def __find_default_indent(self, iter):
         buf = self.get_buffer()
-        line = iter.get_line()
+        line, offset = buf.iter_to_pos(iter)
 
         while line > 0:
             line -= 1
-            chunk = buf.get_chunk(line)
-            if not isinstance(chunk, ResultChunk):
-                if isinstance(chunk, StatementChunk):
-                    return chunk.tokenized.get_next_line_indent(line - chunk.start)
-                else:
-                    return ""
-                
+            chunk = buf.worksheet.get_chunk(line)
+            if isinstance(chunk, StatementChunk):
+                return chunk.tokenized.get_next_line_indent(line - chunk.start)
+            elif isinstance(chunk, CommentChunk):
+                return " " * self.__count_indent(buf.worksheet.get_line(line))
+
         return ""
 
     def __reindent_line(self, iter, indent_text):
@@ -225,19 +230,12 @@ class ShellView(gtk.TextView):
             bounds = buf.get_iter_at_mark(insert_mark), buf.get_iter_at_mark(insert_mark)
         start, end = bounds
 
-        line = start.get_line()
-        end_line = end.get_line()
-        if end.starts_line() and end.compare(start) > 0:
+        line, _ = buf.iter_to_pos(start, adjust=ADJUST_AFTER)
+        end_line, end_offset = buf.iter_to_pos(end, adjust=ADJUST_BEFORE)
+        if end_offset == 0 and end_line > line:
             end_line -= 1
 
-        current_chunk = buf.get_chunk(line)
-        while isinstance(current_chunk, ResultChunk):
-            line += 1
-            if line > end_line:
-                return
-            current_chunk = buf.get_chunk(line)
-
-        iter = buf.get_iter_at_line(line)
+        iter = buf.pos_to_iter(line)
 
         if outdent:
             indent_text = self.__find_outdent(iter)
@@ -250,14 +248,7 @@ class ShellView(gtk.TextView):
             if line > end_line:
                 return
 
-            current_chunk = buf.get_chunk(line)
-            while isinstance(current_chunk, ResultChunk):
-                line += 1
-                if line > end_line:
-                    return
-                current_chunk = buf.get_chunk(line)
-
-            iter = buf.get_iter_at_line(line)
+            iter = buf.pos_to_iter(line)
             current_indent = self.__count_indent(self.__get_line_text(iter))
             self.__reindent_line(iter, max(0, " " * (current_indent + diff)))
 
@@ -296,8 +287,14 @@ class ShellView(gtk.TextView):
                 self.__doc_popup.focus()
             else:
                 insert = buf.get_iter_at_mark(buf.get_insert())
-                obj, start, end = buf.get_object_at_location(insert, include_adjacent=True)
+                line, offset = buf.iter_to_pos(insert, adjust=ADJUST_NONE)
+                if line != None:
+                    obj, start_line, start_offset, _, _ = buf.worksheet.get_object_at_location(line, offset, include_adjacent=True)
+                else:
+                    obj = None
+
                 if obj != None:
+                    start = buf.pos_to_iter(start_line, start_offset)
                     self.__stop_mouse_over()
                     self.__doc_popup.set_target(obj)
                     self.__doc_popup.position_at_location(self, start)
@@ -312,19 +309,15 @@ class ShellView(gtk.TextView):
             
             increase_indent = False
             insert = buf.get_iter_at_mark(buf.get_insert())
-
-            line = insert.get_line()
-            current_chunk = buf.get_chunk(line)
+            line, pos = buf.iter_to_pos(insert, adjust=ADJUST_NONE)
 
             # Inserting return inside a ResultChunk would normally do nothing
             # but we want to make it insert a line after the chunk
-            if isinstance(current_chunk, ResultChunk) and not buf.get_has_selection():
-                iter = buf.get_iter_at_line(current_chunk.end)
-                if not iter.ends_line():
-                    iter.forward_to_line_end()
-
-                buf.insert_interactive(iter, "\n", True)
+            if line == None and not buf.get_has_selection():
+                line, pos = buf.iter_to_pos(insert, adjust=ADJUST_BEFORE)
+                iter = buf.pos_to_iter(line, -1)
                 buf.place_cursor(iter)
+                buf.insert_interactive(iter, "\n", True)
                 
                 return True
 
@@ -334,10 +327,12 @@ class ShellView(gtk.TextView):
 
             insert = buf.get_iter_at_mark(buf.get_insert())
             
-            if not isinstance(current_chunk, ResultChunk):
-                self.__reindent_line(insert, self.__find_default_indent(insert))
-                
-            if isinstance(current_chunk, CommentChunk) and line > 0 and isinstance(buf.get_chunk(line - 1), CommentChunk):
+            self.__reindent_line(insert, self.__find_default_indent(insert))
+
+            # If we have two comment lines in a row, assume a block comment
+            if (line > 0 and
+                isinstance(buf.worksheet.get_chunk(line), CommentChunk) and
+                isinstance(buf.worksheet.get_chunk(line - 1), CommentChunk)):
                 self.get_buffer().insert_interactive_at_cursor("# ", True)
 
             buf.end_user_action()
@@ -368,7 +363,7 @@ class ShellView(gtk.TextView):
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
                 (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
                 (event.state & gtk.gdk.SHIFT_MASK) == 0:
-            buf.undo()
+            buf.worksheet.undo()
             
             self.__update_completion()
             return True
@@ -376,13 +371,13 @@ class ShellView(gtk.TextView):
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
                 (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
                 (event.state & gtk.gdk.SHIFT_MASK) != 0:
-            buf.redo()
+            buf.worksheet.redo()
             
             self.__update_completion()
             return True
         # This is the familiar binding (Eclipse, etc). Firefox supports both
         elif event.keyval in (gtk.keysyms.y, gtk.keysyms.Y) and event.state & gtk.gdk.CONTROL_MASK != 0:
-            buf.redo()
+            buf.worksheet.redo()
 
             self.__update_completion()            
             return True
@@ -415,15 +410,22 @@ class ShellView(gtk.TextView):
         
     def do_motion_notify_event(self, event):
         if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT) and not self.__doc_popup.focused:
+            buf = self.get_buffer()
+            
             iter, _ = self.get_iter_at_position(int(event.x), int(event.y))
-            obj, start, end = self.get_buffer().get_object_at_location(iter)
+            line, offset = buf.iter_to_pos(iter, adjust=ADJUST_NONE)
+            if line != None:
+                obj, start_line, start_offset, _,_ = buf.worksheet.get_object_at_location(line, offset)
+            else:
+                obj = None
 
             if not obj is self.__mouse_over_object:
                 self.__stop_mouse_over()
                 self.__doc_popup.popdown()
                 if obj != None:
-                    self.get_buffer().move_mark(self.__mouse_over_start, start)
-                
+                    start = buf.pos_to_iter(start_line, start_offset)
+                    buf.move_mark(self.__mouse_over_start, start)
+
                     self.__mouse_over_object = obj
                     try:
                         timeout = self.get_settings().get_property('gtk-tooltip-timeout')
@@ -443,13 +445,11 @@ class ShellView(gtk.TextView):
         buf = self.get_buffer()
         
         insert = buf.get_iter_at_mark(buf.get_insert())
-        line = insert.get_line()
+        line, offset = buf.iter_to_pos(insert)
         
-        current_chunk = buf.get_chunk(line)
+        current_chunk = buf.worksheet.get_chunk(line)
         if isinstance(current_chunk, StatementChunk) or isinstance(current_chunk, BlankChunk):
-            line_start = insert.copy()
-            line_start.set_line_offset(0)
-            line_text = line_start.get_slice(insert)
+            line_text = buf.worksheet.get_line(line)[0:offset]
 
             if re.match(r"^[\t ]+$", line_text):
                 self.__reindent_line(insert, self.__find_outdent(insert))
@@ -457,14 +457,22 @@ class ShellView(gtk.TextView):
                        
         return gtk.TextView.do_backspace(self)
 
-    def on_chunk_status_changed(self, buf, chunk):
-        (start_y, start_height) = self.get_line_yrange(buf.get_iter_at_line(chunk.start))
-        (end_y, end_height) = self.get_line_yrange(buf.get_iter_at_line(chunk.end))
+    def __invalidate_status(self, chunk):
+        buf = self.get_buffer()
+        
+        (start_y, start_height) = self.__get_worksheet_line_yrange(chunk.start)
+        (end_y, end_height) = self.__get_worksheet_line_yrange(chunk.end - 1)
 
         (_, window_y) = self.buffer_to_window_coords(gtk.TEXT_WINDOW_LEFT, 0, start_y)
 
         if self.window:
             self.get_window(gtk.TEXT_WINDOW_LEFT).invalidate_rect((0, window_y, 10, end_y + end_height - start_y), False)
+            
+    def on_chunk_changed(self, worksheet, chunk, changed_lines):
+        self.__invalidate_status(chunk)
+
+    def on_chunk_status_changed(self, worksheet, chunk):
+        self.__invalidate_status(chunk)
 
     def on_add_custom_result(self, buf, result, anchor):
         widget = result.create_widget()

@@ -12,33 +12,34 @@ class _InsertDeleteOp(object):
         self.end = end
         self.text = text
 
-    def _insert(self, buffer):
-        start = buffer._get_iter_at_nr_pos(self.start)
-        buffer.insert_interactive(start, self.text, True)
-        buffer.place_cursor(start)
+    def _insert(self, worksheet):
+        worksheet.begin_user_action()
+        worksheet.insert(self.start[0], self.start[1], self.text)
+        worksheet.end_user_action()
+        worksheet.place_cursor(self.end[0], self.end[1])
 
-    def _delete(self, buffer):
-        start = buffer._get_iter_at_nr_pos(self.start)
-        end = buffer._get_iter_at_nr_pos(self.end)
-        buffer.delete_interactive(start, end, True)
-        buffer.place_cursor(start)
+    def _delete(self, worksheet):
+        worksheet.begin_user_action()
+        worksheet.delete_range(self.start[0], self.start[1], self.end[0], self.end[1])
+        worksheet.end_user_action()
+        worksheet.place_cursor(self.start[0], self.start[1])
 
 class InsertOp(_InsertDeleteOp):
-    def redo(self, buffer):
-        self._insert(buffer)
+    def redo(self, worksheet):
+        self._insert(worksheet)
         
-    def undo(self, buffer):
-        self._delete(buffer)
+    def undo(self, worksheet):
+        self._delete(worksheet)
 
     def __repr__(self):
         return "InsertOp(%s, %s, %s)" % (self.start, self.end, repr(self.text))
 
 class DeleteOp(_InsertDeleteOp):
-    def redo(self, buffer):
-        self._delete(buffer)
+    def redo(self, worksheet):
+        self._delete(worksheet)
         
-    def undo(self, buffer):
-        self._insert(buffer)
+    def undo(self, worksheet):
+        self._insert(worksheet)
 
     def __repr__(self):
         return "DeleteOp(%s, %s, %s)" % (self.start, self.end, repr(self.text))
@@ -52,8 +53,8 @@ class EndActionOp(object):
         return "EndActionOp()"
     
 class UndoStack(object):
-    def __init__(self, buffer):
-        self.__buffer = buffer
+    def __init__(self, worksheet):
+        self.__worksheet = worksheet
         self.__position = 0
         # The position at which we last pruned the stack; everything after
         # this has been inserted consecutively without any intervening
@@ -64,13 +65,6 @@ class UndoStack(object):
         self.__user_action_count = 0
         self.__action_ops = 0
 
-    def __apply_op(self, op, reverse):
-        self.__applying_undo = True
-        try:
-            self.__buffer._apply_undo_op(op, reverse)
-        finally:
-            self.__applying_undo = False
-        
     def undo(self):
         if self.__position == 0:
             return
@@ -82,10 +76,10 @@ class UndoStack(object):
             if isinstance(self.__stack[self.__position], EndActionOp):
                 self.__position -= 1
                 while not isinstance(self.__stack[self.__position], BeginActionOp):
-                    self.__stack[self.__position].undo(self.__buffer)
+                    self.__stack[self.__position].undo(self.__worksheet)
                     self.__position -= 1
             else:
-                self.__stack[self.__position].undo(self.__buffer)
+                self.__stack[self.__position].undo(self.__worksheet)
         finally:
             self.__applying_undo = False
 
@@ -99,16 +93,15 @@ class UndoStack(object):
             if isinstance(self.__stack[self.__position - 1], BeginActionOp):
                 self.__position += 1
                 while not isinstance(self.__stack[self.__position - 1], EndActionOp):
-                    self.__stack[self.__position - 1].redo(self.__buffer)
+                    self.__stack[self.__position - 1].redo(self.__worksheet)
                     self.__position += 1
             else:
-                self.__stack[self.__position - 1].redo(self.__buffer)
+                self.__stack[self.__position - 1].redo(self.__worksheet)
         finally:
             self.__applying_undo = False
 
     def __check_coalesce(self):
         assert self.__position == len(self.__stack)
-
         # Don't coalesce two ops unless they are actually adjacent in time
         if self.__position < self.__prune_position + 2:
             return
@@ -131,13 +124,13 @@ class UndoStack(object):
             self.__stack[self.__position:] = []
             self.__prune_position = self.__position
 
+        self.__stack.append(op)
+        self.__position += 1
+        
         if self.__user_action_count > 0:
             self.__action_ops += 1
         else:
             self.__check_coalesce()
-            
-        self.__stack.append(op)
-        self.__position += 1
         
     def begin_user_action(self):
         self.__user_action_count += 1
