@@ -56,9 +56,10 @@ class TokenizedStatement(object):
     def set_lines(self, lines):
         """Set the lines in the Tokenized statement
 
-        Returns None if nothing changed, otherwise returns a list of
-        lines that were added or changed. A return of [] means that
-        some lines were deleted, but none added or changed.
+        Returns None if nothing changed, otherwise returns a range
+        (start, end) of lines that were added or changed. A return of
+        an empty range means that some lines were deleted, but none
+        added or changed.
 
         """
         
@@ -73,8 +74,6 @@ class TokenizedStatement(object):
         self.lines = lines
         tokens = self.tokens = [None] * len(lines)
         stacks = self.stacks = [None] * len(lines)
-
-        changed_lines = []
 
         # Iterate forward, find an unchanged segment of lines at the front
 
@@ -114,6 +113,9 @@ class TokenizedStatement(object):
         else:
             stack = []
 
+        change_start = -1
+        change_end = -1
+
         while i < len(lines):
             if i > new_pos:
                 # Once we are in the trailing section if identical
@@ -128,13 +130,15 @@ class TokenizedStatement(object):
                 if stack == old_stack:
                     break
 
-            changed_lines.append(i)
+            if change_start == -1:
+                change_start = i
+            change_end = i + 1
 
             tokens[i], stack = tokenize_line(lines[i], stack)
             stacks[i] = stack
             i += 1
 
-        return changed_lines
+        return (change_start, change_end)
 
     def get_text(self):
         return "\n".join(self.lines)
@@ -538,33 +542,33 @@ if __name__ == '__main__':
             failed = True
     
     ts = TokenizedStatement()
-    assert ts.set_lines(["1"]) == [0]
+    assert ts.set_lines(["1"]) == (0, 1)
     expect(ts, [["1"]])
 
     ts = TokenizedStatement()
-    assert ts.set_lines(['"""a','b"""']) == [0, 1]
+    assert ts.set_lines(['"""a','b"""']) == (0, 2)
     expect(ts, [['"""a',['"""']],['b"""']])
 
     ts = TokenizedStatement()
-    assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == [0, 1]
+    assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == (0, 2)
     expect(ts, [['(', '1', '+', '2', ['(']], ['+', '3', '+', '4', ')']])
     
     assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == None
     expect(ts, [['(', '1', '+', '2', ['(']], ['+', '3', '+', '4', ')']])
 
-    assert ts.set_lines(['(1 + 2','+ 5 + 6)']) == [1]
+    assert ts.set_lines(['(1 + 2','+ 5 + 6)']) == (1, 2)
     expect(ts, [['(', '1', '+', '2', ['(']], ['+', '5', '+', '6', ')']])
 
-    assert ts.set_lines(['(3 + 4','+ 5 + 6)']) == [0]
+    assert ts.set_lines(['(3 + 4','+ 5 + 6)']) == (0, 1)
     expect(ts, [['(', '3', '+', '4', ['(']], ['+', '5', '+', '6', ')']])
 
-    assert ts.set_lines(['((1 + 2','+ 5 + 6)']) == [0, 1]
+    assert ts.set_lines(['((1 + 2','+ 5 + 6)']) == (0, 2)
     expect(ts, [['(', '(', '1', '+', '2', ['(', '(']], ['+', '5', '+', '6', ')', ['(']]])
 
-    assert ts.set_lines(['((1 + 2', '+ 3 + 4)', '+ 5 + 6)']) == [1, 2]
+    assert ts.set_lines(['((1 + 2', '+ 3 + 4)', '+ 5 + 6)']) == (1, 3)
     expect(ts, [['(', '(', '1', '+', '2', ['(', '(']], ['+', '3', '+', '4', ')', ['(']], ['+', '5', '+', '6', ')']])
 
-    assert ts.set_lines(['((1 + 2', '+ 3 + 4)']) == [] # truncation
+    assert ts.set_lines(['((1 + 2', '+ 3 + 4)']) == (-1, -1) # truncation
 
     ### Tests of iterator functionality
     

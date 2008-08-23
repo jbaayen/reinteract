@@ -7,7 +7,7 @@ import stdout_capture
 import sys
 
 from notebook import Notebook
-from shell_buffer import ShellBuffer
+from shell_buffer import ShellBuffer, ADJUST_BEFORE
 from shell_view import ShellView
 
 from format_escaped import format_escaped
@@ -69,7 +69,17 @@ def on_copy(action):
     view.emit('copy-clipboard')
 
 def on_copy_as_doctests(action):
-    view.get_buffer().copy_as_doctests(view.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD))
+    bounds = buf.get_selection_bounds()
+    if bounds == ():
+        start, end = buf.get_iter_at_mark(buf.get_insert())
+    else:
+        start, end = bounds
+
+    start_line, start_offset = buf.iter_to_pos(start, adjust=ADJUST_BEFORE)
+    end_line, end_offset = buf.iter_to_pos(end, adjust=ADJUST_BEFORE)
+
+    doctests = buf.worksheet.get_doctests(start_line, end_line + 1)
+    view.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD).set_text(doctests)
 
 def on_paste(action):
     view.emit('paste-clipboard')
@@ -78,18 +88,18 @@ def on_delete(action):
     buf.delete_selection(True, view.get_editable())
 
 def confirm_discard(message_format, continue_button_text):
-    if not buf.code_modified:
+    if not buf.worksheet.code_modified:
         return True
 
-    if buf.filename == None:
+    if buf.worksheet.filename == None:
         save_button_text = gtk.STOCK_SAVE_AS
     else:
         save_button_text = gtk.STOCK_SAVE
 
-    if buf.filename == None:
+    if buf.worksheet.filename == None:
         name = "Unsaved Worksheet"
     else:
-        name = buf.filename
+        name = buf.worksheet.filename
         
     message = format_escaped("<big><b>" + message_format + "</b></big>", name)
     
@@ -107,12 +117,12 @@ def confirm_discard(message_format, continue_button_text):
     if response == gtk.RESPONSE_OK:
         return True
     elif response == 1:
-        if buf.filename == None:
+        if buf.worksheet.filename == None:
             save_as()
         else:
-            buf.save()
+            buf.worksheet.save()
 
-        if buf.code_modified:
+        if buf.worksheet.code_modified:
             return False
         else:
             return True
@@ -123,15 +133,15 @@ def on_new(action):
     if not confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
         return
     
-    buf.clear()
+    buf.worksheet.clear()
 
 def load(filename):
     notebook.set_path([os.path.dirname(os.path.abspath(filename))])
     if not os.path.exists(filename):
-        buf.filename = filename
-        update_title()
+        buf.worksheet.filename = filename
     else:
-        buf.load(filename)
+        buf.worksheet.load(filename)
+        buf.place_cursor(buf.get_start_iter())
         calculate()
 
 def on_open(action):
@@ -156,10 +166,10 @@ def on_open(action):
     chooser.destroy()
 
 def on_save(action):
-    if buf.filename == None:
+    if buf.worksheet.filename == None:
         on_save_as(action)
     else:
-        buf.save()
+        buf.worksheet.save()
 
 def save_as():
     if use_hildon:
@@ -175,7 +185,7 @@ def save_as():
         filename = chooser.get_filename()
 
     if filename != None:
-        buf.save(filename)
+        buf.worksheet.save(filename)
         notebook.set_path([os.path.dirname(os.path.abspath(filename))])
 
     chooser.destroy()
@@ -220,7 +230,7 @@ def on_about(action):
     dialog.run()
 
 def calculate():
-    buf.calculate()
+    buf.worksheet.calculate()
 
     # This is a hack to work around the fact that scroll_mark_onscreen()
     # doesn't wait for a size-allocate cycle, so doesn't properly handle
@@ -321,22 +331,22 @@ v.show_all()
 view.grab_focus()
 
 def update_title(*args):
-    if buf.code_modified:
+    if buf.worksheet.code_modified:
         title = "*"
     else:
         title = ""
     
-    if buf.filename == None:
+    if buf.worksheet.filename == None:
         title += "Unsaved Worksheet"
     else:
-        title += os.path.basename(buf.filename)
+        title += os.path.basename(buf.worksheet.filename)
     
     title += " - Reinteract"
 
     w.set_title(title)
 
-buf.connect('filename-changed', update_title)
-buf.connect('code-modified-changed', update_title)
+buf.worksheet.connect('notify::filename', update_title)
+buf.worksheet.connect('notify::code-modified', update_title)
 
 update_title()
 

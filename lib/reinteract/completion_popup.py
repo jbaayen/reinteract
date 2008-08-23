@@ -3,6 +3,7 @@ import gtk
 from popup import Popup
 from doc_popup import DocPopup
 from data_format import is_data_object
+from shell_buffer import ADJUST_NONE
 
 # Space between the line of text where the cursor is and the popup
 VERTICAL_GAP = 5
@@ -62,7 +63,12 @@ class CompletionPopup(Popup):
 
         self.__in_change = True
         self.__tree_model.clear()
-        for display, completion, obj in buf.find_completions():
+        line, offset = buf.iter_to_pos(buf.get_iter_at_mark(buf.get_insert()), adjust=ADJUST_NONE)
+        if line == None:
+            completions = []
+        else:
+            completions = buf.worksheet.find_completions(line, offset)
+        for display, completion, obj in completions:
             self.__tree_model.append([display, completion, obj])
         
         self.__tree.set_cursor(0)
