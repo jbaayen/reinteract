@@ -497,3 +497,32 @@ class ShellView(gtk.TextView):
             self.__invalidate_char_position(old_position)
         if new_position:
             self.__invalidate_char_position(new_position)
+
+    def calculate(self):
+        buf = self.get_buffer()
+
+        buf.worksheet.calculate()
+
+        # This is a hack to work around the fact that scroll_mark_onscreen()
+        # doesn't wait for a size-allocate cycle, so doesn't properly handle
+        # embedded request widgets
+        self.size_request()
+        self.size_allocate((self.allocation.x, self.allocation.y,
+                            self.allocation.width, self.allocation.height))
+
+        self.scroll_mark_onscreen(buf.get_insert())
+
+    def copy_as_doctests(self):
+        buf = self.get_buffer()
+
+        bounds = buf.get_selection_bounds()
+        if bounds == ():
+            start, end = buf.get_iter_at_mark(buf.get_insert())
+        else:
+            start, end = bounds
+
+        start_line, start_offset = buf.iter_to_pos(start, adjust=ADJUST_BEFORE)
+        end_line, end_offset = buf.iter_to_pos(end, adjust=ADJUST_BEFORE)
+
+        doctests = buf.worksheet.get_doctests(start_line, end_line + 1)
+        self.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD).set_text(doctests)
