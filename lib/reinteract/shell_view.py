@@ -21,6 +21,7 @@ class ShellView(gtk.TextView):
    }
         
     def __init__(self, buf):
+        buf.worksheet.connect('chunk-inserted', self.on_chunk_inserted)
         buf.worksheet.connect('chunk-changed', self.on_chunk_changed)
         buf.worksheet.connect('chunk-status-changed', self.on_chunk_status_changed)
         buf.connect('add-custom-result', self.on_add_custom_result)
@@ -468,6 +469,9 @@ class ShellView(gtk.TextView):
         if self.window:
             self.get_window(gtk.TEXT_WINDOW_LEFT).invalidate_rect((0, window_y, 10, end_y + end_height - start_y), False)
             
+    def on_chunk_inserted(self, worksheet, chunk):
+        self.__invalidate_status(chunk)
+
     def on_chunk_changed(self, worksheet, chunk, changed_lines):
         self.__invalidate_status(chunk)
 

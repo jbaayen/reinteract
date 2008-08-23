@@ -6,7 +6,7 @@ import logging
 import pango
 
 from custom_result import CustomResult
-from chunks import StatementChunk
+from chunks import StatementChunk,CommentChunk
 import doc_format
 from notebook import HelpResult
 from statement import WarningResult
@@ -302,7 +302,7 @@ class ShellBuffer(gtk.TextBuffer):
         pair_iter = self.pos_to_iter(chunk.start + pair_line, pair_start)
         self.__set_pair_location(pair_iter)
 
-    def __fontify_chunk(self, chunk, changed_lines):
+    def __fontify_statement_chunk(self, chunk, changed_lines):
         iter = self.pos_to_iter(chunk.start)
         i = 0
         for l in changed_lines:
@@ -517,6 +517,7 @@ class ShellBuffer(gtk.TextBuffer):
         _debug("...chunk %s inserted", chunk);
         chunk.results_start_mark = None
         chunk.results_end_mark = None
+        self.on_chunk_changed(worksheet, chunk, range(0, chunk.end - chunk.start))
 
     def on_chunk_deleted(self, worksheet, chunk):
         _debug("...chunk %s deleted", chunk);
@@ -535,7 +536,13 @@ class ShellBuffer(gtk.TextBuffer):
         else:
             self.__insert_results(chunk)
 
-        self.__fontify_chunk(chunk, changed_lines)
+        if isinstance(chunk, StatementChunk):
+            self.__fontify_statement_chunk(chunk, changed_lines)
+        elif isinstance(chunk, CommentChunk):
+            start = self.pos_to_iter(chunk.start)
+            end = self.pos_to_iter(chunk.end - 1, len(self.worksheet.get_line(chunk.end - 1)))
+            self.remove_all_tags(start, end)
+            self.apply_tag(self.__comment_tag, start, end)
 
     def on_chunk_status_changed(self, worksheet, chunk):
         _debug("...chunk %s status changed", chunk);

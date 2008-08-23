@@ -7,6 +7,7 @@ import os
 import re
 from StringIO import StringIO
 
+from change_range import ChangeRange
 from chunks import *
 from notebook import Notebook
 from undo_stack import UndoStack, InsertOp, DeleteOp
@@ -63,6 +64,18 @@ class Worksheet(gobject.GObject):
         'lines-inserted': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (int, int)),
         'lines-deleted': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (int, int)),
         'chunk-inserted': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+        # Chunk changed is emitted when the text or tokenization of a chunk
+        # changes. Note that "changes" here specifically includes being
+        # replaced by identical text, so if I have the two chunks
+        #
+        #  if
+        #  if
+        #
+        # And I delete the from the first 'i' to the second f, the first
+        # chunk is considered to change, even though it's text remains 'if'.
+        # This is because text in a buffering that is shadowing us may
+        # be tagged with fonts/styles.
+        #
         'chunk-changed': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)),
         'chunk-deleted': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
         'chunk-status-changed': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
@@ -83,21 +96,15 @@ class Worksheet(gobject.GObject):
 
         self.__lines = [""]
         self.__chunks = [BlankChunk(0,1)]
-        self.__chunks[0].line_count += 1
 
         # There's quite a bit of complexity knowing when a change to lines changes
         # adjacent chunks. We use a simple and slightly inefficient algorithm for this
         # and just scan everything that might have changed. But we don't want typing
-        # within a line to cause an unlimited rescan. So we keep *two* separate ranges
-        # of things that might have changed:
-        #
-        # This range is the range where line classes changed or lines were inserted
-        # and deleted
-        self.__rescan_start = None
-        self.__rescan_end = None
-        # This range is the range where lines changed without changing classes
-        self.__change_start = None
-        self.__change_end = None
+        # within a line to cause an unlimited rescan, so we keep track if the only
+        # changes we've made are inserting/deleting within a line without changing
+        # that lines class
+        self.__changes = ChangeRange()
+        self.__scan_adjacent = False
 
         self.__changed_chunks = set()
         self.__deleted_chunks = set()
@@ -148,18 +155,18 @@ class Worksheet(gobject.GObject):
         for chunk in sorted(changed_chunks, lambda a, b: cmp(a.start,b.start)):
             if chunk.newly_inserted:
                 chunk.newly_inserted = False
-                chunk.changed_lines = None
+                chunk.changes.clear()
                 chunk.status_changed = False
                 self.emit('chunk-inserted', chunk)
-            elif chunk.changed_lines != None:
-                changed_lines = sorted(chunk.changed_lines)
-                chunk.changed_lines = None
+            elif not chunk.changes.empty():
+                changed_lines = range(chunk.changes.start, chunk.changes.end)
+                chunk.changes.clear()
                 chunk.status_changed = False
                 self.emit('chunk-changed', chunk, changed_lines)
-            elif chunk.status_changed:
+            if isinstance(chunk, StatementChunk) and chunk.status_changed:
                 chunk.status_changed = False
                 self.emit('chunk-status-changed', chunk)
-            if chunk.results_changed:
+            if isinstance(chunk, StatementChunk) and chunk.results_changed:
                 chunk.results_changed = False
                 self.emit('chunk-results-changed', chunk)
 
@@ -186,101 +193,87 @@ class Worksheet(gobject.GObject):
         self.__chunk_changed(chunk)
         self.__mark_rest_for_execute(chunk.end)
 
-    def __decrement_line_count(self, chunk, line):
-        if chunk != None:
-            if chunk.line_count <= 0:
-                raise RuntimeError("Decrementing line count for a deleted chunk")
+    def __remove_chunk(self, chunk):
+        try:
+            self.__changed_chunks.remove(chunk)
+        except KeyError:
+            pass
+        self.__deleted_chunks.add(chunk)
+        if isinstance(chunk, StatementChunk):
+            self.__mark_rest_for_execute(chunk.end)
 
-            chunk.line_count -= 1
-            if chunk.line_count == 0:
-                try:
-                    self.__changed_chunks.remove(chunk)
-                except KeyError:
-                    pass
-                if isinstance(chunk, StatementChunk):
-                    self.__deleted_chunks.add(chunk)
-                    self.__mark_rest_for_execute(line + 1)
+    def __adjust_or_create_chunk(self, start, end, line_class):
+        if line_class == BLANK:
+            klass = BlankChunk
+        elif line_class == COMMENT:
+            klass = CommentChunk
+        else:
+            klass = StatementChunk
 
-    def __set_line_chunk(self, i, chunk):
-        old_chunk = self.__chunks[i]
-        self.__chunks[i] = chunk
-        chunk.line_count += 1
-        self.__decrement_line_count(old_chunk, i)
-
-    def __clear_line_chunks(self, start, end):
+        # Look for an existing chunk of the right type
+        chunk = None
         for i in xrange(start, end):
-            self.__decrement_line_count(self.__chunks[i], i)
-            self.__chunks[i] = None
+            if isinstance(self.__chunks[i], klass):
+                chunk = self.__chunks[i]
+                break
+
+        if chunk != None:
+            if chunk.end > end:
+                # An old statement can only be turned into *one* new statement; once
+                # we've used the chunk, we can't use it again
+                self.__chunks[end:chunk.end] = (None for i in xrange(end, chunk.end))
+        else:
+            chunk = klass()
+
+        chunk.set_range(start, end)
+        for c in self.iterate_chunks(start, end):
+            assert c.start >= start
+
+            if c == chunk:
+                pass
+            elif c.end <= end:
+                self.__remove_chunk(c)
+            else:
+                c.set_range(end, c.end)
+
+        self.__chunks[start:end] = (chunk for i in xrange(start, end))
+
+        return chunk
 
     def __assign_lines(self, chunk_start, lines, statement_end):
         if statement_end > chunk_start:
             chunk_lines = lines[0:statement_end - chunk_start]
+            chunk = self.__adjust_or_create_chunk(chunk_start, statement_end, STATEMENT_START)
+            chunk.set_lines(chunk_lines)
 
-            old_statement = None
-            for i in xrange(chunk_start, statement_end):
-                if isinstance(self.__chunks[i], StatementChunk):
-                    old_statement = self.__chunks[i]
-                    break
-
-            if old_statement != None:
-                # An old statement can only be turned into *one* new statement; this
-                # prevents us getting fooled if we split a statement
-                self.__clear_line_chunks(max(old_statement.start, statement_end), old_statement.end)
-
-                chunk = old_statement
-                changed = chunk.set_lines(chunk_lines)
-
-                # If we moved the statement with respect to the worksheet, then the we
-                # need to refontify, even if the old statement didn't change
-                if old_statement.start != chunk_start:
-                    changed = True
-                    chunk.changed_lines = set(range(0, statement_end - chunk_start))
-            else:
-                chunk = StatementChunk()
-                chunk.set_lines(chunk_lines)
-                changed = True
-
-            chunk.start = chunk_start
-            chunk.end = statement_end
-
-            for i in xrange(chunk_start, statement_end):
-                self.__set_line_chunk(i, chunk)
-
-            if changed:
+            if not chunk.changes.empty():
                 self.__mark_changed_statement(chunk)
 
+        start = statement_end
+        prev_class = CONTINUATION # Doesn't matter, not blank/continuation
         for i in xrange(statement_end, chunk_start + len(lines)):
-            line = lines[i - chunk_start]
+            line_class = calc_line_class(self.__lines[i])
+            if line_class != prev_class and i > start:
+                chunk = self.__adjust_or_create_chunk(start, i, prev_class)
+                if not chunk.changes.empty():
+                    self.__chunk_changed(chunk)
+                start = i
+            prev_class = line_class
 
-            if i > 0:
-                chunk = self.__chunks[i - 1]
-            else:
-                chunk = None
-
-            line_class = calc_line_class(line)
-            if line_class == BLANK:
-                if not isinstance(chunk, BlankChunk):
-                    chunk = BlankChunk()
-                    chunk.start = i
-                chunk.end = i + 1
-                self.__set_line_chunk(i, chunk)
-            elif line_class == COMMENT:
-                if not isinstance(chunk, CommentChunk):
-                    chunk = CommentChunk()
-                    chunk.start = i
-                chunk.end = i + 1
-                self.__set_line_chunk(i, chunk)
+        if chunk_start + len(lines) > start:
+            chunk = self.__adjust_or_create_chunk(start, chunk_start + len(lines), prev_class)
+            if not chunk.changes.empty():
+                self.__chunk_changed(chunk)
 
     def __rescan(self):
-        _debug("  Rescan range %s-%s", self.__rescan_start, self.__rescan_end)
-        _debug("  Changed range %s-%s", self.__change_start, self.__change_end)
+        _debug("  Changed %s,%s (%s), scan_adjacent=%d", self.__changes.start, self.__changes.end, self.__changes.delta, self.__scan_adjacent)
 
-        if self.__rescan_start == None and self.__change_start == None:
+        if self.__changes.empty():
             return
 
-        if self.__rescan_start != None:
-            rescan_start = self.__rescan_start
-            rescan_end = self.__rescan_end
+        if self.__scan_adjacent:
+            rescan_start = self.__changes.start
+            rescan_end = self.__changes.end
 
             while rescan_start > 0:
                 rescan_start -= 1
@@ -291,23 +284,19 @@ class Worksheet(gobject.GObject):
 
             while rescan_end < len(self.__lines):
                 chunk = self.__chunks[rescan_end]
-                if isinstance(chunk, StatementChunk) and chunk.start == rescan_end:
+                # The check for continuation line is needed because the first statement
+                # in a buffer can start with a continuation line
+                if isinstance(chunk, StatementChunk) and \
+                        chunk.start == rescan_end and \
+                        not CONTINUATION_RE.match(self.__lines[chunk.start]):
                     break
-                rescan_end += 1
-
-            if self.__change_start != None:
-                if self.__change_start < rescan_start:
-                    rescan_start = self.__change_start
-                if self.__change_end > rescan_end:
-                    rescan_end = self.__change_end
+                rescan_end = chunk.end
         else:
-            rescan_start = self.__change_start
-            rescan_end = self.__change_end
+            rescan_start = self.__changes.start
+            rescan_end = self.__changes.end
 
-        self.__rescan_start = None
-        self.__rescan_end = None
-        self.__change_start = None
-        self.__change_end = None
+        self.__changes.clear()
+        self.__scan_adjacent = False
 
         if self.__chunks[rescan_start] != None:
             rescan_start = self.__chunks[rescan_start].start;
@@ -320,6 +309,7 @@ class Worksheet(gobject.GObject):
         statement_end = rescan_start
         chunk_lines = []
 
+        seen_start = False
         for line in xrange(rescan_start, rescan_end):
             line_text = self.__lines[line]
 
@@ -328,10 +318,11 @@ class Worksheet(gobject.GObject):
                 chunk_lines.append(line_text)
             elif line_class == COMMENT:
                 chunk_lines.append(line_text)
-            elif line_class == CONTINUATION:
+            elif line_class == CONTINUATION and seen_start:
                 chunk_lines.append(line_text)
                 statement_end = line + 1
             else:
+                seen_start = True
                 if len(chunk_lines) > 0:
                     self.__assign_lines(chunk_start, chunk_lines, statement_end)
                 chunk_start = line
@@ -340,26 +331,6 @@ class Worksheet(gobject.GObject):
 
         self.__assign_lines(chunk_start, chunk_lines, statement_end)
 
-    def __mark_for_rescan(self, start, end):
-        if self.__rescan_start == None:
-            self.__rescan_start = start
-            self.__rescan_end = end
-        else:
-            if start < self.__rescan_start:
-                self.__rescan_start = start
-            if end > self.__rescan_end:
-                self.__rescan_end = end
-
-    def __mark_change(self, start, end):
-        if self.__change_start == None:
-            self.__change_start = start
-            self.__change_end = end
-        else:
-            if start < self.__rescan_start:
-                self.__change_start = start
-            if end > self.__rescan_end:
-                self.__change_end = end
-
     def __set_line(self, line, text):
         if self.__lines[line] != None:
             old_class = calc_line_class(self.__lines[line])
@@ -367,9 +338,8 @@ class Worksheet(gobject.GObject):
             old_class = None
         self.__lines[line] = text
         if old_class != calc_line_class(text):
-            self.__mark_for_rescan(line, line + 1)
-        else:
-            self.__mark_change(line, line + 1)
+            self.__scan_adjacent = True
+        self.__changes.change(line, line + 1)
 
     def begin_user_action(self):
         self.__user_action_count += 1
@@ -383,6 +353,24 @@ class Worksheet(gobject.GObject):
 
     def in_user_action(self):
         return self.__user_action_count > 0
+
+    def __insert_lines(self, line, count, chunk):
+        # Insert an integral number of lines into the given chunk at the given position
+        # fixing up the chunk and the __chunks[]/__lines[] arrays
+
+        self.__chunks[line:line] = (chunk for i in xrange(count))
+        self.__lines[line:line] = (None for i in xrange(count))
+        chunk.insert_lines(line, count)
+
+        # Fix up the subsequent chunks
+        for c in self.iterate_chunks(chunk.end):
+            c.start += count
+            c.end += count
+
+        self.__changes.insert(line, count)
+        self.__scan_adjacent = True
+        self.__chunk_changed(chunk)
+        self.emit('lines-inserted', line, line + count)
 
     def insert(self, line, offset, text):
         _debug("Inserting %r at %s,%s", text, line, offset)
@@ -404,30 +392,29 @@ class Worksheet(gobject.GObject):
         right = self.__lines[line][offset:]
 
         if count == 0:
+            # Change within a single line
             self.__set_line(line, left + text + right)
+            chunk.change_line(line)
             end_line = line
             end_offset = offset + len(text)
         else:
             if offset == 0 and ends_with_new_line:
                 # This is a pure insertion of an integral number of lines
-                self.__chunks[line:line] = (None for i in xrange(count))
-                self.__lines[line:line] = (None for i in xrange(count))
-                self.emit('lines-inserted', line, line + count)
 
-                adjust_start = line + count
+                # At a chunk boundary, extend the chunk before, not the chunk after
+                if line > 0 and chunk.start == line:
+                    chunk = self.__chunks[line - 1]
+
+                self.__insert_lines(line, count, chunk)
             else:
-                self.__chunks[line + 1:line + 1] = (chunk for i in xrange(count))
-                chunk.line_count += count
-                self.__lines[line + 1:line + 1] = (None for i in xrange(count))
-
                 if offset == 0:
-                    self.emit('lines-inserted', line, line + count)
+                    self.__insert_lines(line, count, chunk)
+                    chunk.change_line(line + count)
                 else:
-                    self.emit('lines-inserted', line + 1, line + count + 1)
+                    self.__insert_lines(line + 1, count, chunk)
+                    chunk.change_line(line)
 
-                chunk.end += count
-                adjust_start = chunk.end
-
+            # Now set the new text into the lines array
             iter = NEW_LINE_RE.finditer(text)
             i = line
 
@@ -452,12 +439,6 @@ class Worksheet(gobject.GObject):
             end_line = i
             end_offset = len(text) - last
 
-            for chunk in self.iterate_chunks(adjust_start):
-                if chunk.start >= line:
-                    chunk.start += count
-                if chunk.end >= line:
-                    chunk.end += count
-
         self.__thaw_changes()
         self.__undo_stack.append_op(InsertOp((line, offset), (end_line, end_offset), text))
 
@@ -465,14 +446,34 @@ class Worksheet(gobject.GObject):
             self.code_modified = True
 
     def __delete_lines(self, start_line, end_line):
-        if end_line > start_line:
-            for i in xrange(start_line,end_line):
-                self.__decrement_line_count(self.__chunks[i], i)
+        # Delete an integral number of lines, fixing up the affected chunks
+        # and the __chunks[]/__lines[] arrays
 
-            self.__lines[start_line:end_line] = ()
-            self.__chunks[start_line:end_line] = ()
-            self.__mark_for_rescan(start_line, start_line)
-            self.emit('lines-deleted', start_line, end_line)
+        if end_line == start_line: # No lines deleted
+            return
+
+        for chunk in self.iterate_chunks(start_line):
+            if chunk.start >= end_line:
+                chunk.start -= (end_line - start_line)
+                chunk.end -= (end_line - start_line)
+            elif chunk.start >= start_line:
+                if chunk.end <= end_line:
+                    self.__remove_chunk(chunk)
+                else:
+                    chunk.delete_lines(chunk.start, end_line)
+                    self.__chunk_changed(chunk)
+                    chunk.end -= chunk.start - start_line
+                    chunk.start = start_line
+            else:
+                chunk.delete_lines(start_line, chunk.start)
+                self.__chunk_changed(chunk)
+
+        self.__lines[start_line:end_line] = ()
+        self.__chunks[start_line:end_line] = ()
+
+        self.__changes.delete_range(start_line, end_line)
+        self.__scan_adjacent = True
+        self.emit('lines-deleted', start_line, end_line)
 
     def delete_range(self, start_line, start_offset, end_line, end_offset):
         _debug("Deleting from %s,%s to %s,%s", start_line, start_offset, end_line, end_offset)
@@ -501,18 +502,9 @@ class Worksheet(gobject.GObject):
                 self.__delete_lines(start_line + 1, end_line + 1)
 
             self.__set_line(start_line, left + right)
-
-        if end_line > start_line:
-            for chunk in self.iterate_chunks(start_line):
-                if chunk.start <= start_line:
-                    pass
-                elif chunk.start <= end_line:
-                    chunk.start = start_line
-                else:
-                    chunk.start -= (end_line - start_line)
-
-                if chunk.end > end_line:
-                    chunk.end -= (end_line - start_line)
+            chunk = self.__chunks[start_line]
+            chunk.change_line(start_line)
+            self.__chunk_changed(chunk)
 
         self.__thaw_changes()
         self.__undo_stack.append_op(DeleteOp((start_line, start_offset), (end_line, end_offset), deleted_text))
@@ -972,6 +964,22 @@ if __name__ == '__main__': #pragma: no cover
     expect_text("bb\n3")
     expect([S(0,1), S(1,2)])
 
+    # Check that tracking of changes works properly when there
+    # is an insertion or deletion before the change
+    clear()
+    insert(0, 0, "1\n2")
+    worksheet.begin_user_action()
+    insert(1, 0, "#")
+    insert(0, 0, "0\n")
+    worksheet.end_user_action()
+    expect_text("0\n1\n#2")
+    expect([S(0,1), S(1,2), C(2,3)])
+    worksheet.begin_user_action()
+    delete(2, 0, 2, 1)
+    delete(0, 0, 1, 0)
+    worksheet.end_user_action()
+    expect([S(0,1), S(1,2)])
+
     # Basic tokenization of valid python
     clear()
     insert(0, 0, "1\n\n#2\ndef a():\n  3")
@@ -979,6 +987,21 @@ if __name__ == '__main__': #pragma: no cover
 
     clear()
     expect([B(0,1)])
+
+    # Multiple consecutive blank lines
+    clear()
+    insert(0, 0, "1")
+    insert(0, 1, "\n")
+    expect([S(0,1),B(1,2)])
+    insert(1, 0, "\n")
+    expect([S(0,1),B(1,3)])
+
+    # Continuation lines at the beginning
+    clear()
+    insert(0, 0, "# Something\n   pass")
+    expect([C(0,1), S(1,2)])
+    delete(0, 0, 1, 0)
+    expect([S(0,1)])
 
     # Calculation
     clear()
@@ -1006,12 +1029,12 @@ if __name__ == '__main__': #pragma: no cover
     clear()
     clear_log()
     insert(0, 0, "1 + 1")
-    expect_log([CI(0,1)])
+    expect_log([CD(), CI(0,1)])
     calculate()
     expect_log([CSC(0,1), CRC(0,1)])
 
     insert(0, 0, "#")
-    expect_log([CD()])
+    expect_log([CD(), CI(0,1)])
 
     # Deleting a chunk with results
     clear()
@@ -1022,7 +1045,7 @@ if __name__ == '__main__': #pragma: no cover
     clear_log()
     delete(0, 0, 0, 1)
     expect([B(0,1),S(1,2)])
-    expect_log([CD(), CSC(1,2)])
+    expect_log([CD(), CI(0,1), CSC(1,2)])
 
     # Turning a statement into a continuation line
     clear()
@@ -1036,6 +1059,12 @@ if __name__ == '__main__': #pragma: no cover
     delete(1, 0, 1, 1)
     expect([S(0,1), S(1,2), B(2,3)])
     expect_log([CC(0,1,[]),CI(1,2)])
+
+    # Inserting a statement above a continuation line at the start of the buffer
+    clear()
+    insert(0, 0, "#def a(x):\n    return x")
+    delete(0, 0, 0, 1)
+    expect([S(0,2)])
 
     # Deleting an entire continuation line
     clear()
@@ -1051,6 +1080,28 @@ if __name__ == '__main__': #pragma: no cover
     insert(0, 0, "1\\\n  + 2\\\n  + 3")
     delete(1, 0, 1, 1)
     expect([S(0,3)])
+
+    # Test that changes that substitute text with identical
+    # text counts as changes
+
+    # New text
+    clear()
+    insert(0, 0, "if")
+    clear_log()
+    worksheet.begin_user_action()
+    delete(0, 1, 0, 2)
+    insert(0, 1, "f")
+    worksheet.end_user_action()
+    expect([S(0,1)])
+    expect_log([CC(0,1,[0])])
+
+    # Text from elsewhere in the buffer
+    clear()
+    insert(0, 0, "if\nif")
+    clear_log()
+    delete(0, 1, 1, 1)
+    expect([S(0,1)])
+    expect_log([CD(), CC(0,1,[0])])
 
     # Test that commenting out a line marks subsequent lines for recalculation
     clear()
