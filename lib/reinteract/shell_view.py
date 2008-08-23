@@ -325,6 +325,8 @@ class ShellView(gtk.TextView):
             buf.begin_user_action()
             
             gtk.TextView.do_key_press_event(self, event)
+            # We need the chunks to be updated when computing the line indents
+            buf.worksheet.rescan()
 
             insert = buf.get_iter_at_mark(buf.get_insert())
             

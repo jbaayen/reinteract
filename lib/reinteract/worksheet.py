@@ -139,7 +139,7 @@ class Worksheet(gobject.GObject):
     def __thaw_changes(self):
         self.__freeze_changes_count -= 1
         if self.__freeze_changes_count == 0:
-            self.__rescan()
+            self.rescan()
             self.__emit_chunk_changes()
 
     def __emit_chunk_changes(self):
@@ -265,7 +265,18 @@ class Worksheet(gobject.GObject):
             if not chunk.changes.empty():
                 self.__chunk_changed(chunk)
 
-    def __rescan(self):
+    def rescan(self):
+        """Update the division of the worksheet into chunks based on the current text.
+
+        As the buffer is edited, the division of the buffer into chunks is updated
+        blindly without attention to the details of the new text. Normally, we will
+        rescan and figure out the real chunks at the end of a user operation, however
+        it is occasionally useful to do this early, for example, if we want to use
+        the tokenized representation of a statement for the second part of a user
+        operation.
+
+        """
+
         _debug("  Changed %s,%s (%s), scan_adjacent=%d", self.__changes.start, self.__changes.end, self.__changes.delta, self.__scan_adjacent)
 
         if self.__changes.empty():
