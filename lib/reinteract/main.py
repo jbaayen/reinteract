@@ -6,6 +6,7 @@ import os
 import stdout_capture
 import sys
 
+from global_settings import global_settings
 from worksheet_window import WorksheetWindow
 
 stdout_capture.init()
@@ -23,7 +24,14 @@ options, args = op.parse_args()
 if options.debug:
     logging.basicConfig(level=logging.DEBUG)
 
-w = WorksheetWindow(use_hildon=(options.ui == "hildon"))
+if options.ui == "hildon":
+    try:
+        import hildon
+        global_settings.use_hildon = True
+    except ImportError, e:
+        print >>sys.stderr, "Error importing hildon. Falling back to standard ui."
+
+w = WorksheetWindow()
 
 if len(args) > 0:
     w.load(args[0])

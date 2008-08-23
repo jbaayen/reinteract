@@ -5,6 +5,7 @@ import os
 import sys
 
 from about_dialog import AboutDialog
+from global_settings import global_settings
 from notebook import Notebook
 from shell_buffer import ShellBuffer, ADJUST_BEFORE
 from shell_view import ShellView
@@ -43,18 +44,14 @@ _UI_STRING="""
 """
 
 class WorksheetWindow:
-    def __init__(self, use_hildon = False):
+    def __init__(self):
         self.use_hildon = False
 
-        if self.use_hildon:
-            try:
-                global hildon
-                import hildon
-            except ImportError, e:
-                print >>sys.stderr, "Error importing hildon. Falling back to standard ui."
-                self.use_hildon = False
+        if global_settings.use_hildon:
+            global hildon
+            import hildon
 
-        if self.use_hildon:
+        if global_settings.use_hildon:
             self.window = hildon.Window()
         else:
             self.window = gtk.Window()
@@ -93,7 +90,7 @@ class WorksheetWindow:
 
         ui_manager.insert_action_group(action_group, 0)
 
-        if self.use_hildon:
+        if global_settings.use_hildon:
             menu_element = 'popup'
         else:
             menu_element = 'menubar'
@@ -104,7 +101,7 @@ class WorksheetWindow:
         menu = ui_manager.get_widget("/TopMenu")
         toolbar = ui_manager.get_widget("/ToolBar")
 
-        if self.use_hildon:
+        if global_settings.use_hildon:
             self.window.set_menu(menu)
             self.window.add_toolbar(toolbar)
         else:
@@ -134,7 +131,7 @@ class WorksheetWindow:
         self.window.connect('key-press-event', self.on_key_press_event)
         self.window.connect('delete-event', self.on_delete_event)
 
-        if self.use_hildon:
+        if global_settings.use_hildon:
             settings = self.window.get_settings()
             settings.set_property("gtk-button-images", False)
             settings.set_property("gtk-menu-images", False)
@@ -144,7 +141,7 @@ class WorksheetWindow:
     #######################################################
 
     def __save_as(self):
-        if self.use_hildon:
+        if global_settings.use_hildon:
             chooser = hildon.FileChooserDialog(w, gtk.FILE_CHOOSER_ACTION_SAVE)
         else:
             chooser = gtk.FileChooserDialog("Save As...", self.window, gtk.FILE_CHOOSER_ACTION_SAVE,
@@ -256,7 +253,7 @@ class WorksheetWindow:
         if not self.__confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
             return
 
-        if self.use_hildon:
+        if global_settings.use_hildon:
             chooser = hildon.FileChooserDialog(self.window, gtk.FILE_CHOOSER_ACTION_OPEN)
         else:
             chooser = gtk.FileChooserDialog("Open Worksheet...", self.window, gtk.FILE_CHOOSER_ACTION_OPEN,
