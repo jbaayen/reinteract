@@ -70,6 +70,11 @@ class Application():
         return name
 
     def open_notebook(self, path):
+        for window in self.windows:
+            if isinstance(window, NotebookWindow) and window.notebook.folder == path:
+                window.window.present()
+                return
+
         notebook = Notebook(path)
         window = NotebookWindow(notebook)
         window.show()

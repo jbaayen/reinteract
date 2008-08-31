@@ -4,6 +4,7 @@ import pango
 import re
 
 from application import application
+from notebook_window import NotebookWindow
 from window_builder import WindowBuilder
 
 class OpenNotebookBuilder(WindowBuilder):
@@ -66,6 +67,18 @@ class OpenNotebookBuilder(WindowBuilder):
     def __name_data_func(self, column, cell, model, iter):
         info = model.get_value(iter, 0)
         cell.props.text = info.name
+
+        # This is a very inefficient thing to do in a cell-data func, but we assume
+        # that the number of open windows is very small
+        already_open = False
+        for window in application.windows:
+            if isinstance(window, NotebookWindow) and window.notebook.folder == info.folder:
+                already_open = True
+
+        if already_open:
+            cell.props.weight = pango.WEIGHT_BOLD
+        else:
+            cell.props.weight_set = False
 
     def __name_column_sort(self, model, iter_a, iter_b):
         a = model.get_value(iter_a, 0)
