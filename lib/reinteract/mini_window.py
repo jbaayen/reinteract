@@ -13,16 +13,6 @@ from notebook import WorksheetFile
 from window_builder import WindowBuilder
 from worksheet_editor import WorksheetEditor
 
-gtk.rc_parse_string(
-    """
-    style "notebook-close-button" {
-       GtkWidget::focus-line-width = 0
-       GtkWidget::focus-padding = 0
-       GtkButton::inner-border = { 0, 0, 0, 0 }
-    }
-    widget "*.notebook-close-button" style : highest "notebook-close-button"
-     """)
-
 class MiniWindow(BaseWindow):
     UI_STRING="""
 <ui>
