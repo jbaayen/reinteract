@@ -76,7 +76,7 @@ class OpenNotebookBuilder(WindowBuilder):
         info = model.get_value(iter, 0)
         # The short description is the description up to the first newline or
         # up to the first "sentence end" if that comes first
-        description = re.sub(r"(\n|\r|\.\s)(.*)", r"\1", info.description)
+        description = re.sub(r"(.*?)(\n|\r|(<=\.)\s)(.*)", r"\1", info.description)
         cell.props.text = description
 
     def __modified_data_func(self, column, cell, model, iter):
