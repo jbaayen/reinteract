@@ -7,6 +7,8 @@ import gtk
 from application import application
 from base_window import BaseWindow
 from file_list import FileList
+from format_escaped import format_escaped
+from global_settings import global_settings
 from notebook import WorksheetFile
 from window_builder import WindowBuilder
 from worksheet_editor import WorksheetEditor
@@ -21,22 +23,22 @@ gtk.rc_parse_string(
     widget "*.notebook-close-button" style : highest "notebook-close-button"
      """)
 
-class NotebookWindow(BaseWindow):
+class MiniWindow(BaseWindow):
     UI_STRING="""
 <ui>
-   <menubar name="TopMenu">
-      <menu action="file">
+   <%(menu_element)s name="TopMenu">
+      <menu action="notebook">
          <menuitem action="new-notebook"/>
          <menuitem action="open-notebook"/>
          <menuitem action="notebook-properties"/>
          <separator/>
+         <menuitem action="quit"/>
+      </menu>
+      <menu action="pages" name="PagesMenu">
          <menuitem action="new-worksheet"/>
-         <menuitem action="open"/>
          <menuitem action="save"/>
          <menuitem action="rename"/>
          <menuitem action="close"/>
-         <separator/>
-         <menuitem action="quit"/>
       </menu>
       <menu action="edit">
          <menuitem action="cut"/>
@@ -50,53 +52,71 @@ class NotebookWindow(BaseWindow):
 	<menu action="help">
         <menuitem action="about"/>
       </menu>
-   </menubar>
+   </%(menu_element)s>
    <toolbar name="ToolBar">
+      <toolitem action="new-worksheet"/>
       <toolitem action="save"/>
+      <toolitem action="close"/>
       <separator/>
       <toolitem action="calculate"/>
    </toolbar>
 </ui>
 """
     def __init__(self, notebook):
+        if global_settings.use_hildon:
+            global hildon
+            import hildon
+
+            menu_element = 'popup'
+        else:
+            menu_element = 'menubar'
+
+        self.UI_STRING = self.UI_STRING % { 'menu_element': menu_element }
+
         BaseWindow.__init__(self, notebook)
         self.path = notebook.folder
 
         self.editors = []
-
-        hpaned = gtk.HPaned()
-        hpaned.set_position(200)
-        self.main_vbox.pack_start(hpaned, expand=True, fill=True)
-
-        scrolled_window = gtk.ScrolledWindow()
-        scrolled_window.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        hpaned.pack1(scrolled_window, resize=False)
-
-        self.__file_list = FileList(self.notebook)
-        scrolled_window.add(self.__file_list)
-        self.__file_list.connect('open-file', self.on_file_list_open_file)
+        self.__pages_items = []
 
         self.__nb_widget = gtk.Notebook()
-        hpaned.pack2(self.__nb_widget, resize=True)
+        self.__nb_widget.set_show_tabs(False)
+        self.main_vbox.pack_start(self.__nb_widget, expand=True, fill=True)
         self.__nb_widget.connect_after('switch-page', self.on_page_switched)
 
-        self.window.set_default_size(800, 800)
+        self.window.set_default_size(800, 600)
 
         self.main_vbox.show_all()
 
         self.__initial_editor = self.__new_worksheet()
         self.current_editor.view.grab_focus()
 
+        self.__update_pages()
         self.__update_title()
 
     #######################################################
     # Overrides
     #######################################################
 
+    def _create_window(self, menu, toolbar):
+        if global_settings.use_hildon:
+            self.window = hildon.Window()
+            self.window.set_menu(menu)
+            self.window.add_toolbar(toolbar)
+
+            settings = self.window.get_settings()
+            settings.set_property("gtk-button-images", False)
+            settings.set_property("gtk-menu-images", False)
+        else:
+            BaseWindow._create_window(self, menu, toolbar)
+            toolbar.set_style(gtk.TOOLBAR_ICONS)
+
     def _add_actions(self, action_group):
         BaseWindow._add_actions(self, action_group)
 
         action_group.add_actions([
+            ('notebook',    None,                "_Notebook"),
+            ('pages',       None,                "_Pages"),
             ('notebook-properties', gtk.STOCK_PROPERTIES, "Notebook _Properties", None,         None, self.on_notebook_properties),
             ('new-worksheet',      gtk.STOCK_NEW,         "_New Worksheet",       "<control>n", None, self.on_new_worksheet),
         ])
@@ -121,21 +141,8 @@ class NotebookWindow(BaseWindow):
         self.__nb_widget.add(editor.widget)
         editor.connect('notify::title', self.on_editor_notify_title)
 
-        label_widget = gtk.HBox(False, 4)
-        editor._notebook_tab_label = gtk.Label()
-        label_widget.pack_start(editor._notebook_tab_label, True, True, 0)
-        tab_button = gtk.Button()
-        tab_button.set_name('notebook-close-button')
-        tab_button.set_relief(gtk.RELIEF_NONE)
-        tab_button.props.can_focus = False
-        tab_button.connect('clicked', lambda *args: self.on_tab_close_button_clicked(editor))
-        label_widget.pack_start(tab_button, False, False, 0)
-        close = gtk.image_new_from_stock('gtk-close', gtk.ICON_SIZE_MENU)
-        tab_button.add(close)
-        label_widget.show_all()
-
-        self.__nb_widget.set_tab_label(editor.widget, label_widget)
         self.__update_editor_title(editor)
+        self.__update_pages()
 
         return editor
 
@@ -152,6 +159,7 @@ class NotebookWindow(BaseWindow):
 
         self.editors.remove(editor)
         editor.close()
+        self.__update_pages()
         self.__update_title()
 
     def __make_editor_current(self, editor):
@@ -169,6 +177,71 @@ class NotebookWindow(BaseWindow):
 
         return editor
 
+    def __create_editor_item(self, editor):
+        def on_activate(item):
+            self.__make_editor_current(editor)
+
+        item = gtk.MenuItem("")
+        item.get_child().set_markup(format_escaped("<b>%s</b>", editor.title))
+        item.connect('activate', on_activate)
+
+        return item
+
+    def __create_file_item(self, file):
+        def on_activate(item):
+            self.open_file(file)
+
+        item = gtk.MenuItem(os.path.basename(file.path))
+        item.connect('activate', on_activate)
+
+        return item
+
+    def __sort_files(self, file_a, file_b):
+        name_a = os.path.basename(file_a.path)
+        name_b = os.path.basename(file_b.path)
+
+        c = cmp(name_a.lower(), name_b.lower())
+        if c != 0:
+            return c
+
+        return cmp(name_a, name_b)
+
+    def __update_pages(self):
+        for item in self.__pages_items:
+            item.destroy()
+
+        items = self.__pages_items = []
+
+        open_editors = {}
+        for editor in self.editors:
+            if editor.buf.worksheet.filename == None:
+                items.append(self.__create_editor_item(editor))
+            else:
+                open_editors[editor.buf.worksheet.filename] = editor
+
+        if len(items) > 0:
+            items.append(gtk.SeparatorMenuItem())
+
+        for file in sorted(self.notebook.files.values(), self.__sort_files):
+            absolute = os.path.join(self.notebook.folder, file.path)
+            if absolute in open_editors:
+                editor = open_editors[absolute]
+                item = self.__create_editor_item(editor)
+            else:
+                item = self.__create_file_item(file)
+
+            items.append(item)
+
+        if len(items) > 0:
+            items.append(gtk.SeparatorMenuItem())
+
+        menu = self.ui_manager.get_widget("/TopMenu/PagesMenu").get_submenu()
+
+        items.reverse()
+        for item in items:
+            item.show()
+            menu.prepend(item)
+
     def __update_title(self, *args):
         if self.current_editor:
             title = self.current_editor.title + " - " + os.path.basename(self.notebook.folder) + " - Reinteract"
@@ -178,7 +251,6 @@ class NotebookWindow(BaseWindow):
         self.window.set_title(title)
 
     def __update_editor_title(self, editor):
-        editor._notebook_tab_label.set_text(editor.title)
         if editor == self.current_editor:
             self.__update_title()
 
@@ -196,6 +268,27 @@ class NotebookWindow(BaseWindow):
     #######################################################
     # Callbacks
     #######################################################
+
+    # Override the next to to get "one window at a time" behavior. We cheat and open
+    # the new and close the old to avoid writing code to retarget an existing MiniWindow,
+    # though that probably wouldn't be that hard. (And would look better). Doing it this
+    # way is more to prototype out the user interface idea.
+
+    def on_new_notebook(self, action):
+        if not self.__confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
+            return
+
+        new_window = application.create_notebook_dialog(parent=self.window)
+        if new_window:
+            self._close_window()
+
+    def on_open_notebook(self, action):
+        if not self.__confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
+            return
+
+        new_window = application.open_notebook_dialog(parent=self.window)
+        if new_window:
+            self._close_window()
 
     def on_notebook_properties(self, action):
         builder = WindowBuilder('notebook-properties')

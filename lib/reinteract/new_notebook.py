@@ -32,6 +32,7 @@ class CreateNotebookBuilder(WindowBuilder):
 def run(parent=None):
     builder = CreateNotebookBuilder()
     builder.dialog.set_transient_for(parent)
+    result_window = None
 
     while True:
         response = builder.dialog.run()
@@ -63,7 +64,7 @@ def run(parent=None):
             try:
                 builder.dialog.hide()
                 description = builder.description_text_view.get_buffer().props.text.strip()
-                application.create_notebook(fullname, description=description)
+                result_window = application.create_notebook(fullname, description=description)
             except OSError, e:
                 builder.dialog.show()
                 error_message = "<big><b>Error creating notebook</b></big>"
@@ -81,3 +82,4 @@ def run(parent=None):
         break
 
     builder.dialog.destroy()
+    return result_window

@@ -743,10 +743,10 @@ class Worksheet(gobject.GObject):
             if self.filename == None:
                 raise ValueError("No current or specified filename")
 
-            if not self.code_modified:
-                return
-
             filename = self.filename
+
+        if not self.code_modified and filename == self.filename:
+            return
 
         tmpname = filename + ".tmp"
 

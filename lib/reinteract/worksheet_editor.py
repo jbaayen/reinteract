@@ -118,15 +118,17 @@ class WorksheetEditor(Editor):
 
     def load(self, filename):
         if not os.path.exists(filename):
-            # FIXME
             self.buf.worksheet.filename = filename
         else:
             self.buf.worksheet.load(filename)
             self.buf.place_cursor(self.buf.get_start_iter())
             self.view.calculate()
 
-    def save(self):
-        if self.buf.worksheet.filename == None:
+    def save(self, filename=None):
+        if filename == None:
+            filename = self.buf.worksheet.filename
+
+        if filename == None:
             def action(fullname):
                 self.buf.worksheet.save(fullname)
                 self._clear_unsaved()
@@ -134,7 +136,7 @@ class WorksheetEditor(Editor):
 
             self.__prompt_for_name(title="Save As...", save_button_text="_Save", action=action)
         else:
-            self.buf.worksheet.save()
+            self.buf.worksheet.save(filename)
 
     def rename(self):
         if self.buf.worksheet.filename == None:

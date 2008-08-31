@@ -4,6 +4,7 @@ import pango
 import re
 
 from application import application
+from global_settings import global_settings
 from notebook_window import NotebookWindow
 from window_builder import WindowBuilder
 
@@ -117,6 +118,7 @@ class OpenNotebookBuilder(WindowBuilder):
 def run(parent=None):
     builder = OpenNotebookBuilder()
     builder.dialog.set_transient_for(parent)
+    result_window = None
 
     while True:
         response = builder.dialog.run()
@@ -127,20 +129,25 @@ def run(parent=None):
             # We have to hide the modal dialog, or with metacity the new window pops at the back
             builder.dialog.hide()
             selected_info = builder.get_selected_info()
-            application.open_notebook(selected_info.folder)
+            result_window = application.open_notebook(selected_info.folder)
         elif response == 1: # Browse...
-            chooser = gtk.FileChooserDialog("Open Notebook...", parent, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
-                                            (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                             gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
+            if global_settings.use_hildon:
+                import hildon
+                chooser = hildon.FileChooserDialog(parent, gtk.FILE_CHOOSER_ACTION_OPEN)
+            else:
+                chooser = gtk.FileChooserDialog("Open Notebook...", parent, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+                                                (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                                 gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
             chooser.set_default_response(gtk.RESPONSE_OK)
 
             response = chooser.run()
             if response == gtk.RESPONSE_OK:
                 filename = chooser.get_filename()
-                application.open_notebook(filename)
+                result_window = application.open_notebook(filename)
 
             chooser.destroy()
 
         break
 
     builder.dialog.destroy()
+    return result_window

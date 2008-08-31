@@ -11,6 +11,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/__init__.py                                \
 		    lib/reinteract/about_dialog.py			      \
 		    lib/reinteract/application.py			      \
+		    lib/reinteract/base_window.py			      \
 		    lib/reinteract/change_range.py			      \
 		    lib/reinteract/chunks.py			      	      \
                     lib/reinteract/completion_popup.py                        \
@@ -24,6 +25,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/global_settings.py                         \
                     lib/reinteract/iter_copy_from.py                          \
                     lib/reinteract/main.py                                    \
+                    lib/reinteract/mini_window.py                             \
                     lib/reinteract/new_notebook.py                            \
                     lib/reinteract/notebook.py                                \
                     lib/reinteract/notebook_info.py                           \

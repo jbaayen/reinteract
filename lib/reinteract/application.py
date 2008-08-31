@@ -69,20 +69,30 @@ class Application():
 
         return name
 
+    def __make_notebook_window(self, notebook):
+        if global_settings.mini_mode:
+            global MiniWindow
+            from mini_window import MiniWindow
+            return MiniWindow(notebook)
+        else:
+            global NotebookWindow
+            from notebook_window import NotebookWindow
+            return NotebookWindow(notebook)
+
     def open_notebook(self, path):
         for window in self.windows:
-            if isinstance(window, NotebookWindow) and window.notebook.folder == path:
+            if window.path == path:
                 window.window.present()
                 return window
 
         notebook = Notebook(path)
-        window = NotebookWindow(notebook)
+        window = self.__make_notebook_window(notebook)
         window.show()
         self.windows.add(window)
 
         return window
 
-    def __find_notebook(self, path):
+    def find_notebook_path(self, path):
         # Given a path, possibly inside a notebook, find the notebook and the relative
         # path of the notebook inside the file
         relative = None
@@ -111,33 +121,37 @@ class Application():
         if basename.lower() == "index.rnb":
             notebook_path, relative = dirname, None
         else:
-            notebook_path, relative = self.__find_notebook(absolute)
+            notebook_path, relative = self.find_notebook_path(absolute)
 
         if notebook_path:
             window = self.open_notebook(notebook_path)
             if relative and relative in window.notebook.files:
                 window.open_file(window.notebook.files[relative])
         else:
+            global WorksheetWindow
+            from worksheet_window import WorksheetWindow
+
             window = WorksheetWindow()
             window.load(absolute)
             window.show()
+            self.windows.add(window)
 
     def create_notebook(self, path, description=None):
         os.makedirs(path)
         notebook = Notebook(path)
         if description != None:
             notebook.info.description = description
-        window = NotebookWindow(notebook)
+        window = self.__make_notebook_window(notebook)
         window.show()
         self.windows.add(window)
 
         return window
 
     def create_notebook_dialog(self, parent=None):
-        new_notebook.run(parent)
+        return new_notebook.run(parent)
 
     def open_notebook_dialog(self, parent=None):
-        open_notebook.run(parent)
+        return open_notebook.run(parent)
 
     def quit(self):
         for window in self.windows:
@@ -172,6 +186,5 @@ application = Application()
 from global_settings import global_settings
 from notebook import Notebook
 from notebook_info import NotebookInfo
-from notebook_window import NotebookWindow
 import new_notebook
 import open_notebook
