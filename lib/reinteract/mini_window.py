@@ -243,6 +243,7 @@ class MiniWindow(BaseWindow):
     def __update_editor_title(self, editor):
         if editor == self.current_editor:
             self.__update_title()
+        self.__update_pages()
 
     def __confirm_discard(self, message_format, continue_button_text):
         for editor in self.editors:
