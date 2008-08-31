@@ -78,14 +78,14 @@ class WorksheetWindow:
             ('copy',    gtk.STOCK_COPY,      None,         None,              None, self.on_copy),
             ('copy-as-doctests',
              gtk.STOCK_COPY,
-             "Copy as _Doctests",
+             "Copy as Doc_tests",
              "<control><shift>c",
              None,
              self.on_copy_as_doctests),
             ('paste',   gtk.STOCK_PASTE,     None,         None,              None,  self.on_paste),
             ('delete',  gtk.STOCK_DELETE,    None,         None,              None,  self.on_delete),
             ('about',   gtk.STOCK_ABOUT,      None,         None,              None, self.on_about),
-            ('calculate', gtk.STOCK_REFRESH, "_Calculate", '<control>Return', None,  self.on_calculate),
+            ('calculate', gtk.STOCK_REFRESH, "Ca_lculate", '<control>Return', None,  self.on_calculate),
         ])
 
         ui_manager.insert_action_group(action_group, 0)

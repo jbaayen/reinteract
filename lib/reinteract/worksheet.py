@@ -90,6 +90,8 @@ class Worksheet(gobject.GObject):
     def __init__(self, notebook):
         gobject.GObject.__init__(self)
 
+        self.notebook = notebook
+
         self.global_scope = {}
         notebook.setup_globals(self.global_scope)
         exec _DEFINE_GLOBALS in self.global_scope
@@ -116,6 +118,8 @@ class Worksheet(gobject.GObject):
         # pygobject bug, default None doesn't work for a string property and gets
         # turned into ""
         self.filename = None
+
+        notebook._add_worksheet(self)
 
     def do_import(self, name, globals, locals, fromlist, level):
         __import__(self, name, globals, locals, fromlist, level)
@@ -739,6 +743,9 @@ class Worksheet(gobject.GObject):
             if self.filename == None:
                 raise ValueError("No current or specified filename")
 
+            if not self.code_modified:
+                return
+
             filename = self.filename
 
         tmpname = filename + ".tmp"
@@ -766,10 +773,15 @@ class Worksheet(gobject.GObject):
             success = True
 
             self.__set_filename_and_modified(filename, False)
+            if self.notebook.info:
+                self.notebook.info.update_last_modified()
         finally:
             if not success:
                 f.close()
                 os.remove(tmpname)
+
+    def close(self):
+        self.notebook._remove_worksheet(self)
 
 ######################################################################
 

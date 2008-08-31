@@ -1,10 +1,12 @@
+import gobject
 import gtk
-
 import logging
 from optparse import OptionParser
 import os
 import stdout_capture
 import sys
+
+from notebook import Notebook
 
 from global_settings import global_settings
 from worksheet_window import WorksheetWindow
@@ -31,17 +33,35 @@ if options.ui == "hildon":
     except ImportError, e:
         print >>sys.stderr, "Error importing hildon. Falling back to standard ui."
 
-w = WorksheetWindow()
+gobject.set_application_name("Reinteract")
+
+# w = WorksheetWindow()
+
+# if len(args) > 0:
+#     w.load(args[0])
+# else:
+#     # If you run reinteract from the command line, you'd expect to be able to
+#     # create a worksheet, test it, then save it in the current directory, and
+#     # have that act the same as loading the worksheet to start with. This is
+#     # less obviously right when run from a menu item.
+#     w.notebook.set_path([os.getcwd()])
+
+# w.show()
+
+from application import application
 
 if len(args) > 0:
-    w.load(args[0])
+    for arg in args:
+        if os.path.isdir(arg):
+            application.open_notebook(os.path.abspath(arg))
+        else:
+            raise NotImplementedError()
 else:
-    # If you run reinteract from the command line, you'd expect to be able to
-    # create a worksheet, test it, then save it in the current directory, and
-    # have that act the same as loading the worksheet to start with. This is
-    # less obviously right when run from a menu item.
-    w.notebook.set_path([os.getcwd()])
-
-w.show()
+    notebook_dir = os.path.expanduser(os.path.join(application.get_notebooks_folder(), "Main"))
+    if not os.path.exists(notebook_dir):
+        application.create_notebook(notebook_dir,
+                                    description="Notebook for scratch work.\nCreate worksheets here if they are not part of a larger project, or for quick experiments.")
+    else:
+        application.open_notebook(notebook_dir)
 
 gtk.main()

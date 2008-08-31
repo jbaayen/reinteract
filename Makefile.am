@@ -1,20 +1,24 @@
 LIST_END =
 
-SUBDIRS = data
+SUBDIRS = data dialogs
 
 reinteractdir = $(bindir)
-dist_reinteract_SCRIPTS = bin/reinteract
+dist_bin = bin/reinteract
 dist_noinst_SCRIPTS = bin/uninst.py
 
 reinteractpkgdir = $(REINTERACT_PACKAGE_DIR)
 reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/__init__.py                                \
+		    lib/reinteract/about_dialog.py			      \
+		    lib/reinteract/change_range.py			      \
+		    lib/reinteract/chunks.py			      	      \
                     lib/reinteract/completion_popup.py                        \
                     lib/reinteract/custom_result.py                           \
                     lib/reinteract/data_format.py                             \
                     lib/reinteract/doc_format.py                              \
                     lib/reinteract/doc_popup.py                               \
                     lib/reinteract/format_escaped.py                          \
+                    lib/reinteract/global_settings.py                         \
                     lib/reinteract/iter_copy_from.py                          \
                     lib/reinteract/main.py                                    \
                     lib/reinteract/notebook.py                                \
@@ -29,6 +33,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/tokenize.py                                \
                     lib/reinteract/undo_stack.py                              \
                     lib/reinteract/worksheet.py                               \
+                    lib/reinteract/worksheet_window.py                        \
                     $(LIST_END)
 
 replaydir = $(pythondir)
@@ -39,6 +44,8 @@ replot_PYTHON = lib/replot.py
 
 EXTRA_DIST =                                                                  \
              ChangeLog                                                        \
+	     autogen.sh							      \
+	     bin/reinteract.in						      \
              examples/basics.pyw                                              \
              examples/imshow.pyw                                              \
              examples/play.pyw                                                \
@@ -59,3 +66,16 @@ MAINTAINERCLEANFILES =                                                        \
                        Makefile.in                                            \
 		       NEWS						      \
                        $(LIST_END)
+
+distcheck-hook:
+	@echo "Checking against files in git"
+	@failed=false;							\
+	for f in `cd $(srcdir) && git-ls-files -x .gitignore` ; do	\
+		if test -e $(distdir)/$$f ; then : ; else		\
+			echo File missing from distribution: $$f ;	\
+			failed=true ;					\
+		fi							\
+	done ;								\
+	if $$failed ; then						\
+		exit 1 ;						\
+	fi

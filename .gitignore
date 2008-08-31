@@ -6,6 +6,6 @@
 /config
 /config.*
 /configure
-/Makefile
-/Makefile.in
+Makefile
+Makefile.in
 /NEWS

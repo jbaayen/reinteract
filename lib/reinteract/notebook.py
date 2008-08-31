@@ -1,7 +1,12 @@
 import copy
+import gobject
 import imp
+import os
 import sys
 
+from notebook_info import NotebookInfo
+
+# Used to give each notebook a unique namespace
 _counter = 1
 
 # Hook the import function in the global __builtin__ module; this is used to make
@@ -33,12 +38,46 @@ class _Helper:
         
         return HelpResult(arg)
 
-class Notebook:
-    def __init__(self, path=[]):
+######################################################################
+
+class NotebookFile(gobject.GObject):
+    worksheet = gobject.property(type=gobject.TYPE_PYOBJECT)
+
+    def __init__(self, path):
+        gobject.GObject.__init__(self)
+        self.path = path
+
+class WorksheetFile(NotebookFile):
+    pass
+
+class LibraryFile(NotebookFile):
+    pass
+
+class MiscFile(NotebookFile):
+    pass
+
+######################################################################
+
+class Notebook(gobject.GObject):
+    __gsignals__ = {
+        'files-changed': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ())
+    }
+
+    def __init__(self, folder=None, path=None):
+        gobject.GObject.__init__(self)
+
         global _counter
-        
+
         self.__prefix = "__reinteract" + str(_counter)
         _counter += 1
+
+        if not path :
+            if folder:
+                path = [folder]
+            else:
+                path = []
+
+        self.path = path
 
         self.__path = path
         self.__modules = {}
@@ -46,12 +85,68 @@ class Notebook:
         self.__root_module = imp.new_module(self.__prefix)
         self.__root_module.path = path
         sys.modules[self.__prefix] = self.__root_module
-        
-    def set_path(self, path):
-        if path != self.__path:
-            self.__path = path
-            self.__root_module.path = path
-            self.__reset_all_modules()
+
+        self.files = {}
+        self.worksheets = set()
+
+        if folder:
+            self.info = NotebookInfo(folder)
+        else:
+            self = None
+
+        self.folder = folder
+        self.refresh()
+
+    ############################################################
+    # Loading and Saving
+    ############################################################
+
+    def __load_files(self, folder, old_files, new_files):
+        if folder:
+            full_folder = os.path.join(self.folder, folder)
+        else:
+            full_folder = self.folder
+
+        files_added = False
+
+        for f in os.listdir(full_folder):
+            if folder == None and f == "index.rnb":
+                continue
+
+            if folder:
+                relative = os.path.join(folder, f)
+            else:
+                relative = f
+
+            full_path = os.path.join(full_folder, f)
+
+            if os.path.isdir(full_path):
+                files_added = self.__load_files(relative, old_files, new_files) or files_added
+            elif relative in old_files:
+                new_files[relative] = old_files[relative]
+                del old_files[relative]
+            elif f.endswith('~'):
+                pass
+            else:
+                if f.endswith('.rws') or f.endswith('.RWS'):
+                    file = WorksheetFile(relative)
+                    absolute = os.path.join(full_folder, f)
+                    for worksheet in self.worksheets:
+                        if os.path.abspath(worksheet.filename) == absolute:
+                            file.worksheet = worksheet
+                            break
+                elif f.endswith('.py') or f.endswith('.PY'):
+                    file = LibraryFile(relative)
+                else:
+                    file = MiscFile(relative)
+                new_files[relative] = file
+                files_added = True
+
+        return files_added
+
+    ############################################################
+    # Import handling
+    ############################################################
 
     def __reset_all_modules(self):
         for (name, module) in enumerate(self.__modules):
@@ -168,10 +263,66 @@ class Notebook:
         else:
             return sys.modules[names[0]]
 
+    ############################################################
+    # Worksheet tracking
+    #############################################################
+
+    def on_worksheet_notify_filename(self, worksheet, *args):
+        old_file = None
+        new_file = None
+        for file in self.files.values():
+            if file.worksheet == worksheet:
+                old_file = file
+
+            if worksheet.filename and os.path.abspath(os.path.join(self.folder, file.path)) == os.path.abspath(worksheet.filename):
+                new_file = file
+
+        if old_file != new_file:
+            if old_file:
+                old_file.worksheet = None
+
+            if new_file:
+                new_file.worksheet = worksheet
+
+    def _add_worksheet(self, worksheet):
+        # Called from Worksheet
+        self.worksheets.add(worksheet)
+        worksheet._notebook_filename_changed_handler = worksheet.connect('notify::filename', self.on_worksheet_notify_filename)
+
+    def _remove_worksheet(self, worksheet):
+        # Called from Worksheet
+        worksheet.disconnect(worksheet._notebook_filename_changed_handler)
+        del worksheet._notebook_filename_changed_handler
+        self.worksheets.remove(worksheet)
+
+        for file in self.files.values():
+            if file.worksheet == worksheet:
+                file.worksheet = None
+
+    ############################################################
+    # Public API
+    ############################################################
+
+    def refresh(self):
+        old_files = self.files
+        self.files = {}
+        files_added = self.__load_files(None, old_files, self.files)
+        if files_added or len(old_files) > 0:
+            self.emit('files-changed')
+
+    def set_path(self, path):
+        if path != self.__path:
+            self.__path = path
+            self.__root_module.path = path
+            self.__reset_all_modules()
+
     def setup_globals(self, globals):
         globals['__reinteract_notebook'] = self
         globals['help'] = _Helper()
 
+    def save(self):
+        pass
+    
 if __name__ == '__main__':
     import copy
     import os
