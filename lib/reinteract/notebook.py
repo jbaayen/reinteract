@@ -63,7 +63,7 @@ class Notebook(gobject.GObject):
         'files-changed': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ())
     }
 
-    def __init__(self, folder=None, path=None):
+    def __init__(self, folder=None):
         gobject.GObject.__init__(self)
 
         global _counter
@@ -71,13 +71,13 @@ class Notebook(gobject.GObject):
         self.__prefix = "__reinteract" + str(_counter)
         _counter += 1
 
-        if not path :
-            if folder:
-                path = [folder]
-            else:
-                path = []
 
-        self.path = path
+        self.folder = folder
+
+        if folder:
+            path = [folder]
+        else:
+            path = []
 
         self.__path = path
         self.__modules = {}
@@ -92,9 +92,8 @@ class Notebook(gobject.GObject):
         if folder:
             self.info = NotebookInfo(folder)
         else:
-            self = None
+            self.info = None
 
-        self.folder = folder
         self.refresh()
 
     ############################################################
@@ -304,6 +303,9 @@ class Notebook(gobject.GObject):
     ############################################################
 
     def refresh(self):
+        if not self.folder:
+            return
+
         old_files = self.files
         self.files = {}
         files_added = self.__load_files(None, old_files, self.files)

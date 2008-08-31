@@ -35,27 +35,11 @@ if options.ui == "hildon":
 
 gobject.set_application_name("Reinteract")
 
-# w = WorksheetWindow()
-
-# if len(args) > 0:
-#     w.load(args[0])
-# else:
-#     # If you run reinteract from the command line, you'd expect to be able to
-#     # create a worksheet, test it, then save it in the current directory, and
-#     # have that act the same as loading the worksheet to start with. This is
-#     # less obviously right when run from a menu item.
-#     w.notebook.set_path([os.getcwd()])
-
-# w.show()
-
 from application import application
 
 if len(args) > 0:
     for arg in args:
-        if os.path.isdir(arg):
-            application.open_notebook(os.path.abspath(arg))
-        else:
-            raise NotImplementedError()
+        application.open_path(os.path.abspath(arg))
 else:
     notebook_dir = os.path.expanduser(os.path.join(application.get_notebooks_folder(), "Main"))
     if not os.path.exists(notebook_dir):

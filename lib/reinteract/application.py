@@ -73,12 +73,54 @@ class Application():
         for window in self.windows:
             if isinstance(window, NotebookWindow) and window.notebook.folder == path:
                 window.window.present()
-                return
+                return window
 
         notebook = Notebook(path)
         window = NotebookWindow(notebook)
         window.show()
         self.windows.add(window)
+
+        return window
+
+    def __find_notebook(self, path):
+        # Given a path, possibly inside a notebook, find the notebook and the relative
+        # path of the notebook inside the file
+        relative = None
+        while True:
+            if os.path.isdir(path):
+                if os.path.exists(os.path.join(path, "index.rnb")):
+                    return path, relative
+            parent, basename = os.path.split(path)
+            if parent == path: # At the root
+                return None, None
+
+            path = parent
+            if relative == None:
+                relative = basename
+            else:
+                relative = os.path.join(basename, relative)
+
+        return path, relative
+
+    def open_path(self, path):
+        """Figure out what path points to, and open it appropriately"""
+
+        absolute = os.path.abspath(path)
+        basename, dirname = os.path.split(absolute)
+
+        if basename.lower() == "index.rnb":
+            notebook_path, relative = dirname, None
+        else:
+            notebook_path, relative = self.__find_notebook(absolute)
+
+        if notebook_path:
+            window = self.open_notebook(notebook_path)
+            if relative and relative in window.notebook.files:
+                window.open_file(window.notebook.files[relative])
+        else:
+            window = WorksheetWindow()
+            window.load(absolute)
+            window.show()
 
     def create_notebook(self, path, description=None):
         os.makedirs(path)
@@ -88,6 +130,8 @@ class Application():
         window = NotebookWindow(notebook)
         window.show()
         self.windows.add(window)
+
+        return window
 
     def create_notebook_dialog(self, parent=None):
         new_notebook.run(parent)

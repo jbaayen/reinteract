@@ -327,6 +327,19 @@ class NotebookWindow:
         self.__close_editor(editor)
 
     def on_file_list_open_file(self, file_list, file):
+        self.open_file(file)
+
+    #######################################################
+    # Public API
+    #######################################################
+
+    def confirm_discard(self):
+        if not self.__confirm_discard('Save the changes to worksheet "%s" before quitting?', '_Quit without saving'):
+            return False
+
+        return True
+
+    def open_file(self, file):
         if isinstance(file, WorksheetFile):
             if file.worksheet: # Already open
                 for editor in self.editors:
@@ -340,16 +353,6 @@ class NotebookWindow:
                 self.__make_editor_current(editor)
 
                 self.__close_initial_editor()
-
-    #######################################################
-    # Public API
-    #######################################################
-
-    def confirm_discard(self):
-        if not self.__confirm_discard('Save the changes to worksheet "%s" before quitting?', '_Quit without saving'):
-            return False
-
-        return True
 
     def show(self):
         self.window.show()
