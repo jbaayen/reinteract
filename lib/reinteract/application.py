@@ -30,6 +30,15 @@ class Application():
 
             infos.append(NotebookInfo(fullpath))
 
+        # Wedge the examples notebook into the Open Notebook dialog so people
+        # can find it. Longer-term, a possibility:
+        #
+        # - keep track of the history of recently opened notebooks
+        # - include them when listing known notebooks
+        # - on first startup, prime that with the examples notebook
+        #
+        infos.append(NotebookInfo(global_settings.examples_dir))
+
         return infos
 
     def get_notebooks_folder(self):
@@ -111,10 +120,9 @@ class Application():
 # The global singleton
 application = Application()
 
-from format_escaped import format_escaped
+from global_settings import global_settings
 from notebook import Notebook
 from notebook_info import NotebookInfo
 from notebook_window import NotebookWindow
 import new_notebook
 import open_notebook
-from window_builder import WindowBuilder

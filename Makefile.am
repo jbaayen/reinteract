@@ -10,6 +10,7 @@ reinteractpkgdir = $(REINTERACT_PACKAGE_DIR)
 reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/__init__.py                                \
 		    lib/reinteract/about_dialog.py			      \
+		    lib/reinteract/application.py			      \
 		    lib/reinteract/change_range.py			      \
 		    lib/reinteract/chunks.py			      	      \
                     lib/reinteract/completion_popup.py                        \
@@ -17,11 +18,17 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/data_format.py                             \
                     lib/reinteract/doc_format.py                              \
                     lib/reinteract/doc_popup.py                               \
+                    lib/reinteract/editor.py                                  \
+                    lib/reinteract/file_list.py                               \
                     lib/reinteract/format_escaped.py                          \
                     lib/reinteract/global_settings.py                         \
                     lib/reinteract/iter_copy_from.py                          \
                     lib/reinteract/main.py                                    \
+                    lib/reinteract/new_notebook.py                            \
                     lib/reinteract/notebook.py                                \
+                    lib/reinteract/notebook_info.py                           \
+                    lib/reinteract/notebook_window.py                         \
+                    lib/reinteract/open_notebook.py                           \
                     lib/reinteract/popup.py                                   \
                     lib/reinteract/rewrite.py                                 \
                     lib/reinteract/sanitize_textview_ipc.py                   \
@@ -32,7 +39,9 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/stdout_capture.py                          \
                     lib/reinteract/tokenize.py                                \
                     lib/reinteract/undo_stack.py                              \
+                    lib/reinteract/window_builder.py                          \
                     lib/reinteract/worksheet.py                               \
+                    lib/reinteract/worksheet_editor.py                        \
                     lib/reinteract/worksheet_window.py                        \
                     $(LIST_END)
 
@@ -42,15 +51,21 @@ replay_PYTHON = lib/replay.py
 replotdir = $(pythondir)
 replot_PYTHON = lib/replot.py
 
-EXTRA_DIST =                                                                  \
-             ChangeLog                                                        \
-	     autogen.sh							      \
-	     bin/reinteract.in						      \
-             examples/basics.pyw                                              \
-             examples/imshow.pyw                                              \
-             examples/play.pyw                                                \
-             examples/plot.pyw                                                \
-             README                                                           \
+examplesdir = $(docdir)/examples
+examples_DATA =					\
+             examples/basics.rws		\
+             examples/imshow.rws		\
+             examples/index.rnb			\
+             examples/play.rws			\
+             examples/plot.rws			\
+ 	     $(LIST_END)
+
+EXTRA_DIST =					\
+             ChangeLog				\
+	     autogen.sh				\
+	     bin/reinteract.in			\
+	     $(examples_DATA)			\
+             README				\
              $(LIST_END)
 
 DISTCLEANFILES =                                                              \
