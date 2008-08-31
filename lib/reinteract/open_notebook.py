@@ -115,7 +115,6 @@ def run(parent=None):
             builder.dialog.hide()
             selected_info = builder.get_selected_info()
             application.open_notebook(selected_info.folder)
-            break
         elif response == 1: # Browse...
             chooser = gtk.FileChooserDialog("Open Notebook...", parent, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
                                             (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
@@ -128,6 +127,7 @@ def run(parent=None):
                 application.open_notebook(filename)
 
             chooser.destroy()
-            break
+
+        break
 
     builder.dialog.destroy()
