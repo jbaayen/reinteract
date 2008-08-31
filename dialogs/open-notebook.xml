@@ -28,6 +28,9 @@
               </object>
             </child>
           </object>
+          <packing>
+            <property name="position">1</property>
+          </packing>
         </child>
         <child internal-child="action_area">
           <object class="GtkHButtonBox" id="dialog-action_area1">
@@ -38,7 +41,8 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">Browse...</property>
+                <property name="label" translatable="yes">_Browse...</property>
+                <property name="use_underline">True</property>
               </object>
               <packing>
                 <property name="secondary">True</property>

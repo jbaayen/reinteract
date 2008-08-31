@@ -110,13 +110,24 @@ def run(parent=None):
         if response == 0: # gtk-builder-convert puts check/radio buttons in action-widgets
             continue
 
-        if response != gtk.RESPONSE_OK:
+        if response == gtk.RESPONSE_OK:
+            # We have to hide the modal dialog, or with metacity the new window pops at the back
+            builder.dialog.hide()
+            selected_info = builder.get_selected_info()
+            application.open_notebook(selected_info.folder)
             break
+        elif response == 1: # Browse...
+            chooser = gtk.FileChooserDialog("Open Notebook...", parent, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+                                            (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                             gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
+            chooser.set_default_response(gtk.RESPONSE_OK)
 
-        # We have to hide the modal dialog, or with metacity the new window pops at the back
-        builder.dialog.hide()
-        selected_info = builder.get_selected_info()
-        application.open_notebook(selected_info.folder)
-        break
+            response = chooser.run()
+            if response == gtk.RESPONSE_OK:
+                filename = chooser.get_filename()
+                application.open_notebook(filename)
+
+            chooser.destroy()
+            break
 
     builder.dialog.destroy()
