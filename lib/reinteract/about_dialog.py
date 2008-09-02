@@ -31,6 +31,7 @@ class AboutDialog(gtk.AboutDialog):
         gtk.AboutDialog.__init__(self)
         self.set_transient_for(parent)
         self.set_name("Reinteract")
+        self.set_logo_icon_name("reinteract")
         self.set_copyright("Copyright \302\251 2007-2008 Owen Taylor, Red Hat, Inc., and others")
         self.set_website("http://www.reinteract.org")
         self.connect("response", lambda d, r: d.destroy())

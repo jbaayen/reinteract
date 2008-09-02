@@ -35,6 +35,8 @@ user_ext_path = os.path.expanduser(os.path.join('~', '.reinteract', 'modules'))
 if os.path.exists(user_ext_path):
     sys.path[0:0] = [user_ext_path]
 
+gtk.window_set_default_icon_name("reinteract")
+
 w = WorksheetWindow()
 
 if len(args) > 0:
