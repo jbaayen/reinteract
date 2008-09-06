@@ -9,12 +9,16 @@ dist_noinst_SCRIPTS = bin/uninst.py
 reinteractpkgdir = $(REINTERACT_PACKAGE_DIR)
 reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/__init__.py                                \
+                    lib/reinteract/about_dialog.py                            \
+                    lib/reinteract/change_range.py                            \
+                    lib/reinteract/chunks.py                                  \
                     lib/reinteract/completion_popup.py                        \
                     lib/reinteract/custom_result.py                           \
                     lib/reinteract/data_format.py                             \
                     lib/reinteract/doc_format.py                              \
                     lib/reinteract/doc_popup.py                               \
                     lib/reinteract/format_escaped.py                          \
+                    lib/reinteract/global_settings.py                         \
                     lib/reinteract/iter_copy_from.py                          \
                     lib/reinteract/main.py                                    \
                     lib/reinteract/notebook.py                                \
@@ -29,6 +33,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/tokenize.py                                \
                     lib/reinteract/undo_stack.py                              \
                     lib/reinteract/worksheet.py                               \
+                    lib/reinteract/worksheet_window.py                        \
                     $(LIST_END)
 
 replaydir = $(pythondir)
