@@ -2,7 +2,7 @@ DIALOGS =					\
 	open-notebook.xml			\
 	new-notebook.xml			\
 	notebook-properties.xml			\
-	save-worksheet.xml
+	save-file.xml
 
 dialogsdir=$(pkgdatadir)/dialogs
 dialogs_DATA=$(DIALOGS)

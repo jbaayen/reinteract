@@ -128,10 +128,10 @@ class Application():
             if relative and relative in window.notebook.files:
                 window.open_file(window.notebook.files[relative])
         else:
-            global WorksheetWindow
-            from worksheet_window import WorksheetWindow
+            global EditorWindow
+            from editor_window import EditorWindow
 
-            window = WorksheetWindow()
+            window = EditorWindow()
             window.load(absolute)
             window.show()
             self.windows.add(window)

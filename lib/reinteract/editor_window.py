@@ -7,10 +7,11 @@ import sys
 from application import application
 from base_window import BaseWindow
 from global_settings import global_settings
+from library_editor import LibraryEditor
 from notebook import Notebook
 from worksheet_editor import WorksheetEditor
 
-class WorksheetWindow(BaseWindow):
+class EditorWindow(BaseWindow):
     UI_STRING="""
 <ui>
    <menubar name="TopMenu">
@@ -47,18 +48,9 @@ class WorksheetWindow(BaseWindow):
         BaseWindow.__init__(self, Notebook())
         self.path = None
 
-        self.current_editor = WorksheetEditor(self.notebook)
-        self.main_vbox.pack_start(self.current_editor.widget, expand=True, fill=True)
-
         self.window.set_default_size(700, 800)
 
         self.main_vbox.show_all()
-
-        self.current_editor.buf.worksheet.connect('notify::filename', self.__update_title)
-        self.current_editor.buf.worksheet.connect('notify::code-modified', self.__update_title)
-
-        self.current_editor.view.grab_focus()
-        self.__update_title()
 
     #######################################################
     # Overrides
@@ -75,7 +67,7 @@ class WorksheetWindow(BaseWindow):
         self._close_window()
 
     def _close_window(self):
-        if not self.current_editor.confirm_discard('Discard unsaved changes to worksheet "%s"?', '_Discard'):
+        if not self.current_editor.confirm_discard():
             return True
 
         application.window_closed(self)
@@ -110,7 +102,7 @@ class WorksheetWindow(BaseWindow):
     #######################################################
 
     def on_save(self, action):
-        if self.current_editor.buf.worksheet.filename == None:
+        if self.current_editor.filename == None:
             self.__save_as()
         else:
             self.current_editor.save()
@@ -123,11 +115,28 @@ class WorksheetWindow(BaseWindow):
     #######################################################
 
     def confirm_discard(self):
-        if not self.current_editor.confirm_discard('Save the changes to worksheet "%s" before quitting?', '_Quit without saving'):
+        if not self.current_editor.confirm_discard():
             return False
 
         return True
 
     def load(self, filename):
+        if self.current_editor:
+            self.current_editor.destroy()
+
+        if filename.endswith(".rws") or filename.endswith(".RWS"):
+            self.current_editor = WorksheetEditor(self.notebook)
+        elif filename.endswith(".py") or filename.endswith(".PY"):
+            self.current_editor = LibraryEditor(self.notebook)
+        else:
+            # Ignore for now
+            return
+
+        self.current_editor.connect('notify::title', self.__update_title)
+        self.main_vbox.pack_start(self.current_editor.widget, expand=True, fill=True)
+
         self.path = filename
         self.current_editor.load(filename)
+
+        self.current_editor.view.grab_focus()
+        self.__update_title()

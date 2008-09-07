@@ -8,7 +8,7 @@ from about_dialog import AboutDialog
 from application import application
 from file_list import FileList
 from global_settings import global_settings
-from notebook import Notebook, WorksheetFile
+from notebook import Notebook
 
 class BaseWindow:
     def __init__(self, notebook):
