@@ -5,7 +5,7 @@ import gtk
 import pango
 
 try:
-    import gtksourcevieww
+    import gtksourceview
     use_sourceview = True
 except:
     use_sourceview = False
