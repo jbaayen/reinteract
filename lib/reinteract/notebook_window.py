@@ -75,6 +75,8 @@ class NotebookWindow(BaseNotebookWindow):
 
         hpaned.pack2(self.nb_widget, resize=True)
 
+        self.nb_widget.set_scrollable(True)
+
     def _add_editor(self, editor):
         # Set first since _add_editor() calls _update_editor_title()
         editor._notebook_tab_label = gtk.Label()
@@ -93,6 +95,8 @@ class NotebookWindow(BaseNotebookWindow):
         label_widget.show_all()
 
         self.nb_widget.set_tab_label(editor.widget, label_widget)
+
+        self.nb_widget.set_tab_reorderable(editor.widget, True)
 
     def _update_editor_title(self, editor):
         BaseNotebookWindow._update_editor_title(self, editor)
