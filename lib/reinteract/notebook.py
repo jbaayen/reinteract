@@ -151,12 +151,12 @@ class Notebook(gobject.GObject):
     ############################################################
 
     def __reset_all_modules(self):
-        for (name, module) in enumerate(self.__modules):
+        for (name, module) in self.__modules.iteritems():
             del sys.modules[self.__prefix + "." + name]
 
     def reset_module_by_filename(self, filename):
-        for (name, module) in enumerate(self.__modules):
-            if module.__filename__ == filename:
+        for (name, module) in self.__modules.iteritems():
+            if module.__file__ == filename:
                 del sys.modules[self.__prefix + "." + name]
                 del self.__modules[name]
                 return module
