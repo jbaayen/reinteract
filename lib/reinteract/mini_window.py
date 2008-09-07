@@ -145,18 +145,17 @@ class MiniWindow(BaseNotebookWindow):
 
         open_editors = {}
         for editor in self.editors:
-            if editor.buf.worksheet.filename == None:
+            if editor.file == None:
                 items.append(self.__create_editor_item(editor))
             else:
-                open_editors[editor.buf.worksheet.filename] = editor
+                open_editors[editor.file.path] = editor
 
         if len(items) > 0:
             items.append(gtk.SeparatorMenuItem())
 
         for file in sorted(self.notebook.files.values(), self.__sort_files):
-            absolute = os.path.join(self.notebook.folder, file.path)
-            if absolute in open_editors:
-                editor = open_editors[absolute]
+            if file.path in open_editors:
+                editor = open_editors[file.path]
                 item = self.__create_editor_item(editor)
             else:
                 item = self.__create_file_item(file)
