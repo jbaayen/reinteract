@@ -30,17 +30,41 @@ class Statement:
         self.results = None
         self.stdout_buffer = None
 
-        rewriter = Rewriter(self.__text)
+        self.parent_future_features = None
+        self.__compiled = None
+        self.set_parent(parent)
+
+        self.__compile()
+
+    def set_parent(self, parent):
+        self.__parent = parent
+        if parent:
+            new_future_features = parent.future_features
+        else:
+            new_future_features = None
+
+        if new_future_features != self.parent_future_features:
+            self.parent_future_features = new_future_features
+            if self.__compiled:
+                self.__compile()
+
+    def __compile(self):
+        rewriter = Rewriter(self.__text, future_features=self.parent_future_features)
         self.imports = rewriter.get_imports()
 
         # May raise SyntaxError, UnsupportedSyntaxError
         self.__compiled, self.__mutated = rewriter.rewrite_and_compile(output_func_name='reinteract_output')
 
-        self.set_parent(parent)
+        self.future_features = self.parent_future_features
+        if self.imports != None:
+            for module, symbols in self.imports:
+                if module == '__future__' and symbols != '*' and symbols[0][0] != '.':
+                    merged = set()
+                    if self.future_features:
+                        merged.update(self.future_features)
+                    merged.update((sym for sym, _ in symbols))
+                    self.future_features = sorted(merged)
 
-    def set_parent(self, parent):
-        self.__parent = parent
-        
     def get_result_scope(self):
         return self.result_scope
 
@@ -165,3 +189,12 @@ if __name__=='__main__':
     s2a = Statement("b[0]", worksheet, parent=s1)
     s2a.execute()
     expect(s2a.results[0], "0")
+
+    # Tests of 'from __future__ import...'
+    s1 = Statement("from __future__ import division", worksheet)
+    expect(s1.future_features, ['division'])
+    s2 = Statement("from __future__ import with_statement", worksheet, parent=s1)
+    expect(s2.future_features, ['division', 'with_statement'])
+
+    s1 = Statement("import  __future__", worksheet) # just a normal import
+    expect(s1.future_features, None)

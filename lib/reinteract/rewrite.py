@@ -11,10 +11,11 @@ class UnsupportedSyntaxError(Exception):
         return repr(self.value)
 
 class _RewriteState(object):
-    def __init__(self, output_func_name=None, print_func_name=None):
+    def __init__(self, output_func_name=None, print_func_name=None, future_features=None):
         self.mutated = []
         self.output_func_name = output_func_name
         self.print_func_name = print_func_name
+        self.future_features = future_features
 
     def add_mutated(self, method_spec):
         if not method_spec in self.mutated:
@@ -408,9 +409,40 @@ def _rewrite_stmt(t, state):
                          { symbol.simple_stmt:   _rewrite_simple_stmt,
                            symbol.compound_stmt: _rewrite_compound_stmt })
 
+def _create_future_import_statement(future_features):
+    import_as_names = [symbol.import_as_names]
+    for feature in future_features:
+        if len(import_as_names) > 1:
+            import_as_names.append((token.COMMA, ','))
+        import_as_names.append((symbol.import_as_name,
+                                (token.NAME, feature)))
+
+    return (symbol.stmt,
+            (symbol.simple_stmt,
+             (symbol.small_stmt,
+              (symbol.import_stmt,
+               (symbol.import_from,
+                (token.NAME,
+                 'from'),
+                (symbol.dotted_name,
+                 (token.NAME,
+                  '__future__')),
+                (token.NAME,
+                 'import'),
+                import_as_names))),
+             (token.NEWLINE, '')))
+
 def _rewrite_file_input(t, state):
     # file_input: (NEWLINE | stmt)* ENDMARKER
-    return _rewrite_tree(t, state, { symbol.stmt: _rewrite_stmt })
+    if state.future_features:
+        # Ideally, we'd be able to pass in flags to the AST.compile() operation as we can with the
+        # builtin compile() function. Lacking that ability, we just munge an import statement into
+        # the start of the syntax tree
+        return ((symbol.file_input, _create_future_import_statement(state.future_features)) +
+                tuple((_rewrite_stmt(x, state) if x[0] == symbol.stmt else x) for x in t[1:]))
+        
+    else:
+        return _rewrite_tree(t, state, { symbol.stmt: _rewrite_stmt })
 
 ######################################################################
 # Import procesing
@@ -530,11 +562,12 @@ def _get_imports(t):
 class Rewriter:
     """Class to rewrite and extract information from Python code"""
 
-    def __init__(self, code, encoding="utf8"):
+    def __init__(self, code, encoding="utf8", future_features=None):
         """Initialize the Rewriter object
 
         @param code: the text to compile
         @param encoding: the encoding of the text
+        @param future_features: a list of names from the __future__ module
 
         """
         if (isinstance(code, unicode)):
@@ -543,6 +576,7 @@ class Rewriter:
 
         self.code = code
         self.encoding = encoding
+        self.future_features = future_features
         self.original = parser.suite(code).totuple()
 
     def get_imports(self):
@@ -551,7 +585,7 @@ class Rewriter:
 
         @returns: A list of tuples, which each tuple is either (module_name, '*'),
           (module_name, [('.', as_name)]), or (module_name, [(name, as_name), ...]).
-          
+
         """
 
         return _get_imports(self.original)
@@ -581,7 +615,8 @@ class Rewriter:
         @returns: a tuple of the compiled code followed by a list of mutations
         """
         state = _RewriteState(output_func_name=output_func_name,
-                              print_func_name=print_func_name)
+                              print_func_name=print_func_name,
+                              future_features=self.future_features)
 
         rewritten = _rewrite_file_input(self.original, state)
         encoded = (symbol.encoding_decl, rewritten, self.encoding)
@@ -592,8 +627,8 @@ class Rewriter:
 ##################################################3
 
 if __name__ == '__main__':
-    def rewrite_and_compile(code, output_func_name=None, print_func_name=None, encoding="utf8"):
-        return Rewriter(code, encoding).rewrite_and_compile(output_func_name, print_func_name)
+    def rewrite_and_compile(code, output_func_name=None, future_features=None, print_func_name=None, encoding="utf8"):
+        return Rewriter(code, encoding, future_features).rewrite_and_compile(output_func_name, print_func_name)
 
     def create_file_input(s):
         # Wrap up a statement (like an expr_stmt) into a file_input, so we can
@@ -754,6 +789,10 @@ if __name__ == '__main__':
     test_encoding(u"u'\u00e4'", u'\u00e4')
     test_encoding(u"u'\u00e4'".encode("iso-8859-1"), u'\u00e4', "iso-8859-1")
 
+    #
+    # Test import detection
+    #
+
     def test_imports(code, expected):
         rewriter = Rewriter(code)
         result = rewriter.get_imports()
@@ -773,3 +812,12 @@ if __name__ == '__main__':
     test_imports('from re import *', [('re', '*')])
 
     test_imports('from __future__ import division', [('__future__', [('division', 'division')])])
+
+    #
+    # Test passing in future_features to use in compilation
+    #
+
+    scope = {}
+    compiled, _ = rewrite_and_compile('a = 1/2', future_features=['with_statement', 'division'])
+    exec compiled in scope
+    assert scope['a'] == 0.5
