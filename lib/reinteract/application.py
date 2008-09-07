@@ -113,21 +113,27 @@ class Application():
         # Given a path, possibly inside a notebook, find the notebook and the relative
         # path of the notebook inside the file
         relative = None
+        tmp = path
         while True:
-            if os.path.isdir(path):
-                if os.path.exists(os.path.join(path, "index.rnb")):
-                    return path, relative
-            parent, basename = os.path.split(path)
-            if parent == path: # At the root
-                return None, None
+            if os.path.isdir(tmp):
+                if os.path.exists(os.path.join(tmp, "index.rnb")):
+                    return tmp, relative
+            parent, basename = os.path.split(tmp)
+            if parent == tmp: # At the root
+                # As a transition thing, for now allow specifying a folder without
+                # an index.rnb as a folder
+                if os.path.isdir(path):
+                    return path, None
+                else:
+                    return None, None
 
-            path = parent
+            tmp = parent
             if relative == None:
                 relative = basename
             else:
                 relative = os.path.join(basename, relative)
 
-        return path, relative
+        return tmp, relative
 
     def open_path(self, path):
         """Figure out what path points to, and open it appropriately"""
