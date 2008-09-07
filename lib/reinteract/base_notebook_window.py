@@ -164,40 +164,23 @@ class BaseNotebookWindow(BaseWindow):
 
         return True
 
-    def __get_editor_relative_filename(self, editor):
-        relpath = None
-        filename = editor.filename
-        if filename == None:
-            return None
-
-        while filename and filename != self.notebook.folder:
-            filename, basename = os.path.split(filename)
-            if relpath == None:
-                relpath = basename
-            else:
-                relpath = os.path.join(basename, relpath)
-
-        if filename == None:
-            return None
-
-        return relpath
-
     def _update_open_files(self):
         open_file_paths = []
         for child in self.nb_widget.get_children():
-            editor = child._notebook_window_editor
-            relative = self.__get_editor_relative_filename(editor)
-            if not relative:
+            file = child._notebook_window_editor.file
+            if not file:
                 continue
 
-            open_file_paths.append(relative)
+            open_file_paths.append(file.path)
 
         self.state.set_open_files(open_file_paths)
 
     def _update_current_file(self):
-        relative = self.__get_editor_relative_filename(self.current_editor)
-        if relative != None:
-            self.state.set_current_file(relative)
+        file = self.current_editor.file
+        if file != None:
+            self.state.set_current_file(file.path)
+        else:
+            self.state.set_current_file(None)
 
     #######################################################
     # Callbacks
@@ -255,21 +238,15 @@ class BaseNotebookWindow(BaseWindow):
     def open_file(self, file):
         filename = os.path.join(self.notebook.folder, file.path)
 
+        for editor in self.editors:
+            if editor.file == file:
+                self._make_editor_current(editor)
+                return
+
         if isinstance(file, WorksheetFile):
-            if file.worksheet: # Already open
-                for editor in self.editors:
-                    if isinstance(editor, WorksheetEditor) and editor.buf.worksheet == file.worksheet:
-                        self._make_editor_current(editor)
-                        return
-            else:
-                editor = WorksheetEditor(self.notebook)
+            editor = WorksheetEditor(self.notebook)
         elif isinstance(file, LibraryFile):
-            for editor in self.editors:
-                if isinstance(editor, LibraryEditor) and editor.filename == filename:
-                    self._make_editor_current(editor)
-                    return
-            else:
-                editor = LibraryEditor(self.notebook)
+            editor = LibraryEditor(self.notebook)
         else:
             # Unknown, ignore for now
             return
@@ -283,7 +260,7 @@ class BaseNotebookWindow(BaseWindow):
 
     def add_initial_worksheet(self):
         """If there are no editors open, add a new blank worksheet"""
-        
+
         if len(self.editors) == 0:
             self.__initial_editor = self.__new_worksheet()
             self.__initial_editor.view.grab_focus()

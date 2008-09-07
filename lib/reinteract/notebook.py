@@ -41,6 +41,8 @@ class _Helper:
 ######################################################################
 
 class NotebookFile(gobject.GObject):
+    active = gobject.property(type=bool, default=False)
+    modified = gobject.property(type=bool, default=False)
     worksheet = gobject.property(type=gobject.TYPE_PYOBJECT)
 
     def __init__(self, path):
@@ -277,37 +279,13 @@ class Notebook(gobject.GObject):
     # Worksheet tracking
     #############################################################
 
-    def on_worksheet_notify_filename(self, worksheet, *args):
-        old_file = None
-        new_file = None
-        for file in self.files.values():
-            if file.worksheet == worksheet:
-                old_file = file
-
-            if worksheet.filename and os.path.abspath(os.path.join(self.folder, file.path)) == os.path.abspath(worksheet.filename):
-                new_file = file
-
-        if old_file != new_file:
-            if old_file:
-                old_file.worksheet = None
-
-            if new_file:
-                new_file.worksheet = worksheet
-
     def _add_worksheet(self, worksheet):
         # Called from Worksheet
         self.worksheets.add(worksheet)
-        worksheet._notebook_filename_changed_handler = worksheet.connect('notify::filename', self.on_worksheet_notify_filename)
 
     def _remove_worksheet(self, worksheet):
         # Called from Worksheet
-        worksheet.disconnect(worksheet._notebook_filename_changed_handler)
-        del worksheet._notebook_filename_changed_handler
         self.worksheets.remove(worksheet)
-
-        for file in self.files.values():
-            if file.worksheet == worksheet:
-                file.worksheet = None
 
     ############################################################
     # Public API
@@ -332,6 +310,26 @@ class Notebook(gobject.GObject):
     def setup_globals(self, globals):
         globals['__reinteract_notebook'] = self
         globals['help'] = _Helper()
+
+    def file_for_absolute_path(self, absolute_path):
+        relpath = None
+        if absolute_path == None:
+            return None
+
+        while absolute_path and absolute_path != self.folder:
+            absolute_path, basename = os.path.split(absolute_path)
+            if relpath == None:
+                relpath = basename
+            else:
+                relpath = os.path.join(basename, relpath)
+
+        if absolute_path == None:
+            return None
+
+        if relpath in self.files:
+            return self.files[relpath]
+        else:
+            return None
 
     def save(self):
         pass

@@ -84,13 +84,13 @@ class Worksheet(gobject.GObject):
         'place-cursor': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (int, int))
     }
 
-    filename = gobject.property(type=str, default=None)
-    code_modified = gobject.property(type=bool, default=False)
-
     def __init__(self, notebook):
         gobject.GObject.__init__(self)
 
         self.notebook = notebook
+        self.__file = None
+        self.__filename = None
+        self.__code_modified = False
 
         self.global_scope = {}
         notebook.setup_globals(self.global_scope)
@@ -114,10 +114,6 @@ class Worksheet(gobject.GObject):
         self.__user_action_count = 0
 
         self.__undo_stack = UndoStack(self)
-
-        # pygobject bug, default None doesn't work for a string property and gets
-        # turned into ""
-        self.filename = None
 
         notebook._add_worksheet(self)
 
@@ -739,6 +735,46 @@ class Worksheet(gobject.GObject):
     def get_line(self, line):
         return self.__lines[line]
 
+    def __set_filename(self, filename):
+        if filename == self.__filename:
+            return
+
+        if self.__file:
+            self.__file.worksheet = None
+            self.__file.modified = False
+            self.__file.active = False
+
+        self.__filename = filename
+        if filename:
+            self.__file = self.notebook.file_for_absolute_path(self.__filename)
+            self.__file.worksheet = self
+            self.__file.active = True
+            self.__file.modified = self.__code_modified
+        else:
+            self.__file = None
+
+    def __get_filename(self):
+        return self.__filename
+
+    filename = gobject.property(getter=__get_filename, setter=__set_filename, type=str, default=None)
+
+    @gobject.property
+    def file(self):
+        return self.__file
+
+    def __set_code_modified(self, code_modified):
+        if code_modified == self.__code_modified:
+            return
+
+        self.__code_modified = code_modified
+        if self.__file:
+            self.__file.modified = code_modified
+
+    def __get_code_modified(self):
+        return self.__code_modified
+
+    code_modified = gobject.property(getter=__get_code_modified, setter=__set_code_modified, type=bool, default=False)
+
     def __set_filename_and_modified(self, filename, modified):
         self.freeze_notify()
         self.filename = filename
@@ -757,12 +793,12 @@ class Worksheet(gobject.GObject):
 
     def save(self, filename=None):
         if filename == None:
-            if self.filename == None:
+            if self.__filename == None:
                 raise ValueError("No current or specified filename")
 
-            filename = self.filename
+            filename = self.__filename
 
-        if not self.code_modified and filename == self.filename:
+        if not self.code_modified and filename == self.__filename:
             return
 
         tmpname = filename + ".tmp"
@@ -801,6 +837,11 @@ class Worksheet(gobject.GObject):
                     pass
 
     def close(self):
+        if self.__file:
+            self.__file.worksheet = None
+            self.__file.modified = False
+            self.__file.active = False
+
         self.notebook._remove_worksheet(self)
 
 ######################################################################

@@ -27,6 +27,7 @@ class LibraryEditor(Editor):
 
         self.__filename = None
         self.__modified = False
+        self.__file = None
 
         if use_sourceview:
             self.buf = gtksourceview.SourceBuffer()
@@ -43,8 +44,8 @@ class LibraryEditor(Editor):
 
         self.view.modify_font(pango.FontDescription("monospace"))
 
-        self.buf.connect_after('insert-text', lambda *args: self.__mark_modified())
-        self.buf.connect_after('delete-range', lambda *args: self.__mark_modified())
+        self.buf.connect_after('insert-text', lambda *args: self.__set_modified(True))
+        self.buf.connect_after('delete-range', lambda *args: self.__set_modified(True))
 
         self.widget = gtk.ScrolledWindow()
         self.widget.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -66,6 +67,9 @@ class LibraryEditor(Editor):
     def _get_filename(self):
         return self.__filename
 
+    def _get_file(self):
+        return self.__file
+
     def _get_modified(self):
         return self.__modified
 
@@ -81,22 +85,53 @@ class LibraryEditor(Editor):
         f.write(contents)
         f.close()
 
-        self.__filename = filename
-        self.__modified = False
-        self.freeze_notify()
-        self._update_filename()
-        self._update_modified()
-        self.thaw_notify()
+        self.__set_filename_and_modified(filename, False)
         self.notebook.reset_module_by_filename(self.__filename)
 
     #######################################################
     # Utility
     #######################################################
 
-    def __mark_modified(self):
-        if not self.__modified:
-            self.__modified = True
-            self._update_modified()
+    def __update_file(self):
+        new_file = self.notebook.file_for_absolute_path(self.__filename)
+        if new_file == self.__file:
+            return
+
+        if self.__file:
+            self.__file.active = False
+            self.__file.modified = False
+
+        self.__file = new_file
+
+        if self.__file:
+            self.__file.active = True
+            self.__file.modified = self.__modified
+
+        self._update_file()
+
+    def __set_filename(self, filename):
+        if filename == self.__filename:
+            return
+
+        self.__filename = filename
+        self._update_filename()
+        self.notebook.refresh()
+        self.__update_file()
+
+    def __set_modified(self, modified):
+        if modified == self.__modified :
+            return
+
+        self.__modified = modified
+        if self.__file:
+            self.__file.modified = modified
+        self._update_modified()
+
+    def __set_filename_and_modified(self, filename, modified):
+        self.freeze_notify()
+        self.__set_modified(modified)
+        self.__set_filename(filename)
+        self.thaw_notify()
 
     #######################################################
     # Public API
@@ -111,9 +146,4 @@ class LibraryEditor(Editor):
             pos = self.buf.get_start_iter()
             self.buf.insert(pos, contents)
 
-        self.__filename = filename
-        self.__modified = False
-        self.freeze_notify()
-        self._update_filename()
-        self._update_modified()
-        self.thaw_notify()
+        self.__set_filename_and_modified(filename, False)

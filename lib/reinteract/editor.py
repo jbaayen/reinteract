@@ -34,6 +34,9 @@ class Editor(gobject.GObject):
         self.notify('modified')
         self.notify('title')
 
+    def _update_file(self):
+        self.notify('file')
+
     def __promt_for_name(self, title, save_button_text, action, check_name=None):
         builder = SaveFileBuilder(title, self._get_display_name(), save_button_text, check_name)
         builder.dialog.set_transient_for(self.widget.get_toplevel())
@@ -89,6 +92,9 @@ class Editor(gobject.GObject):
         raise NotImplementedError()
 
     def _get_filename(self):
+        return NotImplementedError()
+
+    def _get_file(self):
         return NotImplementedError()
 
     def _get_extension(self):
@@ -191,6 +197,10 @@ class Editor(gobject.GObject):
     @gobject.property
     def filename(self):
         return self._get_filename()
+
+    @gobject.property
+    def file(self):
+        return self._get_file()
 
     @gobject.property
     def modified(self):

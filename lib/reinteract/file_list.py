@@ -82,7 +82,7 @@ class _FileItem(_Item):
 
     def get_text(self):
         name = _Item.get_text(self)
-        if self.file.worksheet and self.file.worksheet.code_modified:
+        if self.file.modified:
             return "*" + name
         else:
             return name
@@ -193,7 +193,7 @@ class FileList(gtk.TreeView):
         else:
             cell.props.background_set = False
 
-        if isinstance(item, _FileItem) and item.worksheet != None:
+        if isinstance(item, _FileItem) and item.file.active:
             cell.props.weight = pango.WEIGHT_BOLD
         else:
             cell.props.weight_set = False
@@ -219,41 +219,21 @@ class FileList(gtk.TreeView):
         path = self.__model.get_path(iter)
         self.__model.row_changed(path, iter)
 
-    def on_item_notify_code_modified(self, item):
-        self.__refresh_item(item)
-
-    def on_item_notify_worksheet(self, item, need_refresh=True):
-        if item.worksheet:
-            item.worksheet.disconnect(item.notify_code_modified_handler)
-            item.notify_code_modified_handler = None
-
-        item.worksheet = item.file.worksheet
-
-        if item.worksheet:
-            item.notify_code_modified_handler = item.worksheet.connect('notify::code-modified',
-                                                                       lambda *args: self.on_item_notify_code_modified(item))
-
-        if need_refresh:
-            self.__refresh_item(item)
-
     def __connect_item(self, item):
         if isinstance(item, _FileItem):
-            item.notify_worksheet_handler = item.file.connect('notify::worksheet',
-                                                              lambda *args: self.on_item_notify_worksheet(item))
+            item.notify_active_handler = item.file.connect('notify::active',
+                                                           lambda *args: self.__refresh_item(item))
+            item.notify_modified_handler = item.file.connect('notify::modified',
+                                                             lambda *args: self.__refresh_item(item))
             item.worksheet = None
             item.notify_code_modified_handler = 0
 
-            self.on_item_notify_worksheet(item, need_refresh=False)
-
     def __disconnect_item(self, item):
         if isinstance(item, _FileItem):
-            if item.worksheet:
-                item.worksheet.disconnect(item.notify_code_modified_handler)
-                item.notify_code_modified_handler = None
-                item.worksheet = None
-
-            item.file.disconnect(item.notify_worksheet_handler)
-            item.notify_worksheet_handler = None
+            item.file.disconnect(item.notify_active_handler)
+            item.notify_active_handler = None
+            item.file.disconnect(item.notify_modified_handler)
+            item.notify_modified_handler = None
 
     ############################################################
 
