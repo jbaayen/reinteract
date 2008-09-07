@@ -147,3 +147,9 @@ class LibraryEditor(Editor):
             self.buf.insert(pos, contents)
 
         self.__set_filename_and_modified(filename, False)
+
+    def close(self):
+        Editor.close(self)
+        if self.__file:
+            self.__file.active = False
+            self.__file.modified = False
