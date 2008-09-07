@@ -83,7 +83,10 @@ class LibraryEditor(Editor):
 
         self.__filename = filename
         self.__modified = False
-        self._update_title()
+        self.freeze_notify()
+        self._update_filename()
+        self._update_modified()
+        self.thaw_notify()
         self.notebook.reset_module_by_filename(self.__filename)
 
     #######################################################
@@ -93,7 +96,7 @@ class LibraryEditor(Editor):
     def __mark_modified(self):
         if not self.__modified:
             self.__modified = True
-            self._update_title()
+            self._update_modified()
 
     #######################################################
     # Public API
@@ -110,4 +113,7 @@ class LibraryEditor(Editor):
 
         self.__filename = filename
         self.__modified = False
-        self._update_title()
+        self.freeze_notify()
+        self._update_filename()
+        self._update_modified()
+        self.thaw_notify()

@@ -28,8 +28,8 @@ class WorksheetEditor(Editor):
 
         self.widget.show_all()
 
-        self.buf.worksheet.connect('notify::filename', lambda *args: self._update_title())
-        self.buf.worksheet.connect('notify::code-modified', lambda *args: self._update_title())
+        self.buf.worksheet.connect('notify::filename', lambda *args: self._update_filename())
+        self.buf.worksheet.connect('notify::code-modified', lambda *args: self._update_modified())
 
     #######################################################
     # Overrides

@@ -26,7 +26,12 @@ class Editor(gobject.GObject):
             application.free_unsaved_index(self._unsaved_index)
             self._unsaved_index = None
 
-    def _update_title(self, *args):
+    def _update_filename(self, *args):
+        self.notify('filename')
+        self.notify('title')
+
+    def _update_modified(self, *args):
+        self.notify('modified')
         self.notify('title')
 
     def __promt_for_name(self, title, save_button_text, action, check_name=None):
