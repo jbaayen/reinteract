@@ -95,7 +95,7 @@ class BaseNotebookWindow(BaseWindow):
         self.nb_widget.set_current_page(self.nb_widget.page_num(editor.widget))
 
     def __close_initial_editor(self):
-        if self.__initial_editor and not self.__initial_editor.buf.worksheet.filename and not self.__initial_editor.modified:
+        if self.__initial_editor and not self.__initial_editor.filename and not self.__initial_editor.modified:
             self._close_editor(self.__initial_editor)
             self.__initial_editor = None
 
@@ -190,7 +190,7 @@ class BaseNotebookWindow(BaseWindow):
                 editor = WorksheetEditor(self.notebook)
         elif isinstance(file, LibraryFile):
             for editor in self.editors:
-                if isinstance(editor, LibraryEditor) and editor.buf.filename == filename:
+                if isinstance(editor, LibraryEditor) and editor.filename == filename:
                     self._make_editor_current(editor)
                     return
             else:
