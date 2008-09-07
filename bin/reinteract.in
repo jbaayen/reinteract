@@ -1,0 +1,18 @@
+#!/usr/bin/python
+
+import os
+
+import reinteract
+from reinteract.global_settings import global_settings
+
+prefix="@prefix@"
+datarootdir="@datarootdir@".replace("${prefix}", prefix)
+PACKAGE_TARNAME="@PACKAGE_TARNAME@"
+docdir="@docdir@".replace("${prefix}", prefix)
+docdir=docdir.replace("${datarootdir}", datarootdir)
+docdir=docdir.replace("${PACKAGE_TARNAME}", PACKAGE_TARNAME)
+global_settings.dialogs_dir = os.path.join(datarootdir, "reinteract", "dialogs")
+global_settings.examples_dir = os.path.join(docdir, "examples")
+
+if __name__ == "__main__":
+    import reinteract.main

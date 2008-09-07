@@ -1,0 +1,5 @@
+[Notebook]
+last_modified = 1220154386.47
+description = Examples of the use of Reinteract.
+	This notebook shows off some of the basic capabilities of Reinteract. Some of the examples here require matplotlib to be installed on your system.
+

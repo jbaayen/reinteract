@@ -3,9 +3,9 @@
 import copy
 import sys
 
-import rewrite
 from custom_result import CustomResult
 from notebook import HelpResult
+from rewrite import Rewriter
 from stdout_capture import StdoutCapture
 
 # A wrapper so we don't have to trap all exceptions when running statement.Execute
@@ -30,8 +30,11 @@ class Statement:
         self.results = None
         self.stdout_buffer = None
 
+        rewriter = Rewriter(self.__text)
+        self.imports = rewriter.get_imports()
+
         # May raise SyntaxError, UnsupportedSyntaxError
-        self.__compiled, self.__mutated = rewrite.rewrite_and_compile(self.__text, output_func_name='reinteract_output')
+        self.__compiled, self.__mutated = rewriter.rewrite_and_compile(output_func_name='reinteract_output')
 
         self.set_parent(parent)
 

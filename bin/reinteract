@@ -1,5 +1,0 @@
-#!/usr/bin/python
-import reinteract
-
-if __name__ == "__main__":
-    import reinteract.main

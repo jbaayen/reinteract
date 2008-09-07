@@ -2,7 +2,7 @@ import gtk
 
 class CustomResult(object):
     def create_widget(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 def show_menu(widget, event, save_callback=None):
     """Convenience function to create a right-click menu with a Save As option"""

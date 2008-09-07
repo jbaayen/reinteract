@@ -412,45 +412,189 @@ def _rewrite_file_input(t, state):
     # file_input: (NEWLINE | stmt)* ENDMARKER
     return _rewrite_tree(t, state, { symbol.stmt: _rewrite_stmt })
 
-def rewrite_and_compile(code, output_func_name=None, print_func_name=None, encoding="utf8"):
-    """
-    Compiles the supplied text into code, while rewriting the parse tree so:
+######################################################################
+# Import procesing
 
-     * Print statements without a destination file are transformed into calls to
-      <print_func_name>(*args), if print_func_name is not None
-       
-     * Statements which are simply expressions are transformed into calls to
-       <output_func_name>(*args), if output_fnuc_name is not None
-       (More than one argument is passed if the statement is in the form of a list; for example '1,2'.)
+# dotted_name: NAME ('.' NAME)*
+def _process_dotted_name(t):
+    assert t[0] == symbol.dotted_name
+    joined = "".join((t[i][1] for i in xrange(1, len(t))))
+    basename = t[-1][1]
 
-    At the same time, the code is scanned for possible mutations, and a list is returned.
-    In the list:
-    
-      * A string indicates the mutation of a variable by assignment to a slice of it,
-        or to an attribute.
-    
-      * A tuple of (variable_name, method_name) indicates the invocation of a method
-        on the variable; this will sometimes be a mutation (e.g., list.append(value)),
-        and sometimes not.
-    """
-    state = _RewriteState(output_func_name=output_func_name,
-                          print_func_name=print_func_name)
+    return joined, basename
 
-    if (isinstance(code, unicode)):
-        code = code.encode("utf8")
-        encoding = "utf8"
-    
-    original = parser.suite(code)
-    rewritten = _rewrite_file_input(original.totuple(), state)
-    encoded = (symbol.encoding_decl, rewritten, encoding)
-    compiled = parser.sequence2ast(encoded).compile()
+# dotted_as_name: dotted_name [('as' | NAME) NAME]
+def _process_dotted_as_name(t):
+    assert t[0] == symbol.dotted_as_name
+    name, basename = _process_dotted_name(t[1])
+    if len(t) == 2:
+        as_name = basename
+    else:
+        assert len(t) == 4
+        assert t[2] == (token.NAME, 'as')
+        as_name = t[3][1]
 
-    return (compiled, state.mutated)
-    
+    return (name, [( '.', as_name )])
+
+# dotted_as_names: dotted_as_name (',' dotted_as_name)*
+def _process_dotted_as_names(t):
+    assert t[0] == symbol.dotted_as_names
+    result = []
+    for i in xrange(1, len(t)):
+        if t[i][0] == token.COMMA:
+            continue
+        result.append(_process_dotted_as_name(t[i]))
+
+    return result
+
+# import_name: 'import' dotted_as_names
+def _process_import_name(t):
+    assert t[0] == symbol.import_name
+    assert t[1] == (token.NAME, 'import')
+    return _process_dotted_as_names(t[2])
+
+# import_as_name: NAME [('as' | NAME) NAME]
+def _process_import_as_name(t):
+    assert t[0] == symbol.import_as_name
+    assert t[1][0] == token.NAME
+    if len(t) == 2:
+        return (t[1][1], t[1][1])
+    else:
+        assert len(t) == 4
+        assert t[3][0] == token.NAME
+        return (t[1][1], t[3][1])
+
+# import_as_names: import_as_name (',' import_as_name)* [',']
+def _process_import_as_names(t):
+    assert t[0] == symbol.import_as_names
+    result = []
+    for i in xrange(1, len(t)):
+        if t[i][0] == token.COMMA:
+            continue
+        sym, as_name = _process_import_as_name(t[i])
+        result.append((sym, as_name))
+
+    return result
+
+# import_from: ('from' ('.'* dotted_name | '.'+)
+#                            'import' ('*' | '(' import_as_names ')' | import_as_names))
+def _process_import_from(t):
+    assert t[0] == symbol.import_from
+    assert t[1] == (token.NAME, 'from')
+    name = ""
+    i = 2
+    while t[i][0] == token.DOT:
+        name += "."
+        i += 1
+    if t[i][0] == symbol.dotted_name:
+        joined, _ = _process_dotted_name(t[i])
+        name += joined
+        i += 1
+    assert t[i] == (token.NAME, 'import')
+    i += 1
+    if t[i][0] == token.STAR:
+        import_map = '*'
+    elif t[i][0] == token.LPAR:
+        import_map = _process_import_as_names(t[i + 1])
+        assert t[i + 2][0] == token.RPAR
+    else:
+        import_map = _process_import_as_names(t[i])
+
+    return [(name, import_map)]
+
+_import_pattern = \
+    (symbol.file_input,
+     (symbol.stmt,
+      (symbol.simple_stmt,
+       (symbol.small_stmt,
+        (symbol.import_stmt,
+         'imp')),
+       '*')),
+      '*')
+
+# import_stmt: import_name | import_from
+def _get_imports(t):
+    args = _do_match(t, _import_pattern)
+    if args:
+        imp = args['imp']
+        if imp[0] == symbol.import_name:
+            return _process_import_name(imp)
+        else:
+            assert imp[0] == symbol.import_from
+            return _process_import_from(imp)
+    else:
+        return None
+
+######################################################################
+
+class Rewriter:
+    """Class to rewrite and extract information from Python code"""
+
+    def __init__(self, code, encoding="utf8"):
+        """Initialize the Rewriter object
+
+        @param code: the text to compile
+        @param encoding: the encoding of the text
+
+        """
+        if (isinstance(code, unicode)):
+            code = code.encode("utf8")
+            encoding = "utf8"
+
+        self.code = code
+        self.encoding = encoding
+        self.original = parser.suite(code).totuple()
+
+    def get_imports(self):
+        """
+        Return information about any imports made by the statement
+
+        @returns: A list of tuples, which each tuple is either (module_name, '*'),
+          (module_name, [('.', as_name)]), or (module_name, [(name, as_name), ...]).
+          
+        """
+
+        return _get_imports(self.original)
+
+    def rewrite_and_compile(self, output_func_name=None, print_func_name=None):
+        """
+        Compiles the parse tree into code, while rewriting the parse tree according to the
+        output_func_name and print_func_name arguments.
+
+        At the same time, the code is scanned for possible mutations, and a list is returned.
+        In the list:
+
+         - A string indicates the mutation of a variable by assignment to a slice of it,
+           or to an attribute.
+
+         - A tuple of (variable_name, method_name) indicates the invocation of a method
+           on the variable; this will sometimes be a mutation (e.g., list.append(value)),
+           and sometimes not.
+
+        @param output_func_name: the name of function used to wrap statements that are simply expressions.
+           (More than one argument will be passed if the statement is in the form of a list.)
+           Can be None.
+
+        @param print_func_name: the name of a function used to replace print statements without a destination
+          file. Can be None.
+
+        @returns: a tuple of the compiled code followed by a list of mutations
+        """
+        state = _RewriteState(output_func_name=output_func_name,
+                              print_func_name=print_func_name)
+
+        rewritten = _rewrite_file_input(self.original, state)
+        encoded = (symbol.encoding_decl, rewritten, self.encoding)
+        compiled = parser.sequence2ast(encoded).compile()
+
+        return (compiled, state.mutated)
 
 ##################################################3
 
 if __name__ == '__main__':
+    def rewrite_and_compile(code, output_func_name=None, print_func_name=None, encoding="utf8"):
+        return Rewriter(code, encoding).rewrite_and_compile(output_func_name, print_func_name)
+
     def create_file_input(s):
         # Wrap up a statement (like an expr_stmt) into a file_input, so we can
         # parse/compile it
@@ -609,3 +753,23 @@ if __name__ == '__main__':
     test_encoding(u"u'\u00e4'".encode("utf8"), u'\u00e4')
     test_encoding(u"u'\u00e4'", u'\u00e4')
     test_encoding(u"u'\u00e4'".encode("iso-8859-1"), u'\u00e4', "iso-8859-1")
+
+    def test_imports(code, expected):
+        rewriter = Rewriter(code)
+        result = rewriter.get_imports()
+        if result != expected:
+            raise AssertionError("Got '%s', expected '%s'" % (result, expected))
+
+    test_imports('a + 1', None)
+    test_imports('import re', [('re', [('.', 're')])])
+    test_imports('import re as r', [('re', [('.', 'r')])])
+    test_imports('import re, os as o', [('re', [('.', 're')]), ('os', [('.', 'o')])])
+
+    test_imports('from re import match', [('re', [('match', 'match')])])
+    test_imports('from re import match as m', [('re', [('match', 'm')])])
+    test_imports('from re import match as m, sub as s', [('re', [('match', 'm'), ('sub', 's')])])
+    test_imports('from re import (match as m, sub as s)', [('re', [('match', 'm'), ('sub', 's')])])
+    test_imports('from ..re import match', [('..re', [('match', 'match')])])
+    test_imports('from re import *', [('re', '*')])
+
+    test_imports('from __future__ import division', [('__future__', [('division', 'division')])])
