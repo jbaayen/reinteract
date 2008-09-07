@@ -1,4 +1,4 @@
-from ConfigParser import SafeConfigParser, ParsingError
+from ConfigParser import RawConfigParser, ParsingError
 import os
 import time
 
@@ -8,7 +8,7 @@ class NotebookInfo(object):
         self.__load()
 
     def __load(self):
-        self.__parser = SafeConfigParser()
+        self.__parser = RawConfigParser()
 
         # Fallback with the modtime of the folder as "last_modified"
         st = os.stat(self.folder)
