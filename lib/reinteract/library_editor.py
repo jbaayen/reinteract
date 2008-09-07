@@ -143,8 +143,12 @@ class LibraryEditor(Editor):
             contents = f.read()
             f.close()
 
+            if use_sourceview:
+                self.buf.begin_not_undoable_action()
             pos = self.buf.get_start_iter()
             self.buf.insert(pos, contents)
+            if use_sourceview:
+                self.buf.end_not_undoable_action()
 
         self.__set_filename_and_modified(filename, False)
 
