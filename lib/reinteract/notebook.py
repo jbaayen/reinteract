@@ -127,15 +127,18 @@ class Notebook(gobject.GObject):
             elif f.endswith('~'):
                 pass
             else:
-                if f.endswith('.rws') or f.endswith('.RWS'):
+                lower = f.lower()
+                if lower.endswith('.rws'):
                     file = WorksheetFile(relative)
                     absolute = os.path.join(full_folder, f)
                     for worksheet in self.worksheets:
                         if os.path.abspath(worksheet.filename) == absolute:
                             file.worksheet = worksheet
                             break
-                elif f.endswith('.py') or f.endswith('.PY'):
+                elif lower.endswith('.py'):
                     file = LibraryFile(relative)
+                elif lower.endswith('.pyc') or lower.endswith('.pyo'):
+                    continue
                 else:
                     file = MiscFile(relative)
                 new_files[relative] = file
