@@ -795,7 +795,10 @@ class Worksheet(gobject.GObject):
         finally:
             if not success:
                 f.close()
-                os.remove(tmpname)
+                try:
+                    os.remove(tmpname)
+                except:
+                    pass
 
     def close(self):
         self.notebook._remove_worksheet(self)
