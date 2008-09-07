@@ -14,19 +14,46 @@ from worksheet_editor import WorksheetEditor
 class BaseNotebookWindow(BaseWindow):
     def __init__(self, notebook):
         BaseWindow.__init__(self, notebook)
+
+        self.state = application.state.get_notebook_state(notebook.folder)
+
         self.path = notebook.folder
 
         self.editors = []
 
         self.nb_widget = gtk.Notebook()
         self.nb_widget.connect_after('switch-page', self.on_page_switched)
+        self.nb_widget.connect('page-reordered', self.on_page_reordered)
 
         self._fill_content()
 
         self.main_vbox.show_all()
 
-        self.__initial_editor = self.__new_worksheet()
-        self.current_editor.view.grab_focus()
+        self.__initial_editor = None
+
+        open_file_paths = self.state.get_open_files()
+        current_file = self.state.get_current_file()
+
+        for path in open_file_paths:
+            if not path in self.notebook.files:
+                continue
+
+            file = self.notebook.files[path]
+            self.open_file(file)
+
+        current_file_editor = None
+        if current_file != None:
+            filename = os.path.join(notebook.folder, current_file)
+            for editor in self.editors:
+                if editor.filename == filename:
+                    current_file_editor = editor
+
+        if current_file_editor == None and len(self.editors) > 0:
+            current_file_editor = self.editors[0]
+
+        if current_file_editor != None:
+            self._make_editor_current(current_file_editor)
+            current_file_editor.view.grab_focus()
 
         self.__update_title()
 
@@ -40,9 +67,12 @@ class BaseNotebookWindow(BaseWindow):
     def _add_editor(self, editor):
         self.editors.append(editor)
         self.nb_widget.add(editor.widget)
+        editor.widget._notebook_window_editor = editor
         editor.connect('notify::title', self.on_editor_notify_title)
+        editor.connect('notify::title', self.on_editor_notify_filename)
 
         self._update_editor_title(editor)
+        self._update_open_files()
 
     def _close_editor(self, editor):
         if not editor.confirm_discard():
@@ -56,8 +86,10 @@ class BaseNotebookWindow(BaseWindow):
             self.__initial_editor = None
 
         self.editors.remove(editor)
+        editor.widget._notebook_window_editor = None
         editor.close()
         self.__update_title()
+        self._update_open_files()
 
     def _update_editor_title(self, editor):
         if editor == self.current_editor:
@@ -132,6 +164,41 @@ class BaseNotebookWindow(BaseWindow):
 
         return True
 
+    def __get_editor_relative_filename(self, editor):
+        relpath = None
+        filename = editor.filename
+        if filename == None:
+            return None
+
+        while filename and filename != self.notebook.folder:
+            filename, basename = os.path.split(filename)
+            if relpath == None:
+                relpath = basename
+            else:
+                relpath = os.path.join(basename, relpath)
+
+        if filename == None:
+            return None
+
+        return relpath
+
+    def _update_open_files(self):
+        open_file_paths = []
+        for child in self.nb_widget.get_children():
+            editor = child._notebook_window_editor
+            relative = self.__get_editor_relative_filename(editor)
+            if not relative:
+                continue
+
+            open_file_paths.append(relative)
+
+        self.state.set_open_files(open_file_paths)
+
+    def _update_current_file(self):
+        relative = self.__get_editor_relative_filename(self.current_editor)
+        if relative != None:
+            self.state.set_current_file(relative)
+
     #######################################################
     # Callbacks
     #######################################################
@@ -162,10 +229,18 @@ class BaseNotebookWindow(BaseWindow):
             if editor.widget == widget:
                 self.current_editor = editor
                 self.__update_title()
+                self._update_current_file()
                 break
+
+    def on_page_reordered(self, notebook, page, new_page_num):
+        self._update_open_files()
 
     def on_editor_notify_title(self, editor, *args):
         self._update_editor_title(editor)
+
+    def on_editor_notify_filename(self, editor, *args):
+        self._update_open_files()
+        self._update_current_file()
 
     #######################################################
     # Public API
@@ -205,3 +280,10 @@ class BaseNotebookWindow(BaseWindow):
         self._make_editor_current(editor)
 
         self.__close_initial_editor()
+
+    def add_initial_worksheet(self):
+        """If there are no editors open, add a new blank worksheet"""
+        
+        if len(self.editors) == 0:
+            self.__initial_editor = self.__new_worksheet()
+            self.__initial_editor.view.grab_focus()

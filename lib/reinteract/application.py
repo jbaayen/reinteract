@@ -7,10 +7,12 @@ import re
 import os
 import sys
 
-# SEE BOTTOM OF FILE FOR LOCAL IMPORTS
+# SEE BOTTOM OF FILE FOR MOST LOCAL IMPORTS
 #
 # Done that way to allow 'from Application import application'
 # We'll have to rethink this if we ever statically compile reinteract
+
+from application_state import ApplicationState
 
 _VALID_CHAR = re.compile("[A-Za-z0-9._ -]")
 
@@ -18,6 +20,13 @@ class Application():
     def __init__(self):
         self.__unsaved_indices = []
         self.windows = set()
+
+        config_folder = self.get_config_folder()
+        if not os.path.exists(config_folder):
+            os.makedirs(config_folder)
+
+        state_location = os.path.join(config_folder, 'reinteract.state')
+        self.state = ApplicationState(state_location)
 
     def get_notebook_infos(self):
         infos = []
@@ -40,6 +49,12 @@ class Application():
         infos.append(NotebookInfo(global_settings.examples_dir))
 
         return infos
+
+    def get_config_folder(self):
+        if sys.platform == 'win32':
+            return os.path.join(os.getenv('APPDATA'), 'Reinteract')
+        else:
+            return os.path.expanduser("~/.reinteract")
 
     def get_notebooks_folder(self):
         # In a shocking example of cross-platform convergence, ~/Documents
@@ -89,6 +104,8 @@ class Application():
         window = self.__make_notebook_window(notebook)
         window.show()
         self.windows.add(window)
+
+        self.state.notebook_opened(path)
 
         return window
 
@@ -145,6 +162,8 @@ class Application():
         window.show()
         self.windows.add(window)
 
+        self.state.notebook_opened(path)
+
         return window
 
     def create_notebook_dialog(self, parent=None):
@@ -158,12 +177,13 @@ class Application():
             if not window.confirm_discard():
                 return
 
+        self.state.flush()
         gtk.main_quit()
 
     def window_closed(self, window):
         self.windows.remove(window)
         if len(self.windows) == 0:
-            gtk.main_quit()
+            self.quit()
 
     def allocate_unsaved_index(self):
         """Allocate an index to be used when displaying an unsaved object ("Unsaved Worksheet 1")"""

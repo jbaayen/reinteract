@@ -71,11 +71,20 @@ if len(args) > 0:
 
         application.open_path(absolute)
 else:
-    notebook_dir = os.path.expanduser(os.path.join(application.get_notebooks_folder(), "Main"))
-    if not os.path.exists(notebook_dir):
-        application.create_notebook(notebook_dir,
-                                    description="Notebook for scratch work.\nCreate worksheets here if they are not part of a larger project, or for quick experiments.")
+    recent_notebooks = application.state.get_recent_notebooks(max_count=1)
+    if len(recent_notebooks) > 0:
+        notebook_dir = recent_notebooks[0].path
+        window = application.open_notebook(notebook_dir)
     else:
-        application.open_notebook(notebook_dir)
+        notebook_dir = os.path.expanduser(os.path.join(application.get_notebooks_folder(), "Main"))
+        if not os.path.exists(notebook_dir):
+            window = application.create_notebook(notebook_dir,
+                                                 description="Notebook for scratch work.\nCreate worksheets here if they are not part of a larger project, or for quick experiments.")
+        else:
+            window = application.open_notebook(notebook_dir)
+
+    # This really should be a more general check for "is writeable"
+    if notebook_dir != global_settings.examples_dir:
+        window.add_initial_worksheet()
 
 gtk.main()
