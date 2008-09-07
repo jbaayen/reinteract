@@ -115,7 +115,7 @@ class EditorWindow(BaseWindow):
     #######################################################
 
     def confirm_discard(self):
-        if not self.current_editor.confirm_discard():
+        if self.current_editor and not self.current_editor.confirm_discard():
             return False
 
         return True
