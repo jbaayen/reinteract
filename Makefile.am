@@ -12,6 +12,7 @@ reinteractpkg_PYTHON =                                                        \
 		    lib/reinteract/about_dialog.py			      \
 		    lib/reinteract/application.py			      \
 		    lib/reinteract/base_window.py			      \
+		    lib/reinteract/base_notebook_window.py		      \
 		    lib/reinteract/change_range.py			      \
 		    lib/reinteract/chunks.py			      	      \
                     lib/reinteract/completion_popup.py                        \
@@ -20,10 +21,12 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/doc_format.py                              \
                     lib/reinteract/doc_popup.py                               \
                     lib/reinteract/editor.py                                  \
+                    lib/reinteract/editor_window.py                           \
                     lib/reinteract/file_list.py                               \
                     lib/reinteract/format_escaped.py                          \
                     lib/reinteract/global_settings.py                         \
                     lib/reinteract/iter_copy_from.py                          \
+                    lib/reinteract/library_editor.py                          \
                     lib/reinteract/main.py                                    \
                     lib/reinteract/mini_window.py                             \
                     lib/reinteract/new_notebook.py                            \
@@ -34,17 +37,17 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/popup.py                                   \
                     lib/reinteract/rewrite.py                                 \
                     lib/reinteract/sanitize_textview_ipc.py                   \
+                    lib/reinteract/save_file.py                               \
                     lib/reinteract/shell_buffer.py                            \
                     lib/reinteract/shell_view.py                              \
                     lib/reinteract/statement.py                               \
-                    lib/reinteract/tokenized_statement.py                     \
                     lib/reinteract/stdout_capture.py                          \
+                    lib/reinteract/tokenized_statement.py                     \
                     lib/reinteract/tokenize.py                                \
                     lib/reinteract/undo_stack.py                              \
                     lib/reinteract/window_builder.py                          \
                     lib/reinteract/worksheet.py                               \
                     lib/reinteract/worksheet_editor.py                        \
-                    lib/reinteract/worksheet_window.py                        \
                     $(LIST_END)
 
 replaydir = $(pythondir)
