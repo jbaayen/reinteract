@@ -86,7 +86,10 @@ class NotebookState:
 
     def set_current_file(self, file):
         self.__ensure_section()
-        self.app_state.parser.set(self.section_name, 'current_file', _quote(file))
+        if file:
+            self.app_state.parser.set(self.section_name, 'current_file', _quote(file))
+        else:
+            self.app_state.parser.remove_option(self.section_name, 'current_file')
         self.app_state.queue_flush()
 
     def update_last_opened(self):
