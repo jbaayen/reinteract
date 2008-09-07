@@ -537,6 +537,23 @@ class Worksheet(gobject.GObject):
     def redo(self):
         self.__undo_stack.redo()
 
+    def module_changed(self, module_name):
+        """Mark statements for execution after a change to the given module"""
+
+        for chunk in self.iterate_chunks():
+            if not isinstance(chunk, StatementChunk):
+                continue
+            if chunk.statement == None:
+                continue
+
+            imports = chunk.statement.imports
+            if imports == None:
+                continue
+
+            for module, _ in imports:
+                if module == module_name:
+                    self.__mark_rest_for_execute(chunk.start)
+
     def calculate(self):
         _debug("Calculating")
 

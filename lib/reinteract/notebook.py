@@ -153,12 +153,20 @@ class Notebook(gobject.GObject):
     def __reset_all_modules(self):
         for (name, module) in self.__modules.iteritems():
             del sys.modules[self.__prefix + "." + name]
+            for worksheet in self.worksheets:
+                worksheet.module_changed(name)
+
+        self.__modules = {}
 
     def reset_module_by_filename(self, filename):
         for (name, module) in self.__modules.iteritems():
             if module.__file__ == filename:
                 del sys.modules[self.__prefix + "." + name]
                 del self.__modules[name]
+
+                for worksheet in self.worksheets:
+                    worksheet.module_changed(name)
+
                 return module
 
     def __load_local_module(self, fullname, f, pathname, description):

@@ -1,6 +1,7 @@
 import traceback
 
 from change_range import ChangeRange
+from rewrite import UnsupportedSyntaxError
 from statement import Statement, ExecutionError, WarningResult
 from tokenized_statement import TokenizedStatement;
 

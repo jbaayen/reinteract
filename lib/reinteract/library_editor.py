@@ -84,6 +84,7 @@ class LibraryEditor(Editor):
         self.__filename = filename
         self.__modified = False
         self._update_title()
+        self.notebook.reset_module_by_filename(self.__filename)
 
     #######################################################
     # Utility
