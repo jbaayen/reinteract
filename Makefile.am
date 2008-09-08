@@ -11,6 +11,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/__init__.py                                \
 		    lib/reinteract/about_dialog.py			      \
 		    lib/reinteract/application.py			      \
+		    lib/reinteract/application_state.py			      \
 		    lib/reinteract/base_window.py			      \
 		    lib/reinteract/base_notebook_window.py		      \
 		    lib/reinteract/change_range.py			      \
@@ -42,6 +43,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/shell_view.py                              \
                     lib/reinteract/statement.py                               \
                     lib/reinteract/stdout_capture.py                          \
+                    lib/reinteract/test_utils.py                              \
                     lib/reinteract/tokenized_statement.py                     \
                     lib/reinteract/tokenize.py                                \
                     lib/reinteract/undo_stack.py                              \
