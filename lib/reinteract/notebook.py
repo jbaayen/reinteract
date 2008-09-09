@@ -312,21 +312,24 @@ class Notebook(gobject.GObject):
         globals['help'] = _Helper()
 
     def file_for_absolute_path(self, absolute_path):
-        relpath = None
-        if absolute_path == None:
+        assert absolute_path
+        assert os.path.isabs(absolute_path)
+
+        if not self.folder:
             return None
 
-        while absolute_path and absolute_path != self.folder:
+        relpath = None
+        while absolute_path != self.folder:
             absolute_path, basename = os.path.split(absolute_path)
+            if basename == '': # At root directory (or input had trailing slash)
+                return None
+
             if relpath == None:
                 relpath = basename
             else:
                 relpath = os.path.join(basename, relpath)
 
-        if absolute_path == None:
-            return None
-
-        if relpath in self.files:
+        if relpath and relpath in self.files:
             return self.files[relpath]
         else:
             return None
@@ -338,6 +341,8 @@ if __name__ == '__main__':
     import copy
     import os
     import tempfile
+    
+    from test_utils import assert_equals
 
     base = tempfile.mkdtemp("", "shell_buffer")
     
@@ -369,7 +374,7 @@ if __name__ == '__main__':
         f.close()
 
     def do_test(import_text, evaluate_text, expected):
-        nb = Notebook(path=[base])
+        nb = Notebook(base)
 
         scope = {}
         nb.setup_globals(scope)
@@ -377,8 +382,7 @@ if __name__ == '__main__':
         exec import_text in scope
         result = eval(evaluate_text, scope)
 
-        if result != expected:
-            raise AssertionError("Got '%s', expected '%s'" % (result, expected))
+        assert_equals(result, expected)
 
         cleanup_pyc()
 
@@ -403,5 +407,14 @@ if __name__ == '__main__':
 
         # http://www.reinteract.org/trac/ticket/5
         do_test("import package2.mod3", "package2.mod3.c", 3)
+
+        nb = Notebook(base)
+        assert_equals(nb.file_for_absolute_path(os.path.dirname(base)), None)
+        assert_equals(nb.file_for_absolute_path(base), None)
+        assert_equals(nb.file_for_absolute_path(os.path.join(base, "mod1.py")).path, "mod1.py")
+        assert_equals(nb.file_for_absolute_path(os.path.join(base, "package1")), None)
+        assert_equals(nb.file_for_absolute_path(os.path.join(base, "package1/")), None)
+        assert_equals(nb.file_for_absolute_path(os.path.join(base, "package1/mod2.py")).path, "package1/mod2.py")
+
     finally:
         cleanup()

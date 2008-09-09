@@ -93,7 +93,11 @@ class LibraryEditor(Editor):
     #######################################################
 
     def __update_file(self):
-        new_file = self.notebook.file_for_absolute_path(self.__filename)
+        if self.__filename:
+            new_file = self.notebook.file_for_absolute_path(self.__filename)
+        else:
+            new_file = None
+
         if new_file == self.__file:
             return
 
