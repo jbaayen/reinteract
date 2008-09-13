@@ -653,11 +653,11 @@ class Worksheet(gobject.GObject):
     def get_object_at_location(self, line, offset, include_adjacent=False):
         """Find the object at a particular location within the worksheet
 
-        include_adjacent -- if False, then location identifies a character in the worksheet. If True,
+        @param include_adjacent: if False, then location identifies a character in the worksheet. If True,
            then location identifies a position between characters, and symbols before or after that
            position are included.
 
-        Returns a tuple of (object, start_line, start_offset, end_line, end_offset) or (None, None, None, None, None)
+        @returns: a tuple of (object, start_line, start_offset, end_line, end_offset) or (None, None, None, None, None)
 
         """
 

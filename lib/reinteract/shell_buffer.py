@@ -563,8 +563,8 @@ class ShellBuffer(gtk.TextBuffer):
     def pos_to_iter(self, line, offset=0):
         """Get an iter at the specification code line and offset
 
-        line -- the line in the code of the worksheet (not the gtk.TextBuffer line)
-        offset -- the character within the line (defaults 0). -1 means end
+        @param line: the line in the code of the worksheet (not the gtk.TextBuffer line)
+        @param offset: the character within the line (defaults 0). -1 means end
 
         """
 
@@ -580,9 +580,8 @@ class ShellBuffer(gtk.TextBuffer):
 
         Return a tuple of (code_line, offset).
 
-        iter -- an iterator within the buffer
-        adjust -- how to handle the case where the iterator isn't on
-           a line of code.
+        @param iter: an iterator within the buffer
+        @param adjust: how to handle the case where the iterator isn't on a line of code.
 
               ADJUST_BEFORE: end previous line of code
               ADJUST_AFTER: start of next line of code

@@ -443,9 +443,9 @@ class TokenizedStatement(object):
         Returns a tuple of (object, token_start_line, token_start_index, token_end_line, token_end_index)
         or None, None, None, None, None if there is no object
 
-        scope -- scope dictionary to start resolving names from.
-        result_scope -- scope to resolve names from on the left side of an assignment
-        include_adjacent -- if False, then line/index identifies a character in the buffer. If True,
+        @param scope: scope dictionary to start resolving names from.
+        @param result_scope: scope to resolve names from on the left side of an assignment
+        @param include_adjacent: if False, then line/index identifies a character in the buffer. If True,
            then line/index identifies a position between characters, and symbols before or after that
            position are included.
 

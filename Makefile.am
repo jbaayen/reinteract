@@ -95,9 +95,9 @@ api-docs:
 	out=`pwd`/api-docs ;												\
 	modules="" ;													\
 	for pkg in $(reinteractpkg_PYTHON) ; do										\
-		modules="$$modules `echo $$pkg | sed s@^lib/@@\;s@.py\\$$@@\;s@/@.@g`" ;				\
+		modules="$$modules `echo $$pkg | sed s@^lib/@@`" ;							\
 	done;														\
-	cd $(top_srcdir)/lib && PYTHONPATH="$PYTHONPATH:reinteract" epydoc --config=$$conf --output=$$out $$modules
+	cd $(top_srcdir)/lib && PYTHONPATH="$PYTHONPATH:reinteract" epydoc -v --config=$$conf --output=$$out $$modules
 
 distcheck-hook:
 	@echo "Checking against files in git"

@@ -10,10 +10,10 @@ STRIP_BOLD_RE = re.compile("(.)\b(.)")
 def insert_docs(buf, iter, obj, bold_tag):
     """Insert documentation about obj into a gtk.TextBuffer
 
-    buf -- the buffer to insert the documentation into
-    iter -- the location to insert the documentation
-    obj -- the object to get documentation about
-    bold_tag -- the tag to use for bold text, such as headings
+    @param buf: the buffer to insert the documentation into
+    @param iter: the location to insert the documentation
+    @param obj: the object to get documentation about
+    @param bold_tag: the tag to use for bold text, such as headings
 
     """
     

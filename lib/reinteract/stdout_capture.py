@@ -26,22 +26,23 @@ class _StdoutStack(threading.local):
         self.current = self.stack.pop()
     
 class StdoutCapture:
-    """The StdoutCapture object allows temporarily redirecting writes to sys.stdout to call a function
+    """
+
+    The StdoutCapture object allows temporarily redirecting writes to sys.stdout to call a function
     You must call stdout_capture.init() before using this function
 
-    >>> s = ""
-    >>> def capture_it(str):
-    ...    global s
-    ...    s += str
-    
-    >>> c = StdoutCapture(capture_it)
-    >>> c.push()
-    >>> try:
-    ...    print "Foo"
-    ... finally:
-    ...    c.pop()
-    >>> s
-    "Foo\n"
+        >>> s = ""
+        >>> def capture_it(str):
+        ...    global s
+        ...    s += str
+        >>> c = StdoutCapture(capture_it)
+        >>> c.push()
+        >>> try:
+        ...    print "Foo"
+        ... finally:
+        ...    c.pop()
+        >>> s
+        "Foo\\n"
 
     """
     

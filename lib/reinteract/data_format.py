@@ -202,10 +202,12 @@ def format(obj):
 def insert_formatted(buf, iter, obj, heading_type_tag, inline_type_tag, value_tag):
     """Insert a nicely-formatted display of obj into a gtk.TextBuffer
 
-    buf -- the buffer to insert the formatted display into
-    iter -- the location to insert the formatted display
-    obj -- the object to display in the buffer
-    bold_tag -- the tag to use for bold text, such as headings
+    @param buf: the buffer to insert the formatted display into
+    @param iter: the location to insert the formatted display
+    @param obj: the object to display in the buffer
+    @param heading_type_tag: tag to use for the object type if we are outputting a block
+    @param inline_type_tag: tag to use for the object type if we are outputting a single line
+    @param value_tag: the tag to use for the objects value
 
     """
 
@@ -221,7 +223,7 @@ def insert_formatted(buf, iter, obj, heading_type_tag, inline_type_tag, value_ta
     insert_with_tag(buf, iter, text, value_tag)
     
 def is_data_object(obj):
-    """Return true of obj holds data
+    """Return True of obj holds data
 
     This routine is used to distinguish objects we should show help
     for (like modules, classes, methods, and so forth) from other
