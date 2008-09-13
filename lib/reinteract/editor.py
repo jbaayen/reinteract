@@ -6,6 +6,7 @@ import pango
 
 from application import application
 from format_escaped import format_escaped
+from notebook import NotebookFile
 from shell_buffer import ShellBuffer
 from shell_view import ShellView
 from save_file import SaveFileBuilder
@@ -33,6 +34,9 @@ class Editor(gobject.GObject):
     def _update_modified(self, *args):
         self.notify('modified')
         self.notify('title')
+
+    def _update_state(self, *args):
+        self.notify('state')
 
     def _update_file(self):
         self.notify('file')
@@ -90,6 +94,9 @@ class Editor(gobject.GObject):
 
     def _get_modified(self):
         raise NotImplementedError()
+
+    def _get_state(self):
+        return NotebookFile.NONE
 
     def _get_filename(self):
         return NotImplementedError()
@@ -205,6 +212,10 @@ class Editor(gobject.GObject):
     @gobject.property
     def modified(self):
         return self._get_modified()
+
+    @gobject.property
+    def state(self):
+        return self._get_state()
 
     @gobject.property
     def title(self):

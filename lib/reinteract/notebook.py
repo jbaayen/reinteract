@@ -41,15 +41,33 @@ class _Helper:
 ######################################################################
 
 class NotebookFile(gobject.GObject):
-    CLEAN = 0
+    NONE = 0
     NEEDS_EXECUTE = 1
     EXECUTING = 2
-    ERROR = 3
+    EXECUTE_SUCCESS = 3
+    ERROR = 4
 
     active = gobject.property(type=bool, default=False)
     modified = gobject.property(type=bool, default=False)
-    state = gobject.property(type=int, default=CLEAN)
+    state = gobject.property(type=int, default=NONE)
     worksheet = gobject.property(type=gobject.TYPE_PYOBJECT)
+
+    # Having this here in the core code is completely random, however it doesn't actually
+    # require importing GTK+, it's just returning a string.
+    @staticmethod
+    def stock_id_for_state(state):
+        """Get the GTK+ stock ID to use for a particular state."""
+
+        if state == NotebookFile.NONE:
+            return None
+        elif state == NotebookFile.NEEDS_EXECUTE:
+            return 'gtk-ok'
+        elif state == NotebookFile.EXECUTING:
+            return 'gtk-refresh'
+        elif state == NotebookFile.EXECUTE_SUCCESS:
+            return 'gtk-apply'
+        elif state == NotebookFile.ERROR:
+            return 'gtk-dialog-error'
 
     def __init__(self, path):
         gobject.GObject.__init__(self)

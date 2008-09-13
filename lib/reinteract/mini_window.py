@@ -5,6 +5,7 @@ from application import application
 from base_notebook_window import BaseNotebookWindow
 from format_escaped import format_escaped
 from global_settings import global_settings
+from notebook import NotebookFile
 
 class MiniWindow(BaseNotebookWindow):
     UI_STRING="""
@@ -102,7 +103,13 @@ class MiniWindow(BaseNotebookWindow):
 
     def _update_editor_title(self, editor):
         BaseNotebookWindow._update_editor_title(self, editor)
-        self.__update_pages()
+        if hasattr(editor, '_menu_item_label'):
+            editor._menu_item_label.set_markup(format_escaped("<b>%s</b>", editor.title))
+
+    def _update_editor_state(self, editor):
+        BaseNotebookWindow._update_editor_state(self, editor)
+        if hasattr(editor, '_menu_item_status'):
+            editor._menu_item_status.props.stock = NotebookFile.stock_id_for_state(editor.state)
 
     #######################################################
     # Utility
@@ -112,10 +119,16 @@ class MiniWindow(BaseNotebookWindow):
         def on_activate(item):
             self._make_editor_current(editor)
 
-        item = gtk.MenuItem("")
-        item.get_child().set_markup(format_escaped("<b>%s</b>", editor.title))
+        item = gtk.ImageMenuItem("")
+        editor._menu_item_label = item.get_child()
+        editor._menu_item_label.set_markup(format_escaped("<b>%s</b>", editor.title))
         item.connect('activate', on_activate)
 
+        editor._menu_item_status = gtk.Image()
+        editor._menu_item_status.props.icon_size = gtk.ICON_SIZE_MENU
+        editor._menu_item_status.props.stock = NotebookFile.stock_id_for_state(editor.state)
+        item.set_image(editor._menu_item_status)
+ 
         return item
 
     def __create_file_item(self, file):
@@ -124,6 +137,7 @@ class MiniWindow(BaseNotebookWindow):
 
         item = gtk.MenuItem(os.path.basename(file.path))
         item.connect('activate', on_activate)
+        item.editor = None
 
         return item
 

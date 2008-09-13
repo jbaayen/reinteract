@@ -600,7 +600,7 @@ class Worksheet(gobject.GObject):
 
             def on_complete(executor):
                 self.__executor = None
-                self.__set_state(NotebookFile.ERROR if self.__executor_error else NotebookFile.CLEAN)
+                self.__set_state(NotebookFile.ERROR if self.__executor_error else NotebookFile.EXECUTE_SUCCESS)
                 if wait:
                     loop.quit()
 
@@ -815,7 +815,7 @@ class Worksheet(gobject.GObject):
         return self.__code_modified
 
     code_modified = gobject.property(getter=__get_code_modified, setter=__set_code_modified, type=bool, default=False)
-    state = gobject.property(type=int, default=NotebookFile.CLEAN)
+    state = gobject.property(type=int, default=NotebookFile.EXECUTE_SUCCESS)
 
     def __set_filename_and_modified(self, filename, modified):
         self.freeze_notify()
@@ -882,7 +882,7 @@ class Worksheet(gobject.GObject):
         if self.__file:
             self.__file.worksheet = None
             self.__file.modified = False
-            self.__file.state = NotebookFile.CLEAN
+            self.__file.state = NotebookFile.NONE
             self.__file.active = False
 
         self.notebook._remove_worksheet(self)

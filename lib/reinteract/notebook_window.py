@@ -2,6 +2,7 @@ import gtk
 
 from base_notebook_window import BaseNotebookWindow
 from file_list import FileList
+from notebook import NotebookFile
 
 gtk.rc_parse_string(
     """
@@ -80,9 +81,12 @@ class NotebookWindow(BaseNotebookWindow):
     def _add_editor(self, editor):
         # Set first since _add_editor() calls _update_editor_title()
         editor._notebook_tab_label = gtk.Label()
+        editor._notebook_tab_status = gtk.Image()
+        editor._notebook_tab_status.props.icon_size = gtk.ICON_SIZE_MENU
         BaseNotebookWindow._add_editor(self, editor)
 
         label_widget = gtk.HBox(False, 4)
+        label_widget.pack_start(editor._notebook_tab_status, True, True, 0)
         label_widget.pack_start(editor._notebook_tab_label, True, True, 0)
         tab_button = gtk.Button()
         tab_button.set_name('notebook-close-button')
@@ -101,6 +105,10 @@ class NotebookWindow(BaseNotebookWindow):
     def _update_editor_title(self, editor):
         BaseNotebookWindow._update_editor_title(self, editor)
         editor._notebook_tab_label.set_text(editor.title)
+
+    def _update_editor_state(self, editor):
+        BaseNotebookWindow._update_editor_title(self, editor)
+        editor._notebook_tab_status.props.stock = NotebookFile.stock_id_for_state(editor.state)
 
     #######################################################
     # Callbacks

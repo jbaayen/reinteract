@@ -69,9 +69,12 @@ class BaseNotebookWindow(BaseWindow):
         self.nb_widget.add(editor.widget)
         editor.widget._notebook_window_editor = editor
         editor.connect('notify::title', self.on_editor_notify_title)
-        editor.connect('notify::title', self.on_editor_notify_filename)
+        editor.connect('notify::filename', self.on_editor_notify_filename)
+        editor.connect('notify::modified', self.on_editor_notify_modified)
+        editor.connect('notify::state', self.on_editor_notify_state)
 
         self._update_editor_title(editor)
+        self._update_editor_state(editor)
         self._update_open_files()
 
     def _close_editor(self, editor):
@@ -90,6 +93,10 @@ class BaseNotebookWindow(BaseWindow):
         editor.close()
         self.__update_title()
         self._update_open_files()
+
+    def _update_editor_state(self, editor):
+        if editor == self.current_editor:
+            self._update_sensitivity()
 
     def _update_editor_title(self, editor):
         if editor == self.current_editor:
@@ -213,6 +220,7 @@ class BaseNotebookWindow(BaseWindow):
                 self.current_editor = editor
                 self.__update_title()
                 self._update_current_file()
+                self._update_sensitivity()
                 break
 
     def on_page_reordered(self, notebook, page, new_page_num):
@@ -224,6 +232,13 @@ class BaseNotebookWindow(BaseWindow):
     def on_editor_notify_filename(self, editor, *args):
         self._update_open_files()
         self._update_current_file()
+
+    def on_editor_notify_modified(self, editor, *args):
+        if editor == self.current_editor:
+            self._update_sensitivity()
+
+    def on_editor_notify_state(self, editor, *args):
+        self._update_editor_state(editor)
 
     #######################################################
     # Public API

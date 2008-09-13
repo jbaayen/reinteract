@@ -31,6 +31,7 @@ class WorksheetEditor(Editor):
         self.buf.worksheet.connect('notify::filename', lambda *args: self._update_filename())
         self.buf.worksheet.connect('notify::file', lambda *args: self._update_file())
         self.buf.worksheet.connect('notify::code-modified', lambda *args: self._update_modified())
+        self.buf.worksheet.connect('notify::state', lambda *args: self._update_state())
 
     #######################################################
     # Overrides
@@ -50,6 +51,9 @@ class WorksheetEditor(Editor):
 
     def _get_modified(self):
         return self.buf.worksheet.code_modified
+
+    def _get_state(self):
+        return self.buf.worksheet.state
 
     def _get_extension(self):
         return "rws"

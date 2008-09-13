@@ -233,13 +233,8 @@ class FileList(gtk.TreeView):
         else:
             cell.props.background_gdk = None
 
-        if isinstance(item, _FileItem) and item.file.state != NotebookFile.CLEAN:
-            if item.file.state == NotebookFile.NEEDS_EXECUTE:
-                cell.props.stock_id = "gtk-ok"
-            elif item.file.state == NotebookFile.EXECUTING:
-                cell.props.stock_id = "gtk-refresh"
-            elif item.file.state == NotebookFile.ERROR:
-                cell.props.stock_id = "gtk-dialog-error"
+        if isinstance(item, _FileItem) and item.file.state != NotebookFile.EXECUTE_SUCCESS:
+            cell.props.stock_id = NotebookFile.stock_id_for_state(item.file.state)
         else:
             cell.props.stock_id = None
 

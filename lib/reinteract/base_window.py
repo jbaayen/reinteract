@@ -8,7 +8,7 @@ from about_dialog import AboutDialog
 from application import application
 from file_list import FileList
 from global_settings import global_settings
-from notebook import Notebook
+from notebook import Notebook, NotebookFile
 
 class BaseWindow:
     def __init__(self, notebook):
@@ -18,10 +18,10 @@ class BaseWindow:
 
         self.ui_manager = gtk.UIManager()
 
-        action_group = gtk.ActionGroup("main")
-        self._add_actions(action_group)
+        self.action_group = gtk.ActionGroup("main")
+        self._add_actions(self.action_group)
 
-        self.ui_manager.insert_action_group(action_group, 0)
+        self.ui_manager.insert_action_group(self.action_group, 0)
 
         self.ui_manager.add_ui_from_string(self.UI_STRING)
         self.ui_manager.ensure_update()
@@ -86,6 +86,14 @@ class BaseWindow:
 
     def _close_window(self):
         raise NotImplementedError()
+
+    def _update_sensitivity(self):
+        calculate_action = self.action_group.get_action('calculate')
+        calculate_action.set_sensitive(self.current_editor.state != NotebookFile.EXECUTE_SUCCESS and self.current_editor.state != NotebookFile.NONE)
+
+        # This seems more annoying than useful. gedit doesn't desensitize save
+        # save_action = self.action_group.get_action('save')
+        # save_action.set_sensitive(self.current_editor.modified)
 
     #######################################################
     # Callbacks
