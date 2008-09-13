@@ -24,4 +24,4 @@ dist-hook:
 distclean-hook:
 	rm -f $(DIALOGS)
 
-.PHONY=update-dialogs
+.PHONY: update-dialogs
