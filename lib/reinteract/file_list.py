@@ -233,7 +233,7 @@ class FileList(gtk.TreeView):
         else:
             cell.props.background_gdk = None
 
-        if isinstance(item, _FileItem) and item.file.state != NotebookFile.EXECUTE_SUCCESS:
+        if isinstance(item, _FileItem):
             cell.props.stock_id = NotebookFile.stock_id_for_state(item.file.state)
         else:
             cell.props.stock_id = None
