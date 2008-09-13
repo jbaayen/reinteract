@@ -16,3 +16,4 @@ global_settings.examples_dir = os.path.join(docdir, "examples")
 
 if __name__ == "__main__":
     import reinteract.main
+    reinteract.main.main()

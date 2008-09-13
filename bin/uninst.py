@@ -18,3 +18,4 @@ global_settings.dialogs_dir = builderdir
 global_settings.examples_dir = examplesdir
 
 import reinteract.main
+reinteract.main.main()
