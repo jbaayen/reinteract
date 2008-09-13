@@ -89,6 +89,15 @@ MAINTAINERCLEANFILES =                                                        \
 		       NEWS						      \
                        $(LIST_END)
 
+api-docs:
+	@conf=`cd $(top_srcdir) && pwd`/epydoc.conf ;									\
+	out=`pwd`/api-docs ;												\
+	modules="" ;													\
+	for pkg in $(reinteractpkg_PYTHON) ; do										\
+		modules="$$modules `echo $$pkg | sed s@^lib/@@\;s@.py\\$$@@\;s@/@.@g`" ;				\
+	done;														\
+	cd $(top_srcdir)/lib && PYTHONPATH="$PYTHONPATH:reinteract" epydoc --config=$$conf --output=$$out $$modules
+
 distcheck-hook:
 	@echo "Checking against files in git"
 	@failed=false;							\
@@ -101,3 +110,5 @@ distcheck-hook:
 	if $$failed ; then						\
 		exit 1 ;						\
 	fi
+
+.PHONY: api-docs
