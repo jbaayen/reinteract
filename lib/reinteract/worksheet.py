@@ -617,6 +617,10 @@ class Worksheet(gobject.GObject):
 
         self.__thaw_changes()
 
+    def interrupt(self):
+        if self.state == NotebookFile.EXECUTING:
+            self.__executor.interrupt()
+
     def __get_last_scope(self, chunk):
         # Get the last result scope we have that precedes the specified chunk
 

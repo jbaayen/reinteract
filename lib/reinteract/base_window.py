@@ -79,6 +79,7 @@ class BaseWindow:
             ('delete',  gtk.STOCK_DELETE,    None,         None,              None,  self.on_delete),
             ('about',   gtk.STOCK_ABOUT,     None,         None,              None, self.on_about),
             ('calculate', gtk.STOCK_REFRESH, "Ca_lculate", '<control>Return', None,  self.on_calculate),
+            ('break',   gtk.STOCK_CANCEL,    "_Break",     '<control>Break',  None,  self.on_break),
         ])
 
     def _close_current(self):
@@ -89,7 +90,12 @@ class BaseWindow:
 
     def _update_sensitivity(self):
         calculate_action = self.action_group.get_action('calculate')
-        calculate_action.set_sensitive(self.current_editor.state != NotebookFile.EXECUTE_SUCCESS and self.current_editor.state != NotebookFile.NONE)
+        calculate_action.set_sensitive(self.current_editor.state != NotebookFile.EXECUTE_SUCCESS and
+                                       self.current_editor.state != NotebookFile.NONE and
+                                       self.current_editor.state != NotebookFile.EXECUTING)
+
+        break_action = self.action_group.get_action('break')
+        break_action.set_sensitive(self.current_editor.state == NotebookFile.EXECUTING)
 
         # This seems more annoying than useful. gedit doesn't desensitize save
         # save_action = self.action_group.get_action('save')
@@ -157,6 +163,10 @@ class BaseWindow:
     def on_calculate(self, action):
         if self.current_editor:
             self.current_editor.view.calculate()
+
+    def on_break(self, action):
+        if self.current_editor:
+            self.current_editor.buf.worksheet.interrupt()
 
     def on_about(self, action):
         d = AboutDialog(self.window)

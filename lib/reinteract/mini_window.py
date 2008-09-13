@@ -33,6 +33,7 @@ class MiniWindow(BaseNotebookWindow):
          <menuitem action="delete"/>
          <separator/>
          <menuitem action="calculate"/>
+         <menuitem action="break"/>
       </menu>
 	<menu action="help">
         <menuitem action="about"/>
@@ -44,6 +45,7 @@ class MiniWindow(BaseNotebookWindow):
       <toolitem action="close"/>
       <separator/>
       <toolitem action="calculate"/>
+      <toolitem action="break"/>
    </toolbar>
 </ui>
 """

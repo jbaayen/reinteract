@@ -40,6 +40,7 @@ class NotebookWindow(BaseNotebookWindow):
          <menuitem action="delete"/>
          <separator/>
          <menuitem action="calculate"/>
+         <menuitem action="break"/>
       </menu>
 	<menu action="help">
         <menuitem action="about"/>
@@ -49,6 +50,7 @@ class NotebookWindow(BaseNotebookWindow):
       <toolitem action="save"/>
       <separator/>
       <toolitem action="calculate"/>
+      <toolitem action="break"/>
    </toolbar>
 </ui>
 """
@@ -107,7 +109,7 @@ class NotebookWindow(BaseNotebookWindow):
         editor._notebook_tab_label.set_text(editor.title)
 
     def _update_editor_state(self, editor):
-        BaseNotebookWindow._update_editor_title(self, editor)
+        BaseNotebookWindow._update_editor_state(self, editor)
         editor._notebook_tab_status.props.stock = NotebookFile.stock_id_for_state(editor.state)
 
     #######################################################
