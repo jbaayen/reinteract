@@ -45,6 +45,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/statement.py                               \
                     lib/reinteract/stdout_capture.py                          \
                     lib/reinteract/test_utils.py                              \
+                    lib/reinteract/thread_executor.py                         \
                     lib/reinteract/tokenized_statement.py                     \
                     lib/reinteract/undo_stack.py                              \
                     lib/reinteract/window_builder.py                          \

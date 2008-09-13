@@ -2,7 +2,7 @@ import traceback
 
 from change_range import ChangeRange
 from rewrite import UnsupportedSyntaxError
-from statement import Statement, ExecutionError, WarningResult
+from statement import Statement, WarningResult
 from tokenized_statement import TokenizedStatement;
 
 class Chunk(object):
@@ -103,65 +103,62 @@ class StatementChunk(Chunk):
 
     def mark_for_execute(self):
         if self.statement != None and not self.needs_execute:
+            self.statement.mark_for_execute()
             self.needs_execute = True
             self.status_changed = True
             return True
         else:
             return False
 
-    def compile(self, worksheet):
-        if self.statement != None:
-            return
-
-        self.needs_compile = False
-        self.status_changed = True
-
-        if self.results != None:
-            self.results = None
-            self.results_changed = True
-
-        self.error_message = None
-        self.error_line = None
-        self.error_offset = None
-
-        try:
+    def get_statement(self, worksheet):
+        if not self.statement:
             self.statement = Statement(self.tokenized.get_text(), worksheet)
-            self.needs_execute = True
-        except SyntaxError, e:
-            self.error_message = e.msg
-            self.error_line = e.lineno
-            self.error_offset = e.offset
-            self.results_changed = True
-        except UnsupportedSyntaxError, e:
-            self.error_message = e.value
-            self.results_changed = True
+            self.statement.chunk = self
 
-    def execute(self, parent):
-        assert(self.statement != None)
+        return self.statement
 
-        self.needs_compile = False
-        self.needs_execute = False
+    def update_statement(self):
         self.status_changed = True
 
-        self.error_message = None
-        self.error_line = None
-        self.error_offset = None
-
-        try:
-            self.statement.set_parent(parent)
-            self.statement.execute()
+        if self.statement.state == Statement.COMPILE_SUCCESS:
+            self.needs_compile = False
+            self.needs_execute = True
+        elif self.statement.state == Statement.EXECUTE_SUCCESS:
+            self.needs_compile = False
+            self.needs_execute = False
             if self.results != self.statement.results:
                 self.results_changed = True
             self.results = self.statement.results
-        except ExecutionError, e:
-            self.error_message = "\n".join(traceback.format_tb(e.traceback)[2:]) + "\n".join(traceback.format_exception_only(e.type, e.value))
-            if self.error_message.endswith("\n"):
-                self.error_message = self.error_message[0:-1]
-
-            self.error_line = e.traceback.tb_frame.f_lineno
+            self.error_message = None
+            self.error_line = None
             self.error_offset = None
-            self.results_changed = True
+        elif self.statement.state == Statement.COMPILE_ERROR:
+            self.needs_compile = True
+            self.needs_execute = True
+            self.error_message = self.statement.error_message
+            self.error_line = self.statement.error_line
+            self.error_offset = self.statement.error_offset
             self.results = None
+            self.results_changed = True
+        elif self.statement.state == Statement.EXECUTE_ERROR:
+            self.needs_compile = False
+            self.needs_execute = True
+            self.error_message = self.statement.error_message
+            self.error_line = self.statement.error_line
+            self.error_offset = self.statement.error_offset
+            self.results = None
+            self.results_changed = True
+        elif self.statement.state == Statement.INTERRUPTED:
+            self.needs_compile = False
+            self.needs_execute = True
+            self.error_message = self.statement.error_message
+            self.error_line = None
+            self.error_offset = None
+            self.results = None
+            self.results_changed = True
+        else:
+            # NEW/EXECUTING should not be hit here
+            raise AssertionError("Unexpected state in Chunk.update_statement()")
 
 class BlankChunk(Chunk):
 

@@ -10,6 +10,7 @@ from StringIO import StringIO
 from change_range import ChangeRange
 from chunks import *
 from notebook import Notebook
+from thread_executor import ThreadExecutor
 from undo_stack import UndoStack, InsertOp, DeleteOp
 
 _debug = logging.getLogger("Worksheet").debug
@@ -550,35 +551,57 @@ class Worksheet(gobject.GObject):
                 if module == module_name:
                     self.__mark_rest_for_execute(chunk.start)
 
-    def calculate(self):
+    def calculate(self, wait=False):
         _debug("Calculating")
 
         self.__freeze_changes()
 
         parent = None
         have_error = False
+
+        executor = None
+
         for chunk in self.iterate_chunks():
             if isinstance(chunk, StatementChunk):
                 changed = False
 
-                if chunk.needs_compile:
-                    _debug("  Compiling %s", chunk);
-                    changed = True
-                    chunk.compile(self)
+                if chunk.needs_compile or chunk.needs_execute:
+                    if not executor:
+                        executor = ThreadExecutor(parent)
 
-                if chunk.needs_execute and not have_error:
-                    changed = True
-                    _debug("  Executing %s", chunk);
-                    chunk.execute(parent)
-
-                if chunk.error_message != None:
-                    _debug("   Got error '%s' for %s", chunk.error_message, chunk);
-                    have_error = True
-
-                if changed:
-                    self.__chunk_changed(chunk);
+                if executor:
+                    statement = chunk.get_statement(self)
+                    executor.add_statement(statement)
 
                 parent = chunk.statement
+
+        if executor:
+            if wait:
+                loop = gobject.MainLoop()
+
+            def on_statement_complete(executor, statement):
+                statement.chunk.update_statement()
+
+                if self.__freeze_changes_count == 0:
+                    self.__freeze_changes()
+                    self.__chunk_changed(statement.chunk)
+                    self.__thaw_changes()
+                else:
+                    self.__chunk_changed(statement.chunk)
+
+            def on_complete(self):
+                self.__executor = None
+                if wait:
+                    loop.quit()
+
+            self.__executor = executor
+            executor.connect('statement-complete', on_statement_complete)
+            executor.connect('complete', on_complete)
+
+            if executor.compile():
+                executor.execute()
+                if wait:
+                    loop.run()
 
         self.__thaw_changes()
 
@@ -747,9 +770,10 @@ class Worksheet(gobject.GObject):
         self.__filename = filename
         if filename:
             self.__file = self.notebook.file_for_absolute_path(self.__filename)
-            self.__file.worksheet = self
-            self.__file.active = True
-            self.__file.modified = self.__code_modified
+            if self.__file:
+                self.__file.worksheet = self
+                self.__file.active = True
+                self.__file.modified = self.__code_modified
         else:
             self.__file = None
 
@@ -850,6 +874,8 @@ if __name__ == '__main__': #pragma: no cover
     if "-d" in sys.argv:
         logging.basicConfig(level=logging.DEBUG, format="DEBUG: %(message)s")
 
+    gobject.threads_init()
+
     import stdout_capture
     stdout_capture.init()
 
@@ -899,7 +925,7 @@ if __name__ == '__main__': #pragma: no cover
         worksheet.delete_range(start_line, start_offset, end_line, end_offset)
 
     def calculate():
-        worksheet.calculate()
+        worksheet.calculate(wait=True)
 
     def clear():
         worksheet.clear()
@@ -1191,7 +1217,7 @@ if __name__ == '__main__': #pragma: no cover
     clear()
 
     insert(0, 0, "a = 1\na = 2\na")
-    worksheet.calculate()
+    calculate()
     insert(1, 0, "#")
     assert worksheet.get_chunk(2).needs_execute
 
@@ -1211,7 +1237,7 @@ if __name__ == '__main__': #pragma: no cover
 
     insert(0, 0, "1 ")
     insert(0, 1, "\n")
-    worksheet.calculate()
+    calculate()
     worksheet.undo()
     expect_text("1 ")
 
@@ -1311,7 +1337,7 @@ a
 b = 2"""
 
     insert(0, 0, SAVE_TEST)
-    worksheet.calculate()
+    calculate()
 
     handle, fname = tempfile.mkstemp(".rws", "reinteract_worksheet")
     os.close(handle)
@@ -1326,7 +1352,7 @@ b = 2"""
             raise AssertionError("Got '%s', expected '%s'", saved, SAVE_TEST)
 
         worksheet.load(fname)
-        worksheet.calculate()
+        calculate()
 
         expect_text(SAVE_TEST)
         expect([S(0,1), S(1,2), C(2,3), B(3,4), S(4,5)])

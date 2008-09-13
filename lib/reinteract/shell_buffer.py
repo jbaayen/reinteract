@@ -655,6 +655,8 @@ class ShellBuffer(gtk.TextBuffer):
 if __name__ == '__main__': #pragma: no cover
     import sys
 
+    gobject.threads_init()
+
     from notebook import Notebook
 
     if "-d" in sys.argv:
@@ -677,7 +679,7 @@ if __name__ == '__main__': #pragma: no cover
         buf.delete_interactive(i, j, True)
 
     def calculate():
-        buf.worksheet.calculate()
+        buf.worksheet.calculate(True)
 
     def clear():
         buf.worksheet.clear()
