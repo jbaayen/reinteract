@@ -251,29 +251,38 @@ class Notebook(gobject.GObject):
             self.__find_and_load(fullname + "." + fromname, fromname, parent=module, local=local)
         
     def do_import(self, name, globals=None, locals=None, fromlist=None, level=None):
-        names = name.split('.')
-        
-        module, local =  self.__import_recurse(names)
-        
-        if fromlist != None:
-            # In 'from a.b import c', if a.b.c doesn't exist after loading a.b, The built-in
-            # __import__ will try to load a.b.c as a module; do the same here.
-            for fromname in fromlist:
-                if fromname == "*":
-                    try:
-                        all = getattr(module, "__all__")
-                        for allname in all:
-                            self.__ensure_from_list_item(name, allname, module, local)
-                    except AttributeError:
-                        pass
-                else:
-                    self.__ensure_from_list_item(name, fromname, module, local)
-                            
-            return module
-        elif local:
-            return self.__modules[names[0]]
-        else:
-            return sys.modules[names[0]]
+        # Holding the import lock around the whole import process matches what
+        # Python does internally. This does mean that the machinery of loading a slow
+        # import blocks the import of an already loaded module in a different thread.
+        # You could imagine trying to do the lookup without the lock and locking only
+        # for loading, but ensuring the safety of that would be quite complex
+        imp.acquire_lock()
+        try:
+            names = name.split('.')
+
+            module, local =  self.__import_recurse(names)
+
+            if fromlist != None:
+                # In 'from a.b import c', if a.b.c doesn't exist after loading a.b, The built-in
+                # __import__ will try to load a.b.c as a module; do the same here.
+                for fromname in fromlist:
+                    if fromname == "*":
+                        try:
+                            all = getattr(module, "__all__")
+                            for allname in all:
+                                self.__ensure_from_list_item(name, allname, module, local)
+                        except AttributeError:
+                            pass
+                    else:
+                        self.__ensure_from_list_item(name, fromname, module, local)
+
+                return module
+            elif local:
+                return self.__modules[names[0]]
+            else:
+                return sys.modules[names[0]]
+        finally:
+            imp.release_lock()
 
     ############################################################
     # Worksheet tracking
