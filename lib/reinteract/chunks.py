@@ -151,7 +151,7 @@ class StatementChunk(Chunk):
         elif self.statement.state == Statement.INTERRUPTED:
             self.needs_compile = False
             self.needs_execute = True
-            self.error_message = self.statement.error_message
+            self.error_message = "Interrupted"
             self.error_line = None
             self.error_offset = None
             self.results = None
