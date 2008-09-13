@@ -10,7 +10,7 @@ from chunks import StatementChunk,CommentChunk
 import doc_format
 from notebook import HelpResult
 from statement import WarningResult
-import tokenize
+import retokenize
 from worksheet import Worksheet, NEW_LINE_RE
 
 _debug = logging.getLogger("ShellBuffer").debug
@@ -110,26 +110,26 @@ class ShellBuffer(gtk.TextBuffer):
         punctuation_tag = None
 
         self.__fontify_tags = {
-            tokenize.TOKEN_KEYWORD      : self.create_tag(foreground="#7f0055", weight=600),
-            tokenize.TOKEN_NAME         : None,
-            tokenize.TOKEN_COMMENT      : self.__comment_tag,
-            tokenize.TOKEN_BUILTIN_CONSTANT : self.create_tag(foreground="#55007f"),
-            tokenize.TOKEN_STRING       : self.create_tag(foreground="#00aa00"),
-            tokenize.TOKEN_PUNCTUATION  : punctuation_tag,
-            tokenize.TOKEN_CONTINUATION : punctuation_tag,
-            tokenize.TOKEN_LPAREN       : punctuation_tag,
-            tokenize.TOKEN_RPAREN       : punctuation_tag,
-            tokenize.TOKEN_LSQB         : punctuation_tag,
-            tokenize.TOKEN_RSQB         : punctuation_tag,
-            tokenize.TOKEN_LBRACE       : punctuation_tag,
-            tokenize.TOKEN_RBRACE       : punctuation_tag,
-            tokenize.TOKEN_BACKQUOTE    : punctuation_tag,
-            tokenize.TOKEN_COLON        : punctuation_tag,
-            tokenize.TOKEN_DOT          : punctuation_tag,
-            tokenize.TOKEN_EQUAL        : punctuation_tag,
-            tokenize.TOKEN_AUGEQUAL     : punctuation_tag,
-            tokenize.TOKEN_NUMBER       : None,
-            tokenize.TOKEN_JUNK         : self.create_tag(underline="error"),
+            retokenize.TOKEN_KEYWORD      : self.create_tag(foreground="#7f0055", weight=600),
+            retokenize.TOKEN_NAME         : None,
+            retokenize.TOKEN_COMMENT      : self.__comment_tag,
+            retokenize.TOKEN_BUILTIN_CONSTANT : self.create_tag(foreground="#55007f"),
+            retokenize.TOKEN_STRING       : self.create_tag(foreground="#00aa00"),
+            retokenize.TOKEN_PUNCTUATION  : punctuation_tag,
+            retokenize.TOKEN_CONTINUATION : punctuation_tag,
+            retokenize.TOKEN_LPAREN       : punctuation_tag,
+            retokenize.TOKEN_RPAREN       : punctuation_tag,
+            retokenize.TOKEN_LSQB         : punctuation_tag,
+            retokenize.TOKEN_RSQB         : punctuation_tag,
+            retokenize.TOKEN_LBRACE       : punctuation_tag,
+            retokenize.TOKEN_RBRACE       : punctuation_tag,
+            retokenize.TOKEN_BACKQUOTE    : punctuation_tag,
+            retokenize.TOKEN_COLON        : punctuation_tag,
+            retokenize.TOKEN_DOT          : punctuation_tag,
+            retokenize.TOKEN_EQUAL        : punctuation_tag,
+            retokenize.TOKEN_AUGEQUAL     : punctuation_tag,
+            retokenize.TOKEN_NUMBER       : None,
+            retokenize.TOKEN_JUNK         : self.create_tag(underline="error"),
         }
 
         self.__line_marks = [self.create_mark(None, self.get_start_iter(), True)]

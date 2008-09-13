@@ -1,5 +1,5 @@
 import inspect
-from tokenize import *
+from retokenize import *
 
 class _TokenIter(object):
     def __init__(self, statement, line, i):

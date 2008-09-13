@@ -36,6 +36,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/notebook_window.py                         \
                     lib/reinteract/open_notebook.py                           \
                     lib/reinteract/popup.py                                   \
+                    lib/reinteract/retokenize.py                              \
                     lib/reinteract/rewrite.py                                 \
                     lib/reinteract/sanitize_textview_ipc.py                   \
                     lib/reinteract/save_file.py                               \
@@ -45,7 +46,6 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/stdout_capture.py                          \
                     lib/reinteract/test_utils.py                              \
                     lib/reinteract/tokenized_statement.py                     \
-                    lib/reinteract/tokenize.py                                \
                     lib/reinteract/undo_stack.py                              \
                     lib/reinteract/window_builder.py                          \
                     lib/reinteract/worksheet.py                               \
