@@ -9,7 +9,8 @@ from StringIO import StringIO
 
 from change_range import ChangeRange
 from chunks import *
-from notebook import Notebook
+from notebook import Notebook, NotebookFile
+from statement import Statement
 from thread_executor import ThreadExecutor
 from undo_stack import UndoStack, InsertOp, DeleteOp
 
@@ -175,6 +176,9 @@ class Worksheet(gobject.GObject):
         self.__changed_chunks.add(chunk)
 
     def __mark_rest_for_execute(self, start_line):
+        if self.state != NotebookFile.NEEDS_EXECUTE:
+            self.__set_state(NotebookFile.NEEDS_EXECUTE)
+
         # Mark all statements starting from start_line as needing execution.
         # We do this immediately when we change or delete a previous
         # StatementChunk. The alternative would be to do it when we
@@ -580,6 +584,11 @@ class Worksheet(gobject.GObject):
                 loop = gobject.MainLoop()
 
             def on_statement_complete(executor, statement):
+                if (statement.state == Statement.COMPILE_ERROR or
+                    statement.state == Statement.EXECUTE_ERROR or
+                    statement.state == Statement.INTERRUPTED):
+                    self.__executor_error = True
+
                 statement.chunk.update_statement()
 
                 if self.__freeze_changes_count == 0:
@@ -589,12 +598,15 @@ class Worksheet(gobject.GObject):
                 else:
                     self.__chunk_changed(statement.chunk)
 
-            def on_complete(self):
+            def on_complete(executor):
                 self.__executor = None
+                self.__set_state(NotebookFile.ERROR if self.__executor_error else NotebookFile.CLEAN)
                 if wait:
                     loop.quit()
 
             self.__executor = executor
+            self.__executor_error = False
+            self.__set_state(NotebookFile.EXECUTING)
             executor.connect('statement-complete', on_statement_complete)
             executor.connect('complete', on_complete)
 
@@ -758,6 +770,11 @@ class Worksheet(gobject.GObject):
     def get_line(self, line):
         return self.__lines[line]
 
+    def __set_state(self, new_state):
+        self.state = new_state
+        if self.__file:
+            self.__file.state = new_state
+
     def __set_filename(self, filename):
         if filename == self.__filename:
             return
@@ -798,6 +815,7 @@ class Worksheet(gobject.GObject):
         return self.__code_modified
 
     code_modified = gobject.property(getter=__get_code_modified, setter=__set_code_modified, type=bool, default=False)
+    state = gobject.property(type=int, default=NotebookFile.CLEAN)
 
     def __set_filename_and_modified(self, filename, modified):
         self.freeze_notify()
@@ -864,6 +882,7 @@ class Worksheet(gobject.GObject):
         if self.__file:
             self.__file.worksheet = None
             self.__file.modified = False
+            self.__file.state = NotebookFile.CLEAN
             self.__file.active = False
 
         self.notebook._remove_worksheet(self)

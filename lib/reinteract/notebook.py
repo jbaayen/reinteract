@@ -41,8 +41,14 @@ class _Helper:
 ######################################################################
 
 class NotebookFile(gobject.GObject):
+    CLEAN = 0
+    NEEDS_EXECUTE = 1
+    EXECUTING = 2
+    ERROR = 3
+
     active = gobject.property(type=bool, default=False)
     modified = gobject.property(type=bool, default=False)
+    state = gobject.property(type=int, default=CLEAN)
     worksheet = gobject.property(type=gobject.TYPE_PYOBJECT)
 
     def __init__(self, path):
