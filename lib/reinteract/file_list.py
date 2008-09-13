@@ -6,6 +6,8 @@ import pango
 
 from notebook import Notebook, NotebookFile, WorksheetFile, MiscFile, LibraryFile
 
+_HEADER_COLOR = gtk.gdk.Color(0xffff,0xdddd,0xbbbb)
+
 _debug = logging.getLogger("FileList").debug
 
 ######################################################################
@@ -142,6 +144,20 @@ def _remove_row_depthfirst(model, iter):
 
     return None
 
+# Enhance gtk.CellRendererPixbuf to support a background color (use for header rows)
+class _BgPixbufRenderer(gtk.CellRendererPixbuf):
+    # To simplify, use background_gdk = None, rather than background-set = False
+    background_gdk = gobject.property(type=gobject.TYPE_PYOBJECT)
+
+    def do_render(self, window, widget, background_area, cell_area, expose_area, flags):
+        if self.background_gdk:
+            cr = window.cairo_create()
+            cr.set_source_color(self.background_gdk)
+            cr.rectangle(background_area)
+            cr.fill()
+
+        gtk.CellRendererPixbuf.do_render(self, window, widget, background_area, cell_area, expose_area, flags)
+
 ######################################################################
 
 class FileList(gtk.TreeView):
@@ -159,6 +175,17 @@ class FileList(gtk.TreeView):
 
         column = gtk.TreeViewColumn()
         self.append_column(column)
+        column.set_resizable(gtk.TREE_VIEW_COLUMN_AUTOSIZE)
+
+        cell_renderer = _BgPixbufRenderer()
+        cell_renderer.props.stock_size = gtk.ICON_SIZE_MENU
+
+        width, height = gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
+        cell_renderer.props.width = width
+        cell_renderer.props.height = height
+
+        column.pack_start(cell_renderer, False)
+        column.set_cell_data_func(cell_renderer, self.__state_cell_data_func)
 
         cell_renderer = gtk.CellRendererText()
         column.pack_start(cell_renderer, True)
@@ -189,7 +216,7 @@ class FileList(gtk.TreeView):
         cell.props.text = item.get_text()
 
         if isinstance(item, _HeaderItem):
-            cell.props.background_gdk = gtk.gdk.Color(0xffff,0xdddd,0xbbbb)
+            cell.props.background_gdk = _HEADER_COLOR
         else:
             cell.props.background_set = False
 
@@ -197,6 +224,24 @@ class FileList(gtk.TreeView):
             cell.props.weight = pango.WEIGHT_BOLD
         else:
             cell.props.weight_set = False
+
+    def __state_cell_data_func(self, column, cell, model, iter):
+        item = model.get_value(iter, 0)
+
+        if isinstance(item, _HeaderItem):
+            cell.props.background_gdk = gtk.gdk.Color(0xffff,0xdddd,0xbbbb)
+        else:
+            cell.props.background_gdk = None
+
+        if isinstance(item, _FileItem) and item.file.state != NotebookFile.CLEAN:
+            if item.file.state == NotebookFile.NEEDS_EXECUTE:
+                cell.props.stock_id = "gtk-ok"
+            elif item.file.state == NotebookFile.EXECUTING:
+                cell.props.stock_id = "gtk-refresh"
+            elif item.file.state == NotebookFile.ERROR:
+                cell.props.stock_id = "gtk-dialog-error"
+        else:
+            cell.props.stock_id = None
 
     def __select_function(self, path):
         obj = self.__model.get_value(self.__model.get_iter(path), 0)
@@ -225,6 +270,8 @@ class FileList(gtk.TreeView):
                                                            lambda *args: self.__refresh_item(item))
             item.notify_modified_handler = item.file.connect('notify::modified',
                                                              lambda *args: self.__refresh_item(item))
+            item.notify_state_handler = item.file.connect('notify::state',
+                                                          lambda *args: self.__refresh_item(item))
             item.worksheet = None
             item.notify_code_modified_handler = 0
 
@@ -234,6 +281,8 @@ class FileList(gtk.TreeView):
             item.notify_active_handler = None
             item.file.disconnect(item.notify_modified_handler)
             item.notify_modified_handler = None
+            item.file.disconnect(item.notify_state_handler)
+            item.notify_state_handler = None
 
     ############################################################
 
