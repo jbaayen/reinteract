@@ -614,6 +614,10 @@ class Worksheet(gobject.GObject):
                 executor.execute()
                 if wait:
                     loop.run()
+        else:
+            # Nothing to execute, we could have been in a non-success state if statements were deleted
+            # at the end of the file.
+            self.__set_state(NotebookFile.EXECUTE_SUCCESS)
 
         self.__thaw_changes()
 
