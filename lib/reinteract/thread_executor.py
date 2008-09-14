@@ -29,21 +29,25 @@ _PyThreadState_SetAsyncExc = ctypes.pythonapi.PyThreadState_SetAsyncExc
 # never called, but Python's handler does what we wanted to do (ignore the signal)
 # anyways.
 #
-if sys.platform == 'darwin':
-    # pthread_kill is in the C library on OS/X
-    # ctypes.util.find_library("c") should work in theory, but doesn't
-    _pthreads_dll = ctypes.CDLL("/usr/lib/libc.dylib")
+if sys.platform == 'win32':
+    _pthread_kill = None
 else:
-    # Assume Linux. We intentionally don't guard this against failure
-    # so that we get bug reports when we don't find libpthread
-    _pthreads_dll = ctypes.CDLL("libpthread.so.0")
+    if sys.platform == 'darwin':
+        # pthread_kill is in the C library on OS/X
+        # ctypes.util.find_library("c") should work in theory, but doesn't
+        _pthreads_dll = ctypes.CDLL("/usr/lib/libc.dylib")
+    else:
+        # Assume Linux. We intentionally don't guard this against failure
+        # so that we get bug reports when we don't find libpthread
+        _pthreads_dll = ctypes.CDLL("libpthread.so.0")
     
-_pthread_kill = _pthreads_dll.pthread_kill
+    _pthread_kill = _pthreads_dll.pthread_kill
 
-def _ignore_handler(signum, frame):
-    pass
+if _pthread_kill != None:
+    def _ignore_handler(signum, frame):
+        pass
 
-signal.signal(signal.SIGUSR1, _ignore_handler)
+    signal.signal(signal.SIGUSR1, _ignore_handler)
 
 class ThreadExecutor(gobject.GObject):
     """Class to execute Python statements asynchronously in a thread
@@ -207,7 +211,8 @@ class ThreadExecutor(gobject.GObject):
         if not self.complete and not self.interrupted:
             self.interrupted = True
             _PyThreadState_SetAsyncExc(self.tid, ctypes.py_object(KeyboardInterrupt))
-            _pthread_kill(self.tid, signal.SIGUSR1)
+            if _pthread_kill != None:
+                _pthread_kill(self.tid, signal.SIGUSR1)
         self.lock.release()
 
 ######################################################################
@@ -302,10 +307,11 @@ if __name__ == '__main__': #pragma: no cover
             ("z = 1", Statement.COMPILE_SUCCESS, None)
         ])
 
-    # Test interrupting a blocking syscall
-    test_execute(
-        [
-            ("import sys", Statement.EXECUTE_SUCCESS, []),
-            ("sys.stdin.readline()", Statement.INTERRUPTED, None),
-            ("z = 1", Statement.COMPILE_SUCCESS, None)
-        ])
+    # Test interrupting a blocking syscall, if support on this platform
+    if _pthread_kill != None:
+        test_execute(
+            [
+                ("import sys", Statement.EXECUTE_SUCCESS, []),
+                ("sys.stdin.readline()", Statement.INTERRUPTED, None),
+                ("z = 1", Statement.COMPILE_SUCCESS, None)
+            ])
