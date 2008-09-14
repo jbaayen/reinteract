@@ -90,9 +90,7 @@ class BaseWindow:
 
     def _update_sensitivity(self):
         calculate_action = self.action_group.get_action('calculate')
-        calculate_action.set_sensitive(self.current_editor.state != NotebookFile.EXECUTE_SUCCESS and
-                                       self.current_editor.state != NotebookFile.NONE and
-                                       self.current_editor.state != NotebookFile.EXECUTING)
+        calculate_action.set_sensitive(self.current_editor.needs_calculate)
 
         break_action = self.action_group.get_action('break')
         break_action.set_sensitive(self.current_editor.state == NotebookFile.EXECUTING)
@@ -161,8 +159,8 @@ class BaseWindow:
             self.current_editor.view.delete_selection(True, self.view.get_editable())
 
     def on_calculate(self, action):
-        if self.current_editor:
-            self.current_editor.view.calculate()
+        if self.current_editor and self.current_editor.needs_calculate:
+            self.current_editor.calculate()
 
     def on_break(self, action):
         if self.current_editor:
@@ -178,8 +176,8 @@ class BaseWindow:
         if ((event.keyval == gtk.keysyms.Return or event.keyval == gtk.keysyms.KP_Enter) and
             (event.state & gtk.gdk.CONTROL_MASK != 0) and
             (event.state & gtk.gdk.SHIFT_MASK == 0)):
-            if self.current_editor:
-                self.current_editor.view.calculate()
+            if self.current_editor and self.current_editor.needs_calculate:
+                self.current_editor.calculate()
             return True
         return False
 

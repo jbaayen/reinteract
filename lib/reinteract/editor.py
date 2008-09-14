@@ -165,7 +165,6 @@ class Editor(gobject.GObject):
     def load(self, filename):
         raise NotImplementedError()
 
-
     def save(self, filename=None):
         if filename == None:
             filename = self._get_filename()
@@ -200,6 +199,15 @@ class Editor(gobject.GObject):
             self.notebook.refresh()
 
         self.__promt_for_name(title=title, save_button_text="_Rename", action=action, check_name=check_name)
+
+    @property
+    def needs_calculate(self):
+        return (self.state != NotebookFile.EXECUTE_SUCCESS and
+                self.state != NotebookFile.NONE and
+                self.state != NotebookFile.EXECUTING)
+
+    def calculate(self):
+        pass
 
     @gobject.property
     def filename(self):

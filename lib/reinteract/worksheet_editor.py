@@ -75,4 +75,7 @@ class WorksheetEditor(Editor):
         else:
             self.buf.worksheet.load(filename)
             self.buf.place_cursor(self.buf.get_start_iter())
-            self.view.calculate()
+            self.calculate()
+
+    def calculate(self):
+        self.view.calculate()

@@ -131,9 +131,7 @@ class BaseNotebookWindow(BaseWindow):
 
         some_need_calculate = False
         for editor in self.editors:
-            if (editor.state != NotebookFile.EXECUTE_SUCCESS and
-                editor.state != NotebookFile.NONE and
-                editor.state != NotebookFile.EXECUTING):
+            if editor.needs_calculate:
                 some_need_calculate = True
 
         calculate_all_action = self.action_group.get_action('calculate-all')
@@ -228,10 +226,8 @@ class BaseNotebookWindow(BaseWindow):
 
     def on_calculate_all(self, action):
         for editor in self.editors:
-            if (editor.state != NotebookFile.EXECUTE_SUCCESS and
-                editor.state != NotebookFile.NONE and
-                editor.state != NotebookFile.EXECUTING):
-                editor.buf.worksheet.calculate()
+            if editor.needs_calculate:
+                editor.calculate()
 
     def on_page_switched(self, notebook, _, page_num):
         widget = self.nb_widget.get_nth_page(page_num)
