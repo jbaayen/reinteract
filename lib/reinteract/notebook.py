@@ -158,7 +158,7 @@ class Notebook(gobject.GObject):
                     file = WorksheetFile(relative)
                     absolute = os.path.join(full_folder, f)
                     for worksheet in self.worksheets:
-                        if os.path.abspath(worksheet.filename) == absolute:
+                        if worksheet.filename and os.path.abspath(worksheet.filename) == absolute:
                             file.worksheet = worksheet
                             break
                 elif lower.endswith('.py'):
