@@ -29,7 +29,15 @@ _PyThreadState_SetAsyncExc = ctypes.pythonapi.PyThreadState_SetAsyncExc
 # never called, but Python's handler does what we wanted to do (ignore the signal)
 # anyways.
 #
-_pthreads_dll = ctypes.CDLL("libpthread.so.0")
+if sys.platform == 'darwin':
+    # pthread_kill is in the C library on OS/X
+    # ctypes.util.find_library("c") should work in theory, but doesn't
+    _pthreads_dll = ctypes.CDLL("/usr/lib/libc.dylib")
+else:
+    # Assume Linux. We intentionally don't guard this against failure
+    # so that we get bug reports when we don't find libpthread
+    _pthreads_dll = ctypes.CDLL("libpthread.so.0")
+    
 _pthread_kill = _pthreads_dll.pthread_kill
 
 def _ignore_handler(signum, frame):
