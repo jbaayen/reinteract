@@ -851,6 +851,8 @@ class Worksheet(gobject.GObject):
         if not self.code_modified and filename == self.__filename:
             return
 
+        filename_changed = filename != self.__filename
+
         tmpname = filename + ".tmp"
 
         # We use binary mode, since we don't want to munge line endings to the system default
@@ -875,6 +877,10 @@ class Worksheet(gobject.GObject):
             os.rename(tmpname, filename)
             success = True
 
+            # Need to refresh the notebook before saving so that we find the NotebookFile
+            # properly in __set_filename_and_modified
+            if filename_changed:
+                self.notebook.refresh()
             self.__set_filename_and_modified(filename, False)
             if self.notebook.info:
                 self.notebook.info.update_last_modified()
