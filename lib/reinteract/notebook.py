@@ -185,8 +185,15 @@ class Notebook(gobject.GObject):
         self.__modules = {}
 
     def reset_module_by_filename(self, filename):
+        filename = filename.lower()
         for (name, module) in self.__modules.iteritems():
-            if module.__file__ == filename:
+            # If the .py changed, we need to reload the module even if it was
+            # loaded from a .pyc file.
+            module_file = module.__file__.lower()
+            if module_file.endswith(".pyc") or module_file.endswith(".pyo"):
+                module_file = module_file[:-3] + "py"
+
+            if module_file == filename:
                 del sys.modules[self.__prefix + "." + name]
                 del self.__modules[name]
 
