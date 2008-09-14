@@ -34,6 +34,8 @@ class MiniWindow(BaseNotebookWindow):
          <separator/>
          <menuitem action="calculate"/>
          <menuitem action="break"/>
+         <separator/>
+         <menuitem action="calculate-all"/>
       </menu>
 	<menu action="help">
         <menuitem action="about"/>

@@ -175,7 +175,9 @@ class BaseWindow:
     def on_key_press_event(self, window, event):
         # We have a <Control>Return accelerator, but this hooks up <Control>KP_Enter as well;
         # maybe someone wants that
-        if (event.keyval == gtk.keysyms.Return or event.keyval == gtk.keysyms.KP_Enter) and (event.state & gtk.gdk.CONTROL_MASK != 0):
+        if ((event.keyval == gtk.keysyms.Return or event.keyval == gtk.keysyms.KP_Enter) and
+            (event.state & gtk.gdk.CONTROL_MASK != 0) and
+            (event.state & gtk.gdk.SHIFT_MASK == 0)):
             if self.current_editor:
                 self.current_editor.view.calculate()
             return True

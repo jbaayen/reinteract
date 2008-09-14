@@ -7,7 +7,7 @@ import gtk
 from application import application
 from base_window import BaseWindow
 from library_editor import LibraryEditor
-from notebook import LibraryFile, WorksheetFile
+from notebook import LibraryFile, NotebookFile, WorksheetFile
 from window_builder import WindowBuilder
 from worksheet_editor import WorksheetEditor
 
@@ -95,8 +95,7 @@ class BaseNotebookWindow(BaseWindow):
         self._update_open_files()
 
     def _update_editor_state(self, editor):
-        if editor == self.current_editor:
-            self._update_sensitivity()
+        self._update_sensitivity()
 
     def _update_editor_title(self, editor):
         if editor == self.current_editor:
@@ -113,6 +112,7 @@ class BaseNotebookWindow(BaseWindow):
             ('notebook-properties', gtk.STOCK_PROPERTIES, "Notebook _Properties", None,         None, self.on_notebook_properties),
             ('new-worksheet',       gtk.STOCK_NEW,        "_New Worksheet",       "<control>n", None, self.on_new_worksheet),
             ('new-library',         gtk.STOCK_NEW,        "New _Library",         "",           None, self.on_new_library),
+            ('calculate-all',       gtk.STOCK_REFRESH,    "Calculate _All",       "<control><shift>Return",  None, self.on_calculate_all),
         ])
 
     def _close_current(self):
@@ -125,6 +125,19 @@ class BaseNotebookWindow(BaseWindow):
 
         application.window_closed(self)
         self.window.destroy()
+
+    def _update_sensitivity(self):
+        BaseWindow._update_sensitivity(self)
+
+        some_need_calculate = False
+        for editor in self.editors:
+            if (editor.state != NotebookFile.EXECUTE_SUCCESS and
+                editor.state != NotebookFile.NONE and
+                editor.state != NotebookFile.EXECUTING):
+                some_need_calculate = True
+
+        calculate_all_action = self.action_group.get_action('calculate-all')
+        calculate_all_action.set_sensitive(some_need_calculate)
 
     #######################################################
     # Utility
@@ -212,6 +225,13 @@ class BaseNotebookWindow(BaseWindow):
 
     def on_new_library(self, action):
         self.__new_library()
+
+    def on_calculate_all(self, action):
+        for editor in self.editors:
+            if (editor.state != NotebookFile.EXECUTE_SUCCESS and
+                editor.state != NotebookFile.NONE and
+                editor.state != NotebookFile.EXECUTING):
+                editor.buf.worksheet.calculate()
 
     def on_page_switched(self, notebook, _, page_num):
         widget = self.nb_widget.get_nth_page(page_num)
