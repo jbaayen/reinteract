@@ -41,7 +41,7 @@ class Editor(gobject.GObject):
     def _update_file(self):
         self.notify('file')
 
-    def __promt_for_name(self, title, save_button_text, action, check_name=None):
+    def __prompt_for_name(self, title, save_button_text, action, check_name=None):
         builder = SaveFileBuilder(title, self._get_display_name(), save_button_text, check_name)
         builder.dialog.set_transient_for(self.widget.get_toplevel())
 
@@ -175,7 +175,7 @@ class Editor(gobject.GObject):
                 self._clear_unsaved()
                 self.notebook.refresh()
 
-            self.__promt_for_name(title="Save As...", save_button_text="_Save", action=action)
+            self.__prompt_for_name(title="Save As...", save_button_text="_Save", action=action)
         else:
             self._save(filename)
 
@@ -198,7 +198,7 @@ class Editor(gobject.GObject):
             os.remove(old_filename)
             self.notebook.refresh()
 
-        self.__promt_for_name(title=title, save_button_text="_Rename", action=action, check_name=check_name)
+        self.__prompt_for_name(title=title, save_button_text="_Rename", action=action, check_name=check_name)
 
     @property
     def needs_calculate(self):
