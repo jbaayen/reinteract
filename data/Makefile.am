@@ -6,4 +6,5 @@ desktop_DATA = reinteract.desktop
 
 EXTRA_DIST=					\
 	$(desktop_DATA)				\
-	$(icon_DATA)
+	$(icon_DATA)				\
+	Reinteract.ico
