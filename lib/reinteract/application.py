@@ -29,26 +29,21 @@ class Application():
         self.state = ApplicationState(state_location)
 
     def get_notebook_infos(self):
-        infos = []
+        paths = []
 
+        recent = self.state.get_recent_notebooks()
         notebooks_folder = self.get_notebooks_folder()
-        for f in os.listdir(notebooks_folder):
-            fullpath = os.path.join(notebooks_folder, f)
-            if not os.path.isdir(fullpath):
-                continue
+        recent_paths = [os.path.abspath(r.path) for r in recent]
+        folder_paths = [os.path.join(notebooks_folder, f) for f in os.listdir(notebooks_folder)]
+        paths = recent_paths + folder_paths
 
-            infos.append(NotebookInfo(fullpath))
+        example_state = self.state.get_notebook_state(global_settings.examples_dir)
+        if example_state.get_last_opened() == -1:
+            paths.append(global_settings.examples_dir)
+        paths = [p for p in paths if os.path.isdir(p)]
+        paths = list(set(paths))
 
-        # Wedge the examples notebook into the Open Notebook dialog so people
-        # can find it. Longer-term, a possibility:
-        #
-        # - keep track of the history of recently opened notebooks
-        # - include them when listing known notebooks
-        # - on first startup, prime that with the examples notebook
-        #
-        infos.append(NotebookInfo(global_settings.examples_dir))
-
-        return infos
+        return [NotebookInfo(p) for p in paths]
 
     def get_config_folder(self):
         if sys.platform == 'win32':
