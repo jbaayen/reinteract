@@ -14,11 +14,13 @@ class OpenNotebookBuilder(WindowBuilder):
 
         tree = self.notebooks_tree
 
-        self.model = gtk.ListStore(gobject.TYPE_PYOBJECT)
+        self.model = gtk.ListStore(gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)
 
         for info in application.get_notebook_infos():
             iter = self.model.append()
+            state = application.state.get_notebook_state(info.folder)
             self.model.set_value(iter, 0, info)
+            self.model.set_value(iter, 1, state)
 
         tree.set_model(self.model)
 
@@ -33,7 +35,6 @@ class OpenNotebookBuilder(WindowBuilder):
 
         self.model.set_sort_func(0, self.__name_column_sort)
         name_column.set_sort_column_id(0)
-        self.model.set_sort_column_id(0, gtk.SORT_ASCENDING)
 
         ##############################
 
@@ -57,6 +58,19 @@ class OpenNotebookBuilder(WindowBuilder):
 
         self.model.set_sort_func(2, self.__modified_column_sort)
         modified_column.set_sort_column_id(2)
+
+        ##############################
+
+        opened_column = gtk.TreeViewColumn("Last Opened")
+        tree.append_column(opened_column)
+
+        cell_renderer = gtk.CellRendererText()
+        opened_column.pack_start(cell_renderer, True)
+        opened_column.set_cell_data_func(cell_renderer, self.__opened_data_func)
+
+        self.model.set_sort_func(3, self.__opened_column_sort)
+        opened_column.set_sort_column_id(3)
+        self.model.set_sort_column_id(3, gtk.SORT_ASCENDING)
 
         ##############################
 
@@ -101,6 +115,15 @@ class OpenNotebookBuilder(WindowBuilder):
         a = model.get_value(iter_a, 0)
         b = model.get_value(iter_b, 0)
         return - cmp(a.last_modified, b.last_modified)
+
+    def __opened_data_func(self, column, cell, model, iter):
+        state = model.get_value(iter, 1)
+        cell.props.text = state.get_last_opened_text()
+
+    def __opened_column_sort(self, model, iter_a, iter_b):
+        a = model.get_value(iter_a, 1)
+        b = model.get_value(iter_b, 1)
+        return - cmp(a.get_last_opened(), b.get_last_opened())
 
     def __update_open_button_sensitivity(self, *args):
         self.open_button.set_sensitive(self.get_selected_info() != None)
