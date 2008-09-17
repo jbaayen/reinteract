@@ -2,6 +2,43 @@ from ConfigParser import RawConfigParser, ParsingError
 import os
 import time
 
+def format_duration(past):
+    if past < 60: # Sanity ... a date before 1972
+        return ""
+
+    now = time.time()
+
+    diff = now - past
+    if diff <= 0:
+        return ""
+    elif diff < 90:
+        return "A minute ago"
+    elif diff < 60 * 60:
+        return "%.0f minutes ago" % (diff / 60.)
+    elif diff < 24 * 60 * 60:
+        return "%.0f hours ago" % (diff / (60. * 60.))
+
+    time_struct = time.localtime(now)
+    day_start = time.mktime((time_struct[0], time_struct[1], time_struct[2], 0, 0, 0, time_struct[6], time_struct[7], time_struct[8]))
+    diff_days = (day_start - past) / (60. * 60. * 24.)
+
+    if diff_days < 1:
+        return "Yesterday"
+    elif diff_days < 7:
+        return "%.0f days ago" % (diff_days)
+    elif diff_days < 10.5:
+        return "1 week ago"
+    elif diff_days < 30:
+        return "%.0f weeks ago" % (diff_days / 7.)
+    elif diff_days < 45:
+        return "1 month ago"
+    elif diff_days < 365:
+        return "%.0f months ago" % (diff_days / 30.)
+    elif diff_days < 550 * 1.5:
+        return "1 year ago"
+    else:
+        return "%.0f years ago" % (diff_days / 365.)
+
 class NotebookInfo(object):
     def __init__(self, folder):
         self.folder = folder
@@ -50,42 +87,7 @@ class NotebookInfo(object):
 
     @property
     def last_modified_text(self):
-        last_modified = self.last_modified
-        if last_modified < 60: # Sanity ... a date before 1972
-            return ""
-
-        now = time.time()
-
-        diff = now - last_modified
-        if diff <= 0:
-            return ""
-        elif diff < 90:
-            return "A minute ago"
-        elif diff < 60 * 60:
-            return "%.0f minutes ago" % (diff / 60.)
-        elif diff < 24 * 60 * 60:
-            return "%.0f hours ago" % (diff / (60. * 60.))
-
-        time_struct = time.localtime(now)
-        day_start = time.mktime((time_struct[0], time_struct[1], time_struct[2], 0, 0, 0, time_struct[6], time_struct[7], time_struct[8]))
-        diff_days = (day_start - last_modified) / (60. * 60. * 24.)
-
-        if diff_days < 1:
-            return "Yesterday"
-        elif diff_days < 7:
-            return "%.0f days ago" % (diff_days)
-        elif diff_days < 10.5:
-            return "1 week ago"
-        elif diff_days < 30:
-            return "%.0f weeks ago" % (diff_days / 7.)
-        elif diff_days < 45:
-            return "1 month ago"
-        elif diff_days < 365:
-            return "%.0f months ago" % (diff_days / 30.)
-        elif diff_days < 550 * 1.5:
-            return "1 year ago"
-        else:
-            return "%.0f years ago" % (diff_days / 365.)
+        return format_duration(self.last_modified)
 
     @property
     def name(self):

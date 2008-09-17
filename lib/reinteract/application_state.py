@@ -4,6 +4,8 @@ import os
 import re
 import time
 
+from notebook_info import format_duration
+
 _FLUSH_INTERVAL = 1000 # 1 second
 
 _need_quote_re = re.compile(r'[\s"]');
@@ -70,6 +72,9 @@ class NotebookState:
             return -1
         except NoSectionError:
             return -1
+
+    def get_last_opened_text(self):
+        return format_duration(self.get_last_opened())
 
     def get_current_file(self):
         try:
