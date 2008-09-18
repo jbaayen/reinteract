@@ -29,7 +29,7 @@ BLANK = 0
 COMMENT_RE = re.compile(r'^\s*#')
 COMMENT = 1
 STATEMENT_START = 2
-CONTINUATION_RE = re.compile(r'^(?:\s+|(?:except|finally)[^A-Za-z0-9_])')
+CONTINUATION_RE = re.compile(r'^(?:\s+|(?:else|elif|except|finally)[^A-Za-z0-9_])')
 CONTINUATION = 3
 
 NEW_LINE_RE = re.compile(r'\n|\r|\r\n')
