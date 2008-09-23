@@ -1,0 +1,106 @@
+<?xml version='1.0'?><Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <Fragment>
+        <!-- We use all-upper-case for our custom properties; this is actually a bit of an
+             oddball thing to do. all-uppercase is a convention used to pass values from
+             the user interface part of the install to the GUI-less server part of the
+             install and we don't need any of the properties there -->
+
+        <!-- standard or custom based on the user's selection on the Welcome screen -->
+        <Property Id="INSTALLTYPE" Value="standard"/>
+
+        <!-- Flag whether we've started installing; used to know whether we should show
+             a dialog when the user cancels -->
+        <Property Id="INSTALLSTARTED" Value="0"/>
+
+        <!-- These properties mirror the intended installation state of the optional features
+             after the install. I created a custom feature-selection user interface because
+             I was horrified by the standard tree -->
+        <Property Id="INSTALLGTK" Value="1"/>
+        <Property Id="INSTALLPYGTK" Value="1"/>
+        <Property Id="INSTALLSCIPY" Value="1"/>
+
+        <Property Id="TITLE" Value="Installing Reinteract"/>
+
+        <UI Id="ReinteractUI">
+            <!-- Standard default UI style -->
+            <TextStyle Id="defaultUIStyle" FaceName="Tahoma" Size="8"/>
+            <Property Id="DefaultUIFont" Value="defaultUIStyle"/>
+
+            <!-- Custom styles -->
+            <TextStyle Id="dialogTitleStyle" FaceName="Arial" Size="14"/>
+            <TextStyle Id="boldUIStyle" FaceName="Tahoma" Size="8" Bold="yes"/>
+
+            <!-- Referenced from WiXUI FilesInUse dialog -->
+            <TextStyle Id="WixUI_Font_Title" FaceName="Arial" Size="14"/>
+
+            <!-- In general, the UI here is written from scratch to behave as I want it to
+                 behave; however having to write and supply dialogs for error conditions
+                 and in-use files, we pull those in WixUIExtension. They fit pretty well
+                 in with our look-and-feel), though there are a few differences
+                 like the overall height of the dialog and the way that the top banner is 
+                 done. Overrides.wxl overrides some of the localized strings in these
+                 dialogs to make them look more like our dialogs -->
+            <DialogRef Id="ErrorDlg"/>
+            <DialogRef Id="FilesInUse"/>
+            <!-- RM here is the "Reboot Manager" new in Windows Vista; this version of the
+                 dialog offers to automatically close the problematical windows -->
+            <DialogRef Id="MsiRMFilesInUse"/>
+
+            <InstallUISequence>
+                <MigrateFeatureStates/>
+                <!-- First set up the title and install type properties based on the previous state. -->
+                <Custom Action="setMaintenanceTitle" After="MigrateFeatureStates">Installed</Custom>
+                <Custom Action="setUpgradeTitle" After="setMaintenanceTitle">PREVIOUSVERSIONS</Custom>
+                <!-- When the installer is run in maintenance mode, it's always custom -->
+                <Custom Action="setMaintenanceInstallType" After="setUpgradeTitle">Installed</Custom>
+
+                <!-- If we are in maintainence mode or upgrading, note any feature that the user
+                     previously disabled; this will be our default state for this install -->
+                <Custom Action="gtkNotInstalled" After="setMaintenanceInstallType">(Installed AND NOT !gtk=3) OR (PREVIOUSVERSIONS AND NOT &amp;gtk=3)</Custom>
+                <Custom Action="pygtkNotInstalled" After="gtkNotInstalled">(Installed AND NOT !pygtk=3) OR (PREVIOUSVERSIONS AND NOT &amp;pygtk=3)</Custom>
+                <Custom Action="scipyNotInstalled" After="pygtkNotInstalled">(Installed AND NOT !scipy=3) OR (PREVIOUSVERSIONS AND NOT &amp;scipy=3)</Custom>
+                <!-- If we are running normally, start with the WelcomePage, in maintenance mode,
+                     start with the features page -->
+                <Show Dialog="WelcomePage" After="scipyNotInstalled">NOT Installed</Show>
+                <Show Dialog="FeaturesPage" After="scipyNotInstalled">Installed</Show>
+
+                <!-- Flag that the install is under way and show progress -->
+                <Custom Action="installStarted" After="WelcomePage"></Custom>
+                <Show Dialog="ProgressPage" After="installStarted"></Show>
+
+                <!-- The different options for pages to finish the install -->
+                <Show Dialog="FatalErrorPage" OnExit="error"/>
+                <Show Dialog="CancelPage" OnExit="cancel">INSTALLSTARTED="1"</Show>
+                <Show Dialog="SuccessPage" OnExit="success"/>
+            </InstallUISequence>
+
+            <!-- This is just enough to keep WiX from complaining; if someone wants
+                 adminstrative installation of Reinteract to work, they'll have to figure out 
+                 what needs to be done. I have no knowledge of what an adminstrative
+                 installation is supposed to do -->
+            <AdminUISequence>
+                <Show Dialog="FatalErrorPage" OnExit="error"/>
+                <Show Dialog="CancelPage" OnExit="cancel"/>
+                <Show Dialog="SuccessPage" OnExit="success"/>
+            </AdminUISequence>
+        </UI>
+
+        <!-- The custom actions references above -->
+        <CustomAction Id="setMaintenanceTitle" Property="TITLE" Value="Changing Reinteract Installation"/>
+        <CustomAction Id="setUpgradeTitle" Property="TITLE" Value="Upgrading Reinteract"/>
+        <CustomAction Id="setMaintenanceInstallType" Property="INSTALLTYPE" Value="custom"/>
+
+        <CustomAction Id="gtkNotInstalled" Property="INSTALLGTK" Value=""/>
+        <CustomAction Id="pygtkNotInstalled" Property="INSTALLPYGTK" Value=""/>
+        <CustomAction Id="scipyNotInstalled" Property="INSTALLSCIPY" Value=""/>
+
+        <CustomAction Id="installStarted" Property="INSTALLSTARTED" Value="1"/>
+
+        <Binary Id="bannerBmp" SourceFile="reinteractBanner.bmp"/>
+
+        <!-- This doesn't actually appear, but the ErrorIcon on ErrorDlg needs to 
+             refer to something. Note the install-time versus installed difference
+             between this and the similar <Icon/> definition done in build_msi.TEMPLATE -->
+        <Binary Id="reinteractIcon" SourceFile="Reinteract.ico"/>
+    </Fragment>
+</Wix>

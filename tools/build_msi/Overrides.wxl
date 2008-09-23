@@ -1,0 +1,9 @@
+<?xml version='1.0'?><WixLocalization Culture="en-us" xmlns="http://schemas.microsoft.com/wix/2006/localization"> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <!-- Customize the dialogs we pull in from WixUIExtension by overriding localized strings -->    
+    <String Id="FilesInUse_Title">[TITLE]</String>
+    <String Id="FilesInUseBannerBitmap">bannerBmp</String>
+    <String Id="MsiRMFilesInUse_Title">[TITLE]</String>
+    <String Id="MsiRMFilesInUseBannerBitmap">bannerBmp</String>
+    <String Id="ErrorDlg_Title">[TITLE]</String>
+    <String Id="ErrorDlgErrorIcon">reinteractIcon</String>
+</WixLocalization>

@@ -1,4 +1,4 @@
-AC_INIT(reinteract, 0.0.1)
+AC_INIT(reinteract, 0.4.0)
 
 AC_CONFIG_AUX_DIR(config)
 

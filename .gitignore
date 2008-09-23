@@ -1,4 +1,5 @@
 *.pyc
+*~
 
 /api-docs
 /autom4te.cache

@@ -1,0 +1,50 @@
+<?xml version='1.0'?><Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <!-- Let the user select what components they want to install -->
+    <Fragment>
+        <UI>
+            <Dialog Id="FeaturesPage" Width="370" Height="250" Title="[TITLE]">
+	        <Control Id="bannerBitmap" Type="Bitmap" FixedSize="yes" X="0" Y="0" Width="370" Height="35" Text="bannerBmp"/>
+                <Control Id="bannerText" Type="Text" X="5" Y="7" Width="360" Height="25" Transparent="yes">
+                    <Text>{\dialogTitleStyle}[TITLE] - Version [ProductVersion]</Text>
+                </Control>
+                <Control Id="topLine" Type="Line" X="0" Y="35" Width="370" Height="2"/>
+
+                <Control Id="featuresExplanation" Type="Text" X="12" Y="49" Width="346" Height="32">
+                    <Text>By default, Reinteract will be installed with various libraries and modules that it depends upon. You can choose to not install these dependencies if you already have existing copies on your system that you would rather use instead.</Text>
+                </Control>
+
+                <Control Id="installGtk" Property="INSTALLGTK" CheckBoxValue="1" Type="CheckBox" X="12" Y="91" Width="346" Height="15">
+                    <Text>Install private copies of GTK+, GLib, Pango, ATK, and Cairo</Text>
+                    <Publish Event="AddLocal" Value="gtk">INSTALLGTK</Publish>
+                    <Publish Event="Remove" Value="gtk">NOT INSTALLGTK</Publish>
+                </Control>
+                <Control Id="installPygtk" Property="INSTALLPYGTK" CheckBoxValue="1" Type="CheckBox" X="12" Y="111" Width="346" Height="15">
+                    <Text>Install private copies of the PyGTK and Pycairo language bindings</Text>
+                    <Publish Event="AddLocal" Value="pygtk">INSTALLPYGTK</Publish>
+                    <Publish Event="Remove" Value="pygtk">NOT INSTALLPYGTK</Publish>
+                </Control>
+                <Control Id="installScipy" Property="INSTALLSCIPY" CheckBoxValue="1" Type="CheckBox" X="12" Y="131" Width="346" Height="15">
+                    <Text>Install private copies of the numpy and matplotlib modules</Text>
+                    <Publish Event="AddLocal" Value="scipy">INSTALLSCIPY</Publish>
+                    <Publish Event="Remove" Value="scipy">NOT INSTALLSCIPY</Publish>
+                </Control>
+
+                <Control Id="buttonLine" Type="Line" X="0" Y="213" Width="370" Height="2"/>
+
+                <Control Id="backButton" Type="PushButton" X="172" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Back</Text>
+                    <Condition Action="hide">Installed</Condition>
+                    <Publish Event="NewDialog" Value="BrowsePage"/>
+                </Control>
+                <Control Id="installButton" Type="PushButton" X="234" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Install</Text>
+                    <Publish Event="EndDialog" Value="Return"/>
+                </Control>
+                <Control Id="cancelButton" Type="PushButton" X="302" Y="221" Width="56" Height="17" Default="no">
+                    <Text>Cancel</Text>
+                    <Publish Event="EndDialog" Value="Exit"/>
+                </Control>
+	    </Dialog>
+        </UI>
+    </Fragment>
+</Wix>

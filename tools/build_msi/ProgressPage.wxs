@@ -1,0 +1,45 @@
+<?xml version='1.0'?><Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <!-- Show progress -->
+    <Fragment>
+        <UI>
+	    <Dialog Id="ProgressPage" Width="370" Height="250" Title="[TITLE]" Modeless="yes">
+	        <Control Id="bannerBitmap" Type="Bitmap" FixedSize="yes" X="0" Y="0" Width="370" Height="35" Text="bannerBmp"/>
+	        <Control Id="bannerText" Type="Text" X="5" Y="7" Width="360" Height="25" Transparent="yes">
+                    <Text>{\dialogTitleStyle}[TITLE] - Version [ProductVersion]</Text>
+	        </Control>
+                <Control Id="topLine" Type="Line" X="0" Y="35" Width="370" Height="2"/>
+
+                <Control Id="pageText" Type="Text" X="12" Y="49" Width="355" Height="15" Hidden="yes">
+	            <Text>Please wait while Reinteract is installed.</Text>
+                    <Condition Action="show">NOT Installed AND NOT PREVIOUSVERSIONS</Condition>
+	        </Control>
+                <Control Id="pageText2" Type="Text" X="12" Y="49" Width="355" Height="15" Hidden="yes">
+	            <Text>Please wait while Reinteract is upgraded.</Text>
+                    <Condition Action="show">NOT Installed AND PREVIOUSVERSIONS</Condition>
+	        </Control>
+                <Control Id="pageText3" Type="Text" X="12" Y="49" Width="355" Height="15" Hidden="yes">
+	            <Text>Please wait while the installation of Reinteract is modified.</Text>
+                    <Condition Action="show">Installed</Condition>
+	        </Control>
+	        <Control Id="progressBar" Type="ProgressBar" X="12" Y="69" Width="346" Height="15">
+	            <Subscribe Event="SetProgress" Attribute="Progress"/>
+	        </Control>
+	        <Control Id="actionText" Type="Text" X="12" Y="89" Width="355" Height="15">
+	            <Subscribe Event="ActionText" Attribute="Text"/>
+	        </Control>
+
+                <Control Id="buttonLine" Type="Line" X="0" Y="213" Width="370" Height="2"/>
+
+<!--
+	        <Control Id="okButton" Type="PushButton" X="243" Y="173" Width="56" Height="17" Disabled="yes">
+	            <Text>OK</Text>
+	        </Control>
+-->
+                <Control Id="cancelButton" Type="PushButton" X="302" Y="221" Width="56" Height="17" Default="no">
+                    <Text>Cancel</Text>
+                    <Publish Event="EndDialog" Value="Exit"/>
+		</Control>
+	    </Dialog>
+        </UI>
+    </Fragment>
+</Wix>

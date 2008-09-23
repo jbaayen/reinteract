@@ -1,0 +1,50 @@
+<?xml version='1.0'?><Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <!-- Page shown on successful installation -->
+    <Fragment>
+        <Property Id="STARTREINTERACT" Value="1"/>
+
+        <UI>
+            <Dialog Id="SuccessPage" Width="370" Height="250" Title="[TITLE]">
+	        <Control Id="bannerBitmap" Type="Bitmap" FixedSize="yes" X="0" Y="0" Width="370" Height="35" Text="bannerBmp"/>
+                <Control Id="bannerText" Type="Text" X="5" Y="7" Width="360" Height="25" Transparent="yes">
+                    <Text>{\dialogTitleStyle}[TITLE] - Version [ProductVersion]</Text>
+                </Control>
+                <Control Id="topLine" Type="Line" X="0" Y="35" Width="370" Height="2"/>
+
+		<Control Id="pageText" Type="Text" X="12" Y="49" Width="346" Height="15" Hidden="yes">
+	            <Text>Installation of Reinteract completed successfully.</Text>
+                    <Condition Action="show">NOT Installed AND NOT PREVIOUSVERSIONS</Condition>
+	        </Control>
+		<Control Id="pageText2" Type="Text" X="12" Y="49" Width="346" Height="15" Hidden="yes">
+	            <Text>Upgrade of Reinteract completed successfully.</Text>
+                    <Condition Action="show">NOT Installed AND PREVIOUSVERSIONS</Condition>
+	        </Control>
+		<Control Id="pageText3" Type="Text" X="12" Y="49" Width="346" Height="15" Hidden="yes">
+	            <Text>Installation of Reinteract was successfully modified.</Text>
+                    <Condition Action="show">Installed</Condition>
+	        </Control>
+
+                <Control Id="startReinteract" Property="STARTREINTERACT" CheckBoxValue="1" Type="CheckBox" X="12" Y="91" Width="346" Height="15">
+                    <Text>Start Reinteract now</Text>
+                    <Condition Action="hide">Installed</Condition>
+                </Control>
+
+                <Control Id="buttonLine" Type="Line" X="0" Y="213" Width="370" Height="2"/>
+
+                <Control Id="finishButton" Type="PushButton" X="302" Y="221" Width="56" Height="17" Default="no">
+                    <Text>Finish</Text>
+                    <!-- The 1 here is important: "The installer does not trigger an event with a blank in the
+                         Condition field unless no other events of the control evaluate to True." -->
+                    <Publish Event="EndDialog" Value="Exit">1</Publish>
+                    <Publish Event="DoAction" Value="startReinteract">STARTREINTERACT=1</Publish>
+		</Control>
+	   </Dialog>
+	</UI>
+
+        <!-- This uses a a DLL from WixUtilExtension; we need to look up the helper
+             app to run .pyw files to execute Reinteract -->
+<!--        <Property Id="WixShellExecTarget" Value="[#ReinteractPyw]"/> -->
+<!--        <CustomAction Id="startReinteract" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes"/> -->
+            <CustomAction Id="startReinteract" FileKey="ReinteractExe" Return="asyncNoWait" Impersonate="yes" ExeCommand=""/>
+    </Fragment>
+</Wix>

@@ -1,0 +1,39 @@
+<?xml version='1.0'?><Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <!-- The basic "choose an installatin directory" page -->
+    <Fragment>
+        <UI>
+            <Dialog Id="BrowsePage" Width="370" Height="250" Title="[TITLE]">
+	        <Control Id="bannerBitmap" Type="Bitmap" FixedSize="yes" X="0" Y="0" Width="370" Height="35" Text="bannerBmp"/>
+                <Control Id="bannerText" Type="Text" X="5" Y="7" Width="360" Height="25" Transparent="yes">
+                    <Text>{\dialogTitleStyle}[TITLE] - Version [ProductVersion]</Text>
+                </Control>
+                <Control Id="topLine" Type="Line" X="0" Y="35" Width="370" Height="2"/>
+
+                <Control Id="locationLabel" Type="Text" X="12" Y="53" Width="346" Height="12">
+                    <Text>Install Reinteract to:</Text>
+                </Control>
+                <Control Id="pathEdit" Type="PathEdit" Property="APPLICATIONFOLDER" X="12" Y="79" Width="346" Height="17"/>
+                <Control Id="browseChange" Type="PushButton" X="12" Y="100" Width="56" Height="17">
+                    <Text>Change...</Text>
+                    <Publish Event="NewDialog" Value="BrowsePage2"/>
+                </Control>
+
+                <Control Id="buttonLine" Type="Line" X="0" Y="213" Width="370" Height="2"/>
+
+                <Control Id="backButton" Type="PushButton" X="172" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Back</Text>
+                    <Publish Event="NewDialog" Value="WelcomePage"/>
+                </Control>
+                <Control Id="continueButton" Type="PushButton" X="234" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Continue</Text>
+                    <Publish Event="SetTargetPath" Value="APPLICATIONFOLDER"/>
+                    <Publish Event="NewDialog" Value="FeaturesPage"/>
+                </Control>
+                <Control Id="cancelButton" Type="PushButton" X="302" Y="221" Width="56" Height="17" Default="no">
+                    <Text>Cancel</Text>
+                    <Publish Event="EndDialog" Value="Exit"/>
+                </Control>
+	    </Dialog>
+        </UI>
+    </Fragment>
+</Wix>

@@ -1,0 +1,47 @@
+<?xml version='1.0'?><Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <!-- If the user selects "Change..." on BrowsePage, it expands to this -->
+    <Fragment>
+        <UI>
+            <UIText Id="NewFolder">Reintrct|Reinteract</UIText>
+            <Dialog Id="BrowsePage2" Width="370" Height="250" Title="[TITLE]">
+	        <Control Id="bannerBitmap" Type="Bitmap" FixedSize="yes" X="0" Y="0" Width="370" Height="35" Text="bannerBmp"/>
+                <Control Id="bannerText" Type="Text" X="12" Y="9" Width="346" Height="25" Transparent="yes">
+                    <Text>{\dialogTitleStyle}[TITLE] - Version [ProductVersion]</Text>
+                </Control>
+                <Control Id="topLine" Type="Line" X="0" Y="35" Width="370" Height="2"/>
+
+                <Control Id="lookInLabel" Type="Text" X="12" Y="53" Width="30" Height="12">
+                    <Text>Look in:</Text>
+                </Control>
+                <Control Id="directoryCombo" Type="DirectoryCombo" Property="APPLICATIONFOLDER" X="42" Y="49" Width="254" Height="17" Remote="yes" Fixed="yes"/>
+                <Control Id="directoryNew" Type="PushButton" X="302" Y="49" Width="56" Height="17">
+                    <Text>New Folder..</Text>
+                    <Publish Event="DirectoryListNew" Value="Unused"/>
+                </Control>
+
+                <Control Id="directoryList" Type="DirectoryList" Property="APPLICATIONFOLDER" X="12" Y="72" Width="346" Height="94"/>
+
+                <Control Id="locationLabel" Type="Text" X="12" Y="172" Width="346" Height="12">
+                    <Text>Folder name:</Text>
+                </Control>
+                <Control Id="pathEdit" Type="PathEdit" Property="APPLICATIONFOLDER" X="12" Y="184" Width="346" Height="17"/>
+
+                <Control Id="buttonLine" Type="Line" X="0" Y="213" Width="370" Height="2"/>
+
+                <Control Id="backButton" Type="PushButton" X="172" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Back</Text>
+                    <Publish Event="NewDialog" Value="BrowsePage"/>
+                </Control>
+                <Control Id="continueButton" Type="PushButton" X="234" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Continue</Text>
+                    <Publish Event="SetTargetPath" Value="APPLICATIONFOLDER"/>
+                    <Publish Event="NewDialog" Value="FeaturesPage"/>
+                </Control>
+                <Control Id="cancelButton" Type="PushButton" X="302" Y="221" Width="56" Height="17" Default="no">
+                    <Text>Cancel</Text>
+                    <Publish Event="EndDialog" Value="Exit"/>
+                </Control>
+	    </Dialog>
+        </UI>
+    </Fragment>
+</Wix>

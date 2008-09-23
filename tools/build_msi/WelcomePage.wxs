@@ -1,0 +1,51 @@
+<?xml version='1.0'?><Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'> <!-- -*- sgml-basic-offset: 4; indent-tabs-mode: nil -*- -->
+    <!-- The first page of the install where the user chooses the install type -->
+    <Fragment>
+        <UI>
+            <Dialog Id="WelcomePage" Width="370" Height="250" Title="[TITLE]">
+	        <Control Id="bannerBitmap" Type="Bitmap" FixedSize="yes" X="0" Y="0" Width="370" Height="35" Text="bannerBmp"/>
+                <Control Id="bannerText" Type="Text" X="5" Y="7" Width="360" Height="25" Transparent="yes">
+                    <Text>{\dialogTitleStyle}[TITLE] - Version [ProductVersion]</Text>
+                </Control>
+                <Control Id="topLine" Type="Line" X="0" Y="35" Width="370" Height="2"/>
+
+                <Control Id="installTypeLabel" Type="Text" X="12" Y="53" Width="350" Height="12">
+                    <Text>Please choose how you would like to install Reinteract:</Text>
+                </Control>
+                <Control Id="installTypeGroup" Type="RadioButtonGroup" X="12" Y="79" Width="346" Height="54" Property="INSTALLTYPE">
+                    <RadioButtonGroup Property="INSTALLTYPE">
+                        <RadioButton X="0" Y="0"  Width="346" Height="17" Value="standard" Text="{\boldUIStyle}Standard Install"/>
+                        <RadioButton X="0" Y="37" Width="346" Height="17" Value="custom" Text="{\boldUIStyle}Custom Install"/>
+                    </RadioButtonGroup>
+                </Control>
+                <Control Id="standardInstallText" Type="Text" X="25" Y="96" Width="333" Height="12">
+                    <Text>Reinteract will be installed in the standard location with all dependencies.</Text>
+                </Control>
+                <Control Id="customInstallText" Type="Text" X="25" Y="133" Width="333" Height="12">
+                    <Text>Choose the install location and which dependencies to install.</Text>
+                </Control>
+
+                <Control Id="buttonLine" Type="Line" X="0" Y="213" Width="370" Height="2"/>
+
+                <Control Id="installButton" Type="PushButton" X="234" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Install</Text>
+                    <Condition Action="show">INSTALLTYPE="standard"</Condition>
+                    <Condition Action="default">INSTALLTYPE="standard"</Condition>
+                    <Condition Action="hide">NOT INSTALLTYPE="standard"</Condition>
+                    <Publish Event="EndDialog" Value="Return"/>
+                </Control>
+                <Control Id="continueButton" Type="PushButton" X="234" Y="221" Width="56" Height="17" Default="yes">
+                    <Text>Continue</Text>
+                    <Condition Action="show">INSTALLTYPE="custom"</Condition>
+                    <Condition Action="default">INSTALLTYPE="custom"</Condition>
+                    <Condition Action="hide">NOT INSTALLTYPE="custom"</Condition>
+                    <Publish Event="NewDialog" Value="BrowsePage"/>
+                </Control>
+                <Control Id="cancelButton" Type="PushButton" X="302" Y="221" Width="56" Height="17" Default="no">
+                    <Text>Cancel</Text>
+                    <Publish Event="EndDialog" Value="Exit"/>
+                </Control>
+	    </Dialog>
+        </UI>
+    </Fragment>
+</Wix>
