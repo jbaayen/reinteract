@@ -2,7 +2,7 @@ AC_INIT(reinteract, 0.4.0)
 
 AC_CONFIG_AUX_DIR(config)
 
-AM_INIT_AUTOMAKE([dist-bzip2 dist-zip])
+AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AM_MAINTAINER_MODE
 AM_PATH_PYTHON(2.4)
 

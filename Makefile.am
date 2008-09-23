@@ -4,7 +4,9 @@ SUBDIRS = data dialogs
 
 reinteractdir = $(bindir)
 dist_bin = bin/reinteract
-dist_noinst_SCRIPTS = bin/uninst.py
+dist_noinst_SCRIPTS =				\
+	bin/uninst.py				\
+	bin/Reinteract.pyw
 
 reinteractpkgdir = $(REINTERACT_PACKAGE_DIR)
 reinteractpkg_PYTHON =                                                        \
@@ -68,12 +70,37 @@ examples_DATA =					\
              examples/plot.rws			\
  	     $(LIST_END)
 
+# Input files for the WiX-based Windows installer
+WIX_FILES =					\
+	tools/build_msi/BrowsePage.wxs		\
+	tools/build_msi/BrowsePage2.wxs		\
+	tools/build_msi/CancelPage.wxs		\
+	tools/build_msi/FatalErrorPage.wxs	\
+	tools/build_msi/FeaturesPage.wxs	\
+	tools/build_msi/ProgressPage.wxs	\
+	tools/build_msi/ReinteractUI.wxs	\
+	tools/build_msi/SuccessPage.wxs		\
+	tools/build_msi/WelcomePage.wxs		\
+	tools/build_msi/Overrides.wxl		\
+	tools/build_msi/reinteractBanner.bmp
+
+# Scripts and other files used for Windows installer
+WIX_EXTRA =					\
+	tools/build_msi/README			\
+	tools/build_msi/build_msi.py		\
+	tools/build_msi/wrapper.c		\
+	tools/compiledir.py
+
+
 EXTRA_DIST =					\
              ChangeLog				\
 	     autogen.sh				\
+	     epydoc.conf			\
 	     bin/reinteract.in			\
 	     $(examples_DATA)			\
              README				\
+	     $(WIX_FILES)			\
+	     $(WIX_EXTRA)			\
              $(LIST_END)
 
 DISTCLEANFILES =                                                              \
