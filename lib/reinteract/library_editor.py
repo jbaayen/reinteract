@@ -161,3 +161,11 @@ class LibraryEditor(Editor):
         if self.__file:
             self.__file.active = False
             self.__file.modified = False
+
+    def undo(self):
+        if use_sourceview:
+            self.view.emit('undo')
+
+    def redo(self):
+        if use_sourceview:
+            self.view.emit('redo')

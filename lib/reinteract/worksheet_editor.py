@@ -79,3 +79,9 @@ class WorksheetEditor(Editor):
 
     def calculate(self):
         self.view.calculate()
+
+    def undo(self):
+        self.buf.worksheet.undo()
+
+    def redo(self):
+        self.buf.worksheet.redo()

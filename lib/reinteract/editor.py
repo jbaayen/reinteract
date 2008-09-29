@@ -209,6 +209,12 @@ class Editor(gobject.GObject):
     def calculate(self):
         pass
 
+    def undo(self):
+        pass
+
+    def redo(self):
+        pass
+
     @gobject.property
     def filename(self):
         return self._get_filename()
