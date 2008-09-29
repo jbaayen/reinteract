@@ -1,6 +1,7 @@
 import gtk
 
 import os
+import sys
 
 def _find_program_in_path(progname):
     try:
@@ -16,6 +17,9 @@ def _find_program_in_path(progname):
     return None
 
 def _find_url_open_program():
+    if sys.platform == 'darwin':
+        return '/usr/bin/open'
+
     for progname in ['xdg-open', 'htmlview', 'gnome-open']:
         path = _find_program_in_path(progname)
         if path != None:
