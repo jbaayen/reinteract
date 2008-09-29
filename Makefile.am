@@ -31,6 +31,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/iter_copy_from.py                          \
                     lib/reinteract/library_editor.py                          \
                     lib/reinteract/main.py                                    \
+                    lib/reinteract/main_menu.py                               \
                     lib/reinteract/mini_window.py                             \
                     lib/reinteract/new_notebook.py                            \
                     lib/reinteract/notebook.py                                \
@@ -91,6 +92,21 @@ WIX_EXTRA =					\
 	tools/build_msi/wrapper.c		\
 	tools/compiledir.py
 
+BUILD_DEPS_OSX_EXTRA =							\
+	tools/build_deps_osx/Python-2.5.2-framework-arch-only.patch	\
+	tools/build_deps_osx/Python-2.5.2-framework-arch.patch		\
+	tools/build_deps_osx/README					\
+	tools/build_deps_osx/build.sh					\
+	tools/build_deps_osx/gdk-quartz-eventloop-rework-20080905.patch	\
+	tools/build_deps_osx/gdk-window-process-updates-hook.patch	\
+	tools/build_deps_osx/gtk-clipboard-quartz-new0.patch		\
+	tools/build_deps_osx/i386.cache					\
+	tools/build_deps_osx/jhbuildrc-reinteract			\
+	tools/build_deps_osx/ppc.cache					\
+	tools/build_deps_osx/pycairo-unknown-surface-types.patch	\
+	tools/build_deps_osx/reinteract-bootstrap.modules		\
+	tools/build_deps_osx/reinteract.modules
+
 # Wrapper binary for OS X that sets the paths and loads the main menu
 noinst_PROGRAMS =
 
@@ -114,6 +130,7 @@ ReinteractWrapper_SOURCES  =					\
 	     src/reinteract_wrapper_osx/MenuController.m	\
 	     src/reinteract_wrapper_osx/MenuController.h	\
 	     src/reinteract_wrapper_osx/pyNativeMainMenu.m	\
+	     src/reinteract_wrapper_osx/pyNativeMainMenu.h	\
 	     src/reinteract_wrapper_osx/ThunkPython.c		\
 	     src/reinteract_wrapper_osx/ThunkPython.h
 
@@ -129,6 +146,8 @@ EXTRA_DIST =					\
              README				\
 	     $(WIX_FILES)			\
 	     $(WIX_EXTRA)			\
+	     $(BUILD_DEPS_OSX_EXTRA)		\
+	     src/reinteract_wrapper_osx/README	\
              $(LIST_END)
 
 DISTCLEANFILES =                                                              \

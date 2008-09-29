@@ -12,4 +12,4 @@ EXTRA_DIST=					\
 	MainMenu.nib/info.nib			\
 	MainMenu.nib/keyedobjects.nib		\
 	Reinteract.ico				\
-	Reinteract.ins
+	Reinteract.icns
