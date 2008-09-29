@@ -1,0 +1,22 @@
+<?xml version="1.0"?><!--*- mode: nxml; indent-tabs-mode: nil -*-->
+<!DOCTYPE moduleset SYSTEM "moduleset.dtd">
+<?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
+<moduleset>
+  <repository type="tarball" name="python" href="http://www.python.org/ftp/python/"/>
+
+  <!-- Start with the standard bootstrap modules -->
+  <include href="http://svn.gnome.org/svn/jhbuild/trunk/modulesets/bootstrap.modules"/>
+
+  <!-- But update to a python-2.5 tarball -->
+  <autotools id="python" autogenargs="--enable-shared" autogen-sh="configure">
+    <branch repo="python"
+            module="2.5.2/Python-2.5.2.tar.bz2" version="2.5.2"
+            size="9807597" md5sum="afb5451049eda91fbde10bd5a4b7fadc">
+      <patch file="Python-2.5.2-framework-arch.patch" strip="0" />
+       <!-- I'm not sure if this has been folded into 2.5, but it's irrelevant
+            for our purposes anyways:
+      <patch file="python-2.4.5-lib64.patch" strip="1" />
+       -->
+    </branch>
+  </autotools>
+</moduleset>

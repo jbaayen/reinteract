@@ -1,0 +1,133 @@
+<?xml version="1.0"?><!--*- mode: nxml; indent-tabs-mode: nil -*-->
+<!DOCTYPE moduleset SYSTEM "moduleset.dtd">
+<?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
+<moduleset>
+  <repository type="tarball" name="gnomeftp" href="http://ftp.gnome.org/pub/GNOME/sources"/>
+  <repository type="tarball" name="cairo-rhult" href="http://people.imendio.com/richard/gtk-osx/files/"/>
+  <repository type="tarball" name="sourceforge" href="http://dfn.dl.sourceforge.net/sourceforge/"/>
+
+  <!-- Start with the gtk-osx moduleset -->
+  <include href="http://people.imendio.com/richard/gtk-osx-build/modulesets/gtk-osx.modules"/>
+
+  <metamodule id="meta-reinteract-deps">
+    <dependencies>
+      <dep package="pygtk"/>
+      <dep package="numpy"/>
+      <dep package="matplotlib"/>
+      <dep package="gtk-quartz-engine"/>
+    </dependencies>
+    <after>
+      <dep package="meta-gtk-osx-bootstrap"/>
+    </after>
+  </metamodule>
+
+  <autotools id="glib">
+    <branch repo="gnomeftp"
+            module="glib/2.18/glib-2.18.1.tar.bz2" version="2.18.1"
+            size="4725213" md5sum="51a9a33f49a4896d4d95d8e980666b9e"/>
+    <after>
+      <dep package="meta-gtk-osx-bootstrap"/>
+      <dep package="gtk-doc"/> <!-- FIXME: http://bugs.gnome.org/546640 -->
+    </after>
+  </autotools>
+
+  <autotools id="pango" autogenargs="--without-x --with-included-modules=basic-atsui"
+             makeargs="-k -C modules; make">
+    <branch repo="gnomeftp"
+            module="pango/1.22/pango-1.22.0.tar.bz2" version="1.22.0"
+            size="1459194" md5sum="37a185a3cb5c1a39ade7fdc3e6c75349"/>
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="cairo"/>
+    </dependencies>
+    <after>
+      <dep package="meta-gtk-osx-bootstrap"/>
+      <dep package="fontconfig"/>
+      <dep package="freetype"/>
+      <dep package="cairo-lipo"/>
+    </after>
+  </autotools>
+
+ <autotools id="atk">
+    <branch repo="gnomeftp"
+            module="atk/1.24/atk-1.24.0.tar.bz2" version="1.24.0"
+            size="701798" md5sum="fb0ee9c7f18b15b490a0168b13740a4d"/>
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+    <after>
+      <dep package="meta-gtk-osx-bootstrap"/>
+    </after>
+  </autotools>
+ 
+  <autotools id="gtk+" autogenargs="--with-gdktarget=quartz --without-libjasper">
+    <branch repo="gnomeftp"
+            module="gtk+/2.14/gtk+-2.14.3.tar.bz2" version="2.14.3"
+            size="17149160" md5sum="359e44c8e47dfe04a09ac09b8e015e58">
+      <patch file="gdk-quartz-eventloop-rework-20080905.patch" strip="1" />
+      <patch file="gdk-window-process-updates-hook.patch" strip="0" />
+      <patch file="gtk-clipboard-quartz-new0.patch" strip="0" />
+    </branch>
+    <dependencies>
+      <dep package="pango"/>
+      <dep package="atk"/>
+    </dependencies>
+    <after>
+      <dep package="meta-gtk-osx-bootstrap"/>
+    </after>
+  </autotools>
+  
+  <autotools id="pycairo" autogen-sh="configure">
+    <branch module="pycairo-1.4.12-rhult.tar.gz" version="1.4.12-rhult"
+            repo="cairo-rhult"
+            md5sum="f5db8befce4db7cefa61b55ca0494f49" size="493330">
+      <patch file="pycairo-unknown-surface-types.patch" strip="0" />
+    </branch>
+    <dependencies>
+      <dep package="cairo"/>
+    </dependencies>
+  </autotools>
+
+  <autotools id="pygobject">
+    <branch repo="gnomeftp"
+            module="pygobject/2.15/pygobject-2.15.4.tar.bz2" version="2.15.4"
+            size="477302" md5sum="df59affe5b8fd7148506c3473d479868"/>
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+  </autotools>
+  
+  <autotools id="pygtk">
+    <branch repo="gnomeftp"
+            module="pygtk/2.13/pygtk-2.13.0.tar.bz2" version="2.13.0"
+            size="2130260" md5sum="e1513921bfd3790b456899c483fceaea"/>
+    <dependencies>
+      <dep package="pygobject"/>
+      <dep package="gtk+"/>
+      <dep package="pycairo"/>
+    </dependencies>
+  </autotools>
+
+  <distutils id="numpy">
+    <branch repo="sourceforge" module="numpy/numpy-1.2.0.tar.gz" version="1.2.0"
+            size="1425633" md5sum="1e760a8bca54f6116c42cd1b124673af" />
+    <dependencies>
+    </dependencies>
+  </distutils>
+
+  <distutils id="matplotlib">
+    <branch repo="sourceforge" module="matplotlib/matplotlib-0.98.3.tar.gz" version="0.98.3"
+            size="5287541" md5sum="d6b579f52705df584650fb6f61302f92" />
+    <dependencies>
+      <dep package="pygtk"/>
+    </dependencies>
+  </distutils>
+
+  <tarball id="gtk-quartz-engine">
+    <source href="gtk-quartz-engine-0.1.svn20080926.tar.bz2"
+            size="235634" md5sum="28e1418b8d763b25cd1a59287dbc14d1"/>
+    <dependencies>
+      <dep package="gtk+"/>
+    </dependencies>
+  </tarball>
+</moduleset>

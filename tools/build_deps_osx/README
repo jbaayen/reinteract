@@ -1,0 +1,58 @@
+This directory contains scripts and other files used to build the
+dependencies required for Reinteract on OS X. It builds on top of
+the excellent gtk-osx-build work done by Imendio.
+
+  http://developer.imendio.com/projects/gtk-macosx/build-instructions
+
+Differences here:
+
+ - All modules are changed to build from tarballs; this allows creating
+   an installer and putting up the corresponding source for download.
+
+ - Select patches not yet in version control (or not yet in tarballs)
+   are added.
+
+ - Python is upgraded from 2.4 to 2.5
+
+ - Extra modules (numpy and matplotlib) are added.
+
+ - Provision is made for cross-building ppc versions of the dependencies
+   on i386; the the idea is that the ppc and i386 versions of everything
+   can be lipo-ed together to create a universal bundle for release.
+
+Usage
+=====
+
+ - Run gtk-osx-build-setup.sh as described in the first step on:
+
+     http://developer.imendio.com/projects/gtk-macosx/build-instructions
+
+   You *don't* need to do anything else on that page.
+
+ - Install git if you don't already have it.
+   (http://code.google.com/p/git-osx-installer/ works)
+
+ - Checkout the Reinteract sources into ~/Source/reinteract
+
+    cd ~/Source
+    git clone git://git.fishsoup.net/reinteract
+
+ - Run build.sh
+
+    ~/Source/reinteract/tools/build_deps_osx/build.sh
+
+   This builds everything and installs it into /opt/reinteract
+
+ - Shell into the built environment
+
+    JHB=reinteract jhbuild shell
+
+ - Configure and build reinteract
+
+    cd ~/Source/reinteract
+    ./autogen.sh
+    make
+
+ - Run reinteract
+
+   Reinteract.app/Contents/MacOS/Reinteract

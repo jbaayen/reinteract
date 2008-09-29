@@ -1,0 +1,16 @@
+http://bugzilla.gnome.org/show_bug.cgi?id=554141
+Jon A. Cruz
+
+Index: gtk/gtkclipboard-quartz.c
+===================================================================
+--- gtk/gtkclipboard-quartz.c	(revision 21537)
++++ gtk/gtkclipboard-quartz.c	(working copy)
+@@ -890,7 +890,7 @@
+ 
+       length = [types count] * sizeof (GdkAtom);
+       
+-      selection_data = g_slice_new (GtkSelectionData);
++      selection_data = g_slice_new0 (GtkSelectionData);
+       selection_data->selection = clipboard->selection;
+       selection_data->target = target;
+ 

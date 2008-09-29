@@ -1,0 +1,103 @@
+--- configure.in.detect_arch	2008-09-28 21:55:37.000000000 -0400
++++ configure.in	2008-09-28 22:02:07.000000000 -0400
+@@ -1346,6 +1346,23 @@
+     ;;
+ esac
+ 
++# This handles the case when someone specifies CC="gcc -arch ppc"
++# to do a cross-arch build. It's probably better to use the autoconf
++# build-system variables, but this is easier to figure out for
++# a quick hack.
++#
++case "$CC" in
++     *ppc*)
++         darwin_arch=ppc
++	 ;;
++     *i386*)
++         darwin_arch=i386
++	 ;;
++     *)
++	 darwin_arch=`arch`
++	 ;;
++esac
++
+ AC_SUBST(LIBTOOL_CRUFT)
+ case $ac_sys_system/$ac_sys_release in
+   Darwin/@<:@01567@:>@\..*) 
+@@ -1353,7 +1370,7 @@
+     if test "${enable_universalsdk}"; then
+ 	    :
+     else
+-	LIBTOOL_CRUFT="${LIBTOOL_CRUFT} -arch_only `arch`"
++	LIBTOOL_CRUFT="${LIBTOOL_CRUFT} -arch_only $darwin_arch"
+     fi
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -install_name $(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -compatibility_version $(VERSION) -current_version $(VERSION)';;
+@@ -1365,7 +1382,7 @@
+         else 
+             LIBTOOL_CRUFT=""
+     fi
+-    LIBTOOL_CRUFT=$LIBTOOL_CRUFT" -lSystem -lSystemStubs -arch_only `arch`"
++    LIBTOOL_CRUFT=$LIBTOOL_CRUFT" -lSystem -lSystemStubs -arch_only $darwin_arch"
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -install_name $(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -compatibility_version $(VERSION) -current_version $(VERSION)';;
+ esac
+--- configure.detect_arch	2008-09-28 22:03:32.000000000 -0400
++++ configure	2008-09-28 22:11:32.000000000 -0400
+@@ -11359,6 +11359,22 @@
+     ;;
+ esac
+ 
++# This handles the case when someone specifies CC="gcc -arch ppc"
++# to do a cross-arch build. It's probably better to use the autoconf
++# build-system variables, but this is easier to figure out for
++# a quick hack.
++#
++case "$CC" in
++     *ppc*)
++         darwin_arch=ppc
++	 ;;
++     *i386*)
++         darwin_arch=i386
++	 ;;
++     *)
++	 darwin_arch=`arch`
++	 ;;
++esac
+ 
+ case $ac_sys_system/$ac_sys_release in
+   Darwin/[01567]\..*)
+@@ -11366,7 +11382,7 @@
+     if test "${enable_universalsdk}"; then
+ 	    :
+     else
+-	LIBTOOL_CRUFT="${LIBTOOL_CRUFT} -arch_only `arch`"
++	LIBTOOL_CRUFT="${LIBTOOL_CRUFT} -arch_only $darwin_arch"
+     fi
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -install_name $(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -compatibility_version $(VERSION) -current_version $(VERSION)';;
+@@ -11378,7 +11394,7 @@
+         else
+             LIBTOOL_CRUFT=""
+     fi
+-    LIBTOOL_CRUFT=$LIBTOOL_CRUFT" -lSystem -lSystemStubs -arch_only `arch`"
++    LIBTOOL_CRUFT=$LIBTOOL_CRUFT" -lSystem -lSystemStubs -arch_only $darwin_arch"
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -install_name $(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+     LIBTOOL_CRUFT=$LIBTOOL_CRUFT' -compatibility_version $(VERSION) -current_version $(VERSION)';;
+ esac
+--- Makefile.pre.in.arch_framework	2008-09-28 22:50:44.000000000 -0400
++++ Makefile.pre.in	2008-09-28 22:51:44.000000000 -0400
+@@ -394,8 +394,11 @@
+ 			-compatibility_version $(VERSION) \
+ 			-current_version $(VERSION); \
+         else \
+-		/usr/bin/libtool -o $(LDLIBRARY) -dynamic $(OTHER_LIBTOOL_OPT) $(LIBRARY) \
+-			@LIBTOOL_CRUFT@ ;\
++		$(CC) -o $(LDLIBRARY) -dynamiclib \
++			-all_load $(LIBRARY) -Wl,-single_module \
++			-install_name $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/Python \
++			-compatibility_version $(VERSION) \
++			-current_version $(VERSION); \
+ 	fi
+ 	$(INSTALL) -d -m $(DIRMODE)  \
+ 		$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/Resources/English.lproj

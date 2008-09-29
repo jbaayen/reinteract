@@ -1,0 +1,148 @@
+Index: gdk/directfb/gdkwindow-directfb.c
+===================================================================
+--- gdk/directfb/gdkwindow-directfb.c	(revision 21214)
++++ gdk/directfb/gdkwindow-directfb.c	(working copy)
+@@ -80,8 +80,8 @@
+ static GSList *update_windows = NULL;
+ static guint update_idle = 0;
+ 
+-static void
+-gdk_window_directfb_process_all_updates (void)
++void
++_gdk_windowing_window_process_all_updates (void)
+ {
+   GSList *tmp_list;
+   GSList *old_update_windows = update_windows;
+@@ -158,7 +158,7 @@
+ static gboolean
+ gdk_window_update_idle (gpointer data)
+ {
+-  gdk_window_directfb_process_all_updates ();
++  _gdk_windowing_window_process_all_updates ();
+   
+   return FALSE;
+ }
+Index: gdk/quartz/gdkwindow-quartz.c
+===================================================================
+--- gdk/quartz/gdkwindow-quartz.c	(revision 21214)
++++ gdk/quartz/gdkwindow-quartz.c	(working copy)
+@@ -395,8 +395,8 @@
+     }
+ }
+ 
+-static void
+-gdk_window_quartz_process_all_updates (void)
++void
++_gdk_windowing_window_process_all_updates (void)
+ {
+   GSList *old_update_windows = update_windows;
+   GSList *tmp_list = update_windows;
+@@ -460,7 +460,7 @@
+ static gboolean
+ gdk_window_quartz_update_idle (gpointer data)
+ {
+-  gdk_window_quartz_process_all_updates ();
++  _gdk_windowing_window_process_all_updates ();
+ 
+   return FALSE;
+ }
+Index: gdk/gdkinternals.h
+===================================================================
+--- gdk/gdkinternals.h	(revision 21214)
++++ gdk/gdkinternals.h	(working copy)
+@@ -247,6 +247,8 @@
+ 					  gboolean       foreign_destroy);
+ void       _gdk_window_clear_update_area (GdkWindow     *window);
+ 
++void       _gdk_window_process_all_updates_generic (void);
++
+ void       _gdk_screen_close             (GdkScreen     *screen);
+ 
+ const char *_gdk_get_sm_client_id (void);
+@@ -312,6 +314,12 @@
+ 
+ #define GDK_WINDOW_IS_MAPPED(window) ((((GdkWindowObject*)window)->state & GDK_WINDOW_STATE_WITHDRAWN) == 0)
+ 
++/* Hook to allow backend implementations of gdk_window_process_all_updates; a 
++ * backend that doesn't implement GdkPaintable for its windows should just
++ * call _gdk_window_process_all_updates_generic()
++ */
++void _gdk_windowing_window_process_all_updates (void);
++
+ /* Called before processing updates for a window. This gives the windowing
+  * layer a chance to save the region for later use in avoiding duplicate
+  * exposes. The return value indicates whether the function has a saved
+Index: gdk/gdkwindow.c
+===================================================================
+--- gdk/gdkwindow.c	(revision 21214)
++++ gdk/gdkwindow.c	(working copy)
+@@ -2620,16 +2620,6 @@
+   g_slist_free (displays);
+ }
+ 
+-/* Currently it is not possible to override
+- * gdk_window_process_all_updates in the same manner as
+- * gdk_window_process_updates and gdk_window_invalidate_maybe_recurse
+- * by implementing the GdkPaintable interface.  If in the future a
+- * backend would need this, the right solution would be to add a
+- * method to GdkDisplay that can be optionally
+- * NULL. gdk_window_process_all_updates can then walk the list of open
+- * displays and call the mehod.
+- */
+-
+ /**
+  * gdk_window_process_all_updates:
+  *
+@@ -2640,6 +2630,18 @@
+ void
+ gdk_window_process_all_updates (void)
+ {
++  /* Let the backend hook it */
++  _gdk_windowing_window_process_all_updates();
++}
++
++/**
++ * The generic implementation of gdk_window_process_all_updates();
++ * a backend should use this if it hasn't implemented GdkPaintable
++ * for its windows.
++ */
++void
++_gdk_window_process_all_updates_generic (void)
++{
+   GSList *old_update_windows = update_windows;
+   GSList *tmp_list = update_windows;
+ 
+Index: gdk/win32/gdkwindow-win32.c
+===================================================================
+--- gdk/win32/gdkwindow-win32.c	(revision 21214)
++++ gdk/win32/gdkwindow-win32.c	(working copy)
+@@ -3772,6 +3772,12 @@
+ {
+ }
+ 
++void
++_gdk_windowing_window_process_all_updates (void)
++{
++  _gdk_window_process_all_updates_generic ();
++}
++
+ static void
+ gdk_window_impl_iface_init (GdkWindowImplIface *iface)
+ {
+Index: gdk/x11/gdkwindow-x11.c
+===================================================================
+--- gdk/x11/gdkwindow-x11.c	(revision 21214)
++++ gdk/x11/gdkwindow-x11.c	(working copy)
+@@ -6159,6 +6159,12 @@
+ #endif
+ }
+ 
++void
++_gdk_windowing_window_process_all_updates (void)
++{
++  _gdk_window_process_all_updates_generic ();
++}
++
+ static void
+ gdk_window_impl_iface_init (GdkWindowImplIface *iface)
+ {

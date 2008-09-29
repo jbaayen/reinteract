@@ -1,0 +1,36 @@
+Index: cairo/pycairo-pattern.c
+===================================================================
+RCS file: /cvs/cairo/pycairo/cairo/pycairo-pattern.c,v
+retrieving revision 1.39
+diff -u -r1.39 pycairo-pattern.c
+--- cairo/pycairo-pattern.c	11 Dec 2007 02:56:48 -0000	1.39
++++ cairo/pycairo-pattern.c	29 Aug 2008 00:59:20 -0000
+@@ -77,8 +77,8 @@
+ 	type = &PycairoRadialGradient_Type;
+ 	break;
+     default:
+-	PyErr_SetString(CairoError, "Unsupported Pattern type");
+-	return NULL;
++	type = &PycairoPattern_Type;
++	break;
+     }
+ 
+     o = type->tp_alloc(type, 0);
+Index: cairo/pycairo-surface.c
+===================================================================
+RCS file: /cvs/cairo/pycairo/cairo/pycairo-surface.c,v
+retrieving revision 1.87
+diff -u -r1.87 pycairo-surface.c
+--- cairo/pycairo-surface.c	11 Dec 2007 02:56:48 -0000	1.87
++++ cairo/pycairo-surface.c	29 Aug 2008 00:59:21 -0000
+@@ -99,8 +99,8 @@
+ 	break;
+ #endif
+     default:
+-	PyErr_SetString(CairoError, "Unsupported Surface type");
+-	return NULL;
++	type = &PycairoSurface_Type;
++	break;
+     }
+ 
+     o = type->tp_alloc (type, 0);
