@@ -5,6 +5,17 @@ from application import application
 from reinteract.native_main_menu import NativeMainMenu
 
 class MainMenu(NativeMainMenu):
+    """This class is an interface to OS X main menu. (The interface
+    of this class could likely be used for other types of main menu
+    if the need ever arises.)
+
+    The actual heavy-lifting is done in the NativeMainMenu superclass
+    which is implemented in the native-code wrapper application. Here
+    we just forward activated menu items in one direction, and
+    enable/disabling of menu items in the other direction.
+
+    """
+
     def __init__(self):
         NativeMainMenu.__init__(self)
         self.__active_window = None
