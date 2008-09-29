@@ -4,11 +4,13 @@ import sys
 
 import gtk
 
-from about_dialog import AboutDialog
 from application import application
 from file_list import FileList
 from global_settings import global_settings
 from notebook import Notebook, NotebookFile
+
+if global_settings.main_menu_mode:
+    from main_menu import main_menu
 
 class BaseWindow:
     def __init__(self, notebook):
@@ -40,6 +42,7 @@ class BaseWindow:
         self.main_vbox.show_all()
         self.window.connect('key-press-event', self.on_key_press_event)
         self.window.connect('delete-event', self.on_delete_event)
+        self.window.connect('notify::is-active', self.on_notify_is_active)
 
     #######################################################
     # Implemented by subclasses
@@ -51,7 +54,8 @@ class BaseWindow:
         self.main_vbox = gtk.VBox()
         self.window.add(self.main_vbox)
 
-        self.main_vbox.pack_start(menu, expand=False, fill=False)
+        if not global_settings.main_menu_mode:
+            self.main_vbox.pack_start(menu, expand=False, fill=False)
         self.main_vbox.pack_start(toolbar, expand=False, fill=False)
 
     def _add_actions(self, action_group):
@@ -138,6 +142,14 @@ class BaseWindow:
     def on_quit(self, action):
         application.quit()
 
+    def on_undo(self, action):
+        if self.current_editor:
+            self.current_editor.undo()
+
+    def on_redo(self, action):
+        if self.current_editor:
+            self.current_editor.redo()
+
     def on_cut(self, action):
         if self.current_editor:
             self.current_editor.view.emit('cut-clipboard')
@@ -167,10 +179,13 @@ class BaseWindow:
             self.current_editor.buf.worksheet.interrupt()
 
     def on_about(self, action):
-        d = AboutDialog(self.window)
-        d.run()
+        application.show_about_dialog(self.window)
 
     def on_key_press_event(self, window, event):
+        if global_settings.main_menu_mode:
+            if main_menu.handle_key_press(event):
+                return True
+
         # We have a <Control>Return accelerator, but this hooks up <Control>KP_Enter as well;
         # maybe someone wants that
         if ((event.keyval == gtk.keysyms.Return or event.keyval == gtk.keysyms.KP_Enter) and
@@ -184,6 +199,13 @@ class BaseWindow:
     def on_delete_event(self, window, event):
         self._close_window()
         return True
+
+    def on_notify_is_active(self, window, paramspec):
+        if global_settings.main_menu_mode:
+            if window.is_active():
+                main_menu.window_activated(self)
+            else:
+                main_menu.window_deactivated(self)
 
     #######################################################
     # Public API

@@ -7,4 +7,9 @@ desktop_DATA = reinteract.desktop
 EXTRA_DIST=					\
 	$(desktop_DATA)				\
 	$(icon_DATA)				\
-	Reinteract.ico
+	Info.plist				\
+	MainMenu.nib/classes.nib		\
+	MainMenu.nib/info.nib			\
+	MainMenu.nib/keyedobjects.nib		\
+	Reinteract.ico				\
+	Reinteract.ins

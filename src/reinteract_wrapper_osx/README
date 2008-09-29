@@ -1,0 +1,27 @@
+The "wrapper" program in this directory is used on OS X instead of
+the Python main programs we use on other platforms (we use a native
+wrapper on Windows to for a system install, but it's much simpler
+and just invokes the Python main program directly.)
+
+The wrapper has several functions:
+
+ * It locates the correct copy of Python (the native Python 2.5 on
+   10.5 or the python.org version for 10.4), and loads it via dlopen
+
+ * It sets up sys.path and the global_settings path options
+
+ * It loads the "NIB" file holding the main menu definition
+
+ * It contains a glue module (reinterate.NativeMainMenu) that allows
+   our PyGTK to enable/disable menu items
+
+Note that this program uses *header* files from Python and from GTK+
+but is statically linked only to the Cocoa frameworks. References to
+Python and GTK+ symbols are done dynamically with dlopen/dlsym.
+
+Not linking to Python is essential to allow the run-time selection of
+a Python framework in different locations. Not linking to GTK+ is
+not so vital, but our use of GTK+ is very small and doing that via
+dlopen() makes it easier to create a universal bundle for the
+application in the release process (we don't need relink the wrapper
+once we've lipo'd together universal versions of the GTK+ libraries.)

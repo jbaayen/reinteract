@@ -91,6 +91,34 @@ WIX_EXTRA =					\
 	tools/build_msi/wrapper.c		\
 	tools/compiledir.py
 
+# Wrapper binary for OS X that sets the paths and loads the main menu
+noinst_PROGRAMS =
+
+if PLATFORM_OSX
+noinst_PROGRAMS += ReinteractWrapper
+
+build-local-app: ReinteractWrapper
+	rm -rf Reinteract.app
+	mkdir -p Reinteract.app/Contents/MacOS
+	cp -p ReinteractWrapper Reinteract.app/Contents/MacOS/Reinteract
+	mkdir -p Reinteract.app/Contents/Resources
+	cp -p $(top_srcdir)/data/Info.plist Reinteract.app/Contents
+	cp -pr $(top_srcdir)/data/MainMenu.nib Reinteract.app/Contents/Resources
+	cp -p $(top_srcdir)/data/Reinteract.icns Reinteract.app/Contents/Resources
+
+all-local: build-local-app
+endif
+
+ReinteractWrapper_SOURCES  =					\
+	     src/reinteract_wrapper_osx/main.m			\
+	     src/reinteract_wrapper_osx/MenuController.m	\
+	     src/reinteract_wrapper_osx/MenuController.h	\
+	     src/reinteract_wrapper_osx/pyNativeMainMenu.m	\
+	     src/reinteract_wrapper_osx/ThunkPython.c		\
+	     src/reinteract_wrapper_osx/ThunkPython.h
+
+INCLUDES = $(PYTHON_INCLUDES) $(WRAPPER_CFLAGS)
+ReinteractWrapper_LDFLAGS = -framework Cocoa
 
 EXTRA_DIST =					\
              ChangeLog				\
@@ -139,4 +167,4 @@ distcheck-hook:
 		exit 1 ;						\
 	fi
 
-.PHONY: api-docs
+.PHONY: api-docs build-local-app

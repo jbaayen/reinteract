@@ -1,6 +1,10 @@
 *.pyc
 *~
+.DS_Store
+.deps
+*.o
 
+/acinclude.mr
 /api-docs
 /autom4te.cache
 /aclocal.m4
@@ -11,4 +15,6 @@
 Makefile
 Makefile.in
 /NEWS
+/Reinteract.app
+/ReinteractWrapper
 /*.tar.bz2

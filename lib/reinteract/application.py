@@ -195,7 +195,7 @@ class Application():
 
     def window_closed(self, window):
         self.windows.remove(window)
-        if len(self.windows) == 0:
+        if not global_settings.main_menu_mode and len(self.windows) == 0:
             self.quit()
 
     def allocate_unsaved_index(self):
@@ -222,3 +222,6 @@ from notebook import Notebook
 from notebook_info import NotebookInfo
 import new_notebook
 import open_notebook
+
+if global_settings.main_menu_mode:
+    from main_menu import main_menu
