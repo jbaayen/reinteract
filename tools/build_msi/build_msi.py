@@ -137,7 +137,7 @@ class Builder(object):
     def __init__(self, output, topdir):
         self.output = output
         self.topdir = topdir
-        self.file_features = {}
+        self.file_attributes = {}
         self.feature_components = {}
         self.directory_ids = {}
         self.generated = None
@@ -155,7 +155,7 @@ class Builder(object):
         except:
             pass
 
-    def add_file(self, source, directory, feature):
+    def add_file(self, source, directory, **attributes):
         absdir = os.path.join(self.treedir, directory)
         if os.path.isabs(source):
             abssource = source
@@ -169,7 +169,7 @@ class Builder(object):
 
         relative = os.path.normpath(os.path.join(directory, os.path.basename(source)))
 
-        self.file_features[relative] = feature
+        self.file_attributes[relative] = attributes
 
     def add_files_from_am(self, relative):
         am_file = os.path.join(self.topdir, relative, 'Makefile.am')
@@ -195,12 +195,12 @@ class Builder(object):
                 base = k[:-5]
                 dir = am_parser[base + 'dir']
                 for x in v.split():
-                    self.add_file(os.path.join(relative, x), dir, 'core')
+                    self.add_file(os.path.join(relative, x), dir, feature='core')
             elif k.endswith("_PYTHON"):
                 base = k[:-7]
                 dir = am_parser[base + 'dir']
                 for x in v.split():
-                    self.add_file(os.path.join(relative, x), dir, 'core')
+                    self.add_file(os.path.join(relative, x), dir, feature='core')
 
         if 'SUBDIRS' in am_parser:
             for subdir in am_parser['SUBDIRS'].split():
@@ -208,25 +208,25 @@ class Builder(object):
                     continue
                 self.add_files_from_am(os.path.join(relative, subdir))
 
-    def add_files_from_directory(self, sourcedir, directory, feature):
+    def add_files_from_directory(self, sourcedir, directory, **attributes):
         for f in os.listdir(sourcedir):
             absf = os.path.join(sourcedir, f)
             if os.path.isdir(absf):
-                self.add_files_from_directory(absf, os.path.join(directory, f), feature)
+                self.add_files_from_directory(absf, os.path.join(directory, f), **attributes)
             else:
-                self.add_file(absf, directory, feature)
+                self.add_file(absf, directory, **attributes)
 
-    def add_external_module(self, module_name, feature):
+    def add_external_module(self, module_name, **attributes):
         mod = __import__(module_name)
         f = mod.__file__
         if f.endswith('__init__.pyc') or f.endswith('__init__.pyo') or f.endswith('__init__.py'):
             dir = os.path.dirname(f)
-            self.add_files_from_directory(dir, os.path.join('external', os.path.basename(dir)), feature)
+            self.add_files_from_directory(dir, os.path.join('external', os.path.basename(dir)), **attributes)
         else:
             if f.endswith('.pyc') or f.endswith('.pyo'):
                 # Don't worry about getting the compiled files, we'll recompile anyways
                 f = f[:-3] + "py"
-            self.add_file(f, 'external', feature)
+            self.add_file(f, 'external', **attributes)
 
     def find_gtk_directory(self):
         glib_dll = ctypes.util.find_library('libglib-2.0-0.dll')
@@ -247,13 +247,13 @@ class Builder(object):
                 for ff in glob.iglob(absf):
                     relative = ff[len(gtkdir) + 1:]
                     if os.path.isdir(ff):
-                        self.add_files_from_directory(ff, relative, 'gtk')
+                        self.add_files_from_directory(ff, relative, feature='gtk')
                     else:
-                        self.add_file(ff, destdir, 'gtk')
+                        self.add_file(ff, destdir, feature='gtk')
             elif os.path.isdir(absf):
-                self.add_files_from_directory(absf, f, 'gtk')
+                self.add_files_from_directory(absf, f, feature='gtk')
             else:
-                self.add_file(absf, destdir, 'gtk')
+                self.add_file(absf, destdir, feature='gtk')
 
         gtkrcfile = os.path.join(self.tempdir, "gtkrc")
         f = open(gtkrcfile, "w")
@@ -263,7 +263,7 @@ class Builder(object):
         # f.write('gtk-im-module = "ime"')
         f.close()
 
-        self.add_file(gtkrcfile, 'etc/gtk-2.0', 'gtk')
+        self.add_file(gtkrcfile, 'etc/gtk-2.0', feature='gtk')
 
         # To redistribute FreeType, you must include an advertising
         # notice for FreeType" in your documentation". I believe adding
@@ -284,7 +284,7 @@ FreeType is copyright 2008 The FreeType Project (www.freetype.org)
 All rights reserved.
 """)
         f.close()
-        self.add_file(readme_freetype, 'share/doc/freetype', 'gtk')
+        self.add_file(readme_freetype, 'share/doc/freetype', feature='gtk')
         
     def generate(self, s):
         if self.generated == None:
@@ -300,18 +300,21 @@ All rights reserved.
         else:
             self.feature_components[feature] = set([component_id])
 
-    def get_file_feature(self, relative):
+    def get_file_attributes(self, relative):
         # .pyc/.pyo are added when we byte-compile the .py files, so they
-        # may not be in file_features[], so look for the base .py instead
+        # may not be in file_attributes[], so look for the base .py instead
         # to figure out the right feature
         if relative.endswith(".pyc") or relative.endswith(".pyo"):
             relative = relative[:-3] + "py"
             # Handle byte compiled .pyw, though they don't seem to be
             # generated in practice
-            if not relative in self.file_features:
+            if not relative in self.file_attributes:
                 relative += "w"
-                
-        return self.file_features[relative]
+
+        return self.file_attributes[relative]
+
+    def get_file_feature(self, relative):
+        return self.get_file_attributes(relative)['feature']
 
     # Extra is something unique to the component
     def generate_component_guid(self, extra):
@@ -427,7 +430,7 @@ All rights reserved.
         wrapper = os.path.join(self.tempdir,  "Reinteract.exe")
         check_call(['gcc', '-mwindows', '-o', wrapper, '-L', python_lib, wrapper_o, wrapper_res_o, '-lpython25'])
 
-        self.add_file(wrapper, 'bin', 'core')
+        self.add_file(wrapper, 'bin', feature='core')
 
     def build(self):
         version = self.get_version()
@@ -437,30 +440,30 @@ All rights reserved.
         self.component_namespace = uuid.uuid5(COMPONENT_NAMESPACE, version)
         self.add_files_from_am('')
 
-        self.add_file('bin/Reinteract.pyw', 'bin', 'core')
+        self.add_file('bin/Reinteract.pyw', 'bin', feature='core')
         # This is a XDG icon-specification organized directory with a SVG in it, not useful
         shutil.rmtree(os.path.join(self.treedir, 'icons'))
-        self.add_file('data/Reinteract.ico', '', 'core')
+        self.add_file('data/Reinteract.ico', '', feature='core')
         self.add_feature_component('core', 'ReinteractShortcut')
 
         self.compile_wrapper()
         
-        self.add_external_module('cairo', 'pygtk')
-        self.add_external_module('gobject', 'pygtk')
-        self.add_external_module('atk', 'pygtk')
-        self.add_external_module('pango', 'pygtk')
-        self.add_external_module('pangocairo', 'pygtk')
-        self.add_external_module('gtk', 'pygtk')
-        self.add_external_module('numpy', 'scipy')
-        self.add_external_module('matplotlib', 'scipy')
+        self.add_external_module('cairo', feature='pygtk')
+        self.add_external_module('gobject', feature='pygtk')
+        self.add_external_module('atk', feature='pygtk')
+        self.add_external_module('pango', feature='pygtk')
+        self.add_external_module('pangocairo', feature='pygtk')
+        self.add_external_module('gtk', feature='pygtk')
+        self.add_external_module('numpy', feature='scipy')
+        self.add_external_module('matplotlib', feature='scipy')
         # More matlab stuff
-        self.add_external_module('mpl_toolkits', 'scipy')
+        self.add_external_module('mpl_toolkits', feature='scipy')
         # Some external deps installed with matplotlib
-        self.add_external_module('configobj', 'scipy')
-        self.add_external_module('dateutil', 'scipy')
-        self.add_external_module('pytz', 'scipy')
+        self.add_external_module('configobj', feature='scipy')
+        self.add_external_module('dateutil', feature='scipy')
+        self.add_external_module('pytz', feature='scipy')
         # matlab-like toplevel module installed with matplotlib
-        self.add_external_module('pylab', 'scipy')
+        self.add_external_module('pylab', feature='scipy')
 
         self.add_gtk_files()
 
