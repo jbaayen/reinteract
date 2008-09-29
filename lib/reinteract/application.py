@@ -20,6 +20,7 @@ class Application():
     def __init__(self):
         self.__unsaved_indices = []
         self.windows = set()
+        self.__about_dialog = None
 
         config_folder = self.get_config_folder()
         if not os.path.exists(config_folder):
@@ -173,6 +174,17 @@ class Application():
     def open_notebook_dialog(self, parent=None):
         return open_notebook.run(parent)
 
+    def on_about_dialog_destroy(self, dialog):
+        self.__about_dialog = None
+
+    def show_about_dialog(self, parent=None):
+        if not self.__about_dialog:
+            self.__about_dialog = AboutDialog()
+            self.__about_dialog.connect("destroy", self.on_about_dialog_destroy)
+
+        self.__about_dialog.set_transient_for(parent)
+        self.__about_dialog.present()
+
     def quit(self):
         for window in self.windows:
             if not window.confirm_discard():
@@ -204,6 +216,7 @@ class Application():
 # The global singleton
 application = Application()
 
+from about_dialog import AboutDialog
 from global_settings import global_settings
 from notebook import Notebook
 from notebook_info import NotebookInfo

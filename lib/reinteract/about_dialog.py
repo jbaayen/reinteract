@@ -31,17 +31,13 @@ def _open_url(dialog, url):
     os.spawnl(os.P_NOWAIT, prog, prog, url)
 
 class AboutDialog(gtk.AboutDialog):
-    def __init__(self, parent):
+    def __init__(self):
+        if _find_url_open_program() != None:
+            gtk.about_dialog_set_url_hook(_open_url)
+
         gtk.AboutDialog.__init__(self)
-        self.set_transient_for(parent)
         self.set_name("Reinteract")
         self.set_logo_icon_name("reinteract")
         self.set_copyright("Copyright \302\251 2007-2008 Owen Taylor, Red Hat, Inc., and others")
         self.set_website("http://www.reinteract.org")
         self.connect("response", lambda d, r: d.destroy())
-
-    def run(self):
-        if _find_url_open_program() != None:
-            gtk.about_dialog_set_url_hook(_open_url)
-
-        gtk.AboutDialog.run(self)
