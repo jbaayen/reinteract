@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import gobject
 import gtk
 import re
