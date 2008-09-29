@@ -134,17 +134,26 @@ def check_call(args):
     subprocess.check_call(args)
 
 class Builder(object):
-    def __init__(self, output, topdir, tempdir):
+    def __init__(self, output, topdir):
         self.output = output
         self.topdir = topdir
-        self.tempdir = tempdir
-        self.treedir = os.path.join(self.tempdir, "Reinteract")
         self.file_features = {}
         self.feature_components = {}
         self.directory_ids = {}
         self.generated = None
         self.manifest = []
         self.main_am = None
+
+        self.tempdir = tempfile.mkdtemp("", "reinteract_build.")
+        _logger.info("Temporary directory is %s", self.tempdir)
+
+        self.treedir = os.path.join(self.tempdir, "Reinteract")
+
+    def cleanup(self):
+        try:
+            shutil.rmtree(self.tempdir)
+        except:
+            pass
 
     def add_file(self, source, directory, feature):
         absdir = os.path.join(self.treedir, directory)
@@ -558,17 +567,8 @@ topdir = os.path.dirname(toolsdir)
 
 _logger.debug("Top source directory is %s", topdir)
 
-tempdir = tempfile.mkdtemp("", "reinteract_build_msi.")
-_logger.info("Temporary directory is %s", tempdir)
-
-def cleanup():
-    try:
-        shutil.rmtree(tempdir)
-    except:
-        pass
-
+builder = Builder(output=output, topdir=topdir)
 try:
-    builder = Builder(output=output, topdir=topdir, tempdir=tempdir)
     builder.build()
 finally:
-    cleanup()
+    builder.cleanup()
