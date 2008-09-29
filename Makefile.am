@@ -69,7 +69,11 @@ examples_DATA =					\
              examples/index.rnb			\
              examples/play.rws			\
              examples/plot.rws			\
- 	     $(LIST_END)
+	     $(LIST_END)
+
+TOOLS_EXTRA =					\
+	tools/common/__init__.py		\
+	tools/common/am_parser.py
 
 # Input files for the WiX-based Windows installer
 WIX_FILES =					\
@@ -144,6 +148,7 @@ EXTRA_DIST =					\
 	     bin/reinteract.in			\
 	     $(examples_DATA)			\
              README				\
+	     $(TOOLS_EXTRA)			\
 	     $(WIX_FILES)			\
 	     $(WIX_EXTRA)			\
 	     $(BUILD_DEPS_OSX_EXTRA)		\
