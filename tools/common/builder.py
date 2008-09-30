@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import re
 import shutil
 import tempfile
 
@@ -192,3 +193,16 @@ class Builder(object):
                 relative += "w"
 
         return self.file_attributes[relative]
+
+    def get_version(self):
+        """
+        Get the Reinteract version from configure.ac
+        """
+        
+        ac_file = os.path.join(self.topdir, 'configure.ac')
+        f = open(ac_file, "r")
+        contents = f.read()
+        f.close()
+        m = re.search(r'^\s*AC_INIT\s*\(\s*[A-Za-z0-9_.-]+\s*,\s*([0-9.]+)\s*\)\s*$', contents, re.MULTILINE)
+        assert m
+        return m.group(1)

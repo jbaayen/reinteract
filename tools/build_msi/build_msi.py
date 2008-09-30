@@ -287,15 +287,6 @@ All rights reserved.
                 self.generate("  <ComponentRef Id='%s'/>" % (component_id,))
         self.generate("</Feature>")
 
-    def get_version(self):
-        ac_file = os.path.join(self.topdir, 'configure.ac')
-        f = open(ac_file, "r")
-        contents = f.read()
-        f.close()
-        m = re.search(r'^\s*AC_INIT\s*\(\s*[A-Za-z0-9_.-]+\s*,\s*([0-9.]+)\s*\)\s*$', contents, re.MULTILINE)
-        assert m
-        return m.group(1)
-
     def compile_wrapper(self):
         python_topdir = os.path.dirname(os.path.dirname(shutil.__file__))
         python_include = os.path.join(python_topdir, "include")
