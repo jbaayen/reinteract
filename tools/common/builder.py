@@ -79,29 +79,31 @@ class Builder(object):
             else:
                 self.add_file(absf, directory, **attributes)
 
-    def add_matching_files(self, sourcedir, patterns, **attributes):
+    def add_matching_files(self, sourcedir, patterns, directory, **attributes):
         """
         Add files that set a list of patterns into the temprary tree
 
         @param sourcedir: source directory that the patterns are relative (must be absolute)
-        @param directory: list of patterns. These can contain shell-style '*' globs
+        @param patterns: list of patterns. These can contain shell-style '*' globs
+        @param directory: directory put files into (relative to the top of the temporary tree)
         @param attributes: attributes passed to add_file() for each file
 
         """
 
         for f in patterns:
             absf = os.path.join(sourcedir, f)
-            destdir = os.path.dirname(f)
             if f.find('*') >= 0:
                 for ff in glob.iglob(absf):
                     relative = ff[len(sourcedir) + 1:]
                     if os.path.isdir(ff):
-                        self.add_files_from_directory(ff, relative, **attributes)
+                        self.add_files_from_directory(ff, os.path.join(directory, relative), **attributes)
                     else:
+                        destdir = os.path.join(directory, os.path.dirname(relative))
                         self.add_file(ff, destdir, **attributes)
             elif os.path.isdir(absf):
-                self.add_files_from_directory(absf, f, **attributes)
+                self.add_files_from_directory(absf, os.path.join(directory, f), **attributes)
             else:
+                destdir = os.path.join(directory, os.path.dirname(f))
                 self.add_file(absf, destdir, **attributes)
 
     def add_external_module(self, module_name, **attributes):

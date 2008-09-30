@@ -52,7 +52,6 @@ GTK_FILES = [
     'bin/freetype6.dll',
     'bin/libgdk-win32-2.0-0.dll',
     'bin/libgdk_pixbuf-2.0-0.dll',
-    'bin/libglib-2.0-0.dll',
     'bin/libgio-2.0-0.dll',
     'bin/libglib-2.0-0.dll',
     'bin/libgmodule-2.0-0.dll',
@@ -153,7 +152,7 @@ class MsiBuilder(Builder):
     def add_gtk_files(self):
         gtkdir = self.find_gtk_directory()
 
-        self.add_matching_files(gtkdir, GTK_FILES, feature='gtk')
+        self.add_matching_files(gtkdir, GTK_FILES, '', feature='gtk')
 
         gtkrcfile = os.path.join(self.tempdir, "gtkrc")
         f = open(gtkrcfile, "w")
