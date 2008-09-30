@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import ctypes.util
-import glob
 import logging
 from optparse import OptionParser
 import os
@@ -10,7 +9,6 @@ import shutil
 import StringIO
 import subprocess
 import sys
-import tempfile
 import uuid
 
 script = os.path.abspath(sys.argv[0])
@@ -20,7 +18,7 @@ topdir = os.path.dirname(toolsdir)
 
 sys.path[0:0] = (toolsdir,)
 
-from common.am_parser import AMParser
+from common.builder import Builder
 
 # The upgrade code must never change
 UPGRADE_CODE = uuid.UUID('636776fc-e72d-4fe4-af41-d6273b177683')
@@ -133,100 +131,15 @@ def check_call(args):
     _logger.info("%s", subprocess.list2cmdline(args))
     subprocess.check_call(args)
 
-class Builder(object):
+class MsiBuilder(Builder):
     def __init__(self, output, topdir):
+        Builder.__init__(self, topdir)
+
         self.output = output
-        self.topdir = topdir
-        self.file_attributes = {}
         self.feature_components = {}
         self.directory_ids = {}
         self.generated = None
         self.manifest = []
-        self.main_am = None
-
-        self.tempdir = tempfile.mkdtemp("", "reinteract_build.")
-        _logger.info("Temporary directory is %s", self.tempdir)
-
-        self.treedir = os.path.join(self.tempdir, "Reinteract")
-
-    def cleanup(self):
-        try:
-            shutil.rmtree(self.tempdir)
-        except:
-            pass
-
-    def add_file(self, source, directory, **attributes):
-        absdir = os.path.join(self.treedir, directory)
-        if os.path.isabs(source):
-            abssource = source
-        else:
-            abssource = os.path.join(self.topdir, source)
-        _logger.debug("Copying %s to %s", abssource, directory)
-        if not os.path.isdir(absdir):
-            os.makedirs(absdir)
-        absdest = os.path.join(absdir, os.path.basename(source))
-        shutil.copy(abssource, absdest)
-
-        relative = os.path.normpath(os.path.join(directory, os.path.basename(source)))
-
-        self.file_attributes[relative] = attributes
-
-    def add_files_from_am(self, relative):
-        am_file = os.path.join(self.topdir, relative, 'Makefile.am')
-        am_parser = AMParser(am_file,
-           {
-                'bindir' : 'bin',
-                'docdir' : 'doc',
-                'examplesdir' : 'examples',
-                'pkgdatadir' : '.',
-                'datadir' : '.',
-                'pythondir' : 'python',
-                'REINTERACT_PACKAGE_DIR' : 'python/reinteract',
-
-                # Some config variables irrelevant for our purposes
-                'PYTHON_INCLUDES' : '',
-                'WRAPPER_CFLAGS' : ''
-           })
-        if relative == '':
-            self.main_am = am_parser
-
-        for k, v in am_parser.iteritems():
-            if k.endswith("_DATA"):
-                base = k[:-5]
-                dir = am_parser[base + 'dir']
-                for x in v.split():
-                    self.add_file(os.path.join(relative, x), dir, feature='core')
-            elif k.endswith("_PYTHON"):
-                base = k[:-7]
-                dir = am_parser[base + 'dir']
-                for x in v.split():
-                    self.add_file(os.path.join(relative, x), dir, feature='core')
-
-        if 'SUBDIRS' in am_parser:
-            for subdir in am_parser['SUBDIRS'].split():
-                if subdir == '.':
-                    continue
-                self.add_files_from_am(os.path.join(relative, subdir))
-
-    def add_files_from_directory(self, sourcedir, directory, **attributes):
-        for f in os.listdir(sourcedir):
-            absf = os.path.join(sourcedir, f)
-            if os.path.isdir(absf):
-                self.add_files_from_directory(absf, os.path.join(directory, f), **attributes)
-            else:
-                self.add_file(absf, directory, **attributes)
-
-    def add_external_module(self, module_name, **attributes):
-        mod = __import__(module_name)
-        f = mod.__file__
-        if f.endswith('__init__.pyc') or f.endswith('__init__.pyo') or f.endswith('__init__.py'):
-            dir = os.path.dirname(f)
-            self.add_files_from_directory(dir, os.path.join('external', os.path.basename(dir)), **attributes)
-        else:
-            if f.endswith('.pyc') or f.endswith('.pyo'):
-                # Don't worry about getting the compiled files, we'll recompile anyways
-                f = f[:-3] + "py"
-            self.add_file(f, 'external', **attributes)
 
     def find_gtk_directory(self):
         glib_dll = ctypes.util.find_library('libglib-2.0-0.dll')
@@ -240,20 +153,7 @@ class Builder(object):
     def add_gtk_files(self):
         gtkdir = self.find_gtk_directory()
 
-        for f in GTK_FILES:
-            absf = os.path.join(gtkdir, f)
-            destdir = os.path.dirname(f)
-            if f.find('*') >= 0:
-                for ff in glob.iglob(absf):
-                    relative = ff[len(gtkdir) + 1:]
-                    if os.path.isdir(ff):
-                        self.add_files_from_directory(ff, relative, feature='gtk')
-                    else:
-                        self.add_file(ff, destdir, feature='gtk')
-            elif os.path.isdir(absf):
-                self.add_files_from_directory(absf, f, feature='gtk')
-            else:
-                self.add_file(absf, destdir, feature='gtk')
+        self.add_matching_files(gtkdir, GTK_FILES, feature='gtk')
 
         gtkrcfile = os.path.join(self.tempdir, "gtkrc")
         f = open(gtkrcfile, "w")
@@ -299,19 +199,6 @@ All rights reserved.
             self.feature_components[feature].add(component_id)
         else:
             self.feature_components[feature] = set([component_id])
-
-    def get_file_attributes(self, relative):
-        # .pyc/.pyo are added when we byte-compile the .py files, so they
-        # may not be in file_attributes[], so look for the base .py instead
-        # to figure out the right feature
-        if relative.endswith(".pyc") or relative.endswith(".pyo"):
-            relative = relative[:-3] + "py"
-            # Handle byte compiled .pyw, though they don't seem to be
-            # generated in practice
-            if not relative in self.file_attributes:
-                relative += "w"
-
-        return self.file_attributes[relative]
 
     def get_file_feature(self, relative):
         return self.get_file_attributes(relative)['feature']
@@ -410,7 +297,7 @@ All rights reserved.
         return m.group(1)
 
     def compile_wrapper(self):
-        python_topdir = os.path.dirname(os.path.dirname(glob.__file__))
+        python_topdir = os.path.dirname(os.path.dirname(shutil.__file__))
         python_include = os.path.join(python_topdir, "include")
         python_lib = os.path.join(python_topdir, "libs")
         
@@ -438,7 +325,7 @@ All rights reserved.
         _logger.info("Will write output to %s", output)
 
         self.component_namespace = uuid.uuid5(COMPONENT_NAMESPACE, version)
-        self.add_files_from_am('')
+        self.add_files_from_am('', feature='core')
 
         self.add_file('bin/Reinteract.pyw', 'bin', feature='core')
         # This is a XDG icon-specification organized directory with a SVG in it, not useful
@@ -568,9 +455,7 @@ scriptdir = os.path.dirname(script)
 toolsdir = os.path.dirname(scriptdir)
 topdir = os.path.dirname(toolsdir)
 
-_logger.debug("Top source directory is %s", topdir)
-
-builder = Builder(output=output, topdir=topdir)
+builder = MsiBuilder(output=output, topdir=topdir)
 try:
     builder.build()
 finally:
