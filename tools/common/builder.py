@@ -9,6 +9,13 @@ from am_parser import AMParser
 _logger = logging.getLogger("Builder")
 
 class Builder(object):
+    """
+    The Builder class contains code for assembling a tree of files from various
+    sources (arbitrary files on the filesystem, Python modules from the Python
+    path, files in the Reinteract source tree.) This is then subclassed to build
+    that tree of files into an installer.
+    """
+
     def __init__(self, topdir):
         self.topdir = topdir
         self.file_attributes = {}
@@ -21,12 +28,23 @@ class Builder(object):
         _logger.info("Temporary directory is %s", self.tempdir)
 
     def cleanup(self):
+        """Remove temporary files"""
+
         try:
             shutil.rmtree(self.tempdir)
         except:
             pass
 
     def add_file(self, source, directory, **attributes):
+        """
+        Add a file into the temporary tree
+
+        @param source: the file to add. If relative, it is taken to be relative
+          to the top of the Reinteract source distribution.
+        @param directory: directory to add it in (relative to the top of the temporary tree)
+        @param attributes: attributes to store for the file
+
+        """
         absdir = os.path.join(self.treedir, directory)
         if os.path.isabs(source):
             abssource = source
@@ -43,6 +61,16 @@ class Builder(object):
         self.file_attributes[relative] = attributes
 
     def add_files_from_directory(self, sourcedir, directory, **attributes):
+        """
+        Add a directory of files into the temporary tree
+
+        @param source: the directory to add. If relative, it is taken to be relative
+          to the top of the Reinteract source distribution.
+        @param directory: directory put files into (relative to the top of the temporary tree)
+        @param attributes: attributes passed to add_file() for each file
+
+        """
+
         for f in os.listdir(sourcedir):
             absf = os.path.join(sourcedir, f)
             if os.path.isdir(absf):
@@ -50,8 +78,17 @@ class Builder(object):
             else:
                 self.add_file(absf, directory, **attributes)
 
-    def add_matching_files(self, sourcedir, rules, **attributes):
-        for f in rules:
+    def add_matching_files(self, sourcedir, patterns, **attributes):
+        """
+        Add files that set a list of patterns into the temprary tree
+
+        @param sourcedir: source directory that the patterns are relative (must be absolute)
+        @param directory: list of patterns. These can contain shell-style '*' globs
+        @param attributes: attributes passed to add_file() for each file
+
+        """
+
+        for f in patterns:
             absf = os.path.join(sourcedir, f)
             destdir = os.path.dirname(f)
             if f.find('*') >= 0:
@@ -67,6 +104,18 @@ class Builder(object):
                 self.add_file(absf, destdir, **attributes)
 
     def add_external_module(self, module_name, **attributes):
+        """
+        Add files from a Python module in the current Python path into the temporary tree
+
+        If the python module is a package, all files in the package directory are added;
+        as well as Python files, byte-code compiled python files, and shared libraries,
+        this might include data files, examples, and so forth.
+
+        @param module_name: name of the module to import
+        @param attributes: attributes passed to add_file() for each file
+
+        """
+
         mod = __import__(module_name)
         f = mod.__file__
         if f.endswith('__init__.pyc') or f.endswith('__init__.pyo') or f.endswith('__init__.py'):
@@ -79,6 +128,16 @@ class Builder(object):
             self.add_file(f, 'external', **attributes)
 
     def add_files_from_am(self, relative, **attributes):
+        """
+        Add files listed in a Makefile.am into the temporary tree
+
+        The files that are added are files that are listed as _DATA or _PYTHON.
+        Recursion is done via SUBDIRS. automake conditionals are ignored.
+
+        @param attributes: attributes passed to add_file() for each file
+
+        """
+
         am_file = os.path.join(self.topdir, relative, 'Makefile.am')
         am_parser = AMParser(am_file,
            {
@@ -116,6 +175,12 @@ class Builder(object):
                 self.add_files_from_am(os.path.join(relative, subdir), **attributes)
 
     def get_file_attributes(self, relative):
+        """
+        Get the attributes dictionary for a file
+
+        @param relative: location of the file in the temporary tree
+
+        """
         # .pyc/.pyo are added when we byte-compile the .py files, so they
         # may not be in file_attributes[], so look for the base .py instead
         # to figure out the right feature
