@@ -315,7 +315,7 @@ All rights reserved.
         _logger.info("Will write output to %s", output)
 
         self.component_namespace = uuid.uuid5(COMPONENT_NAMESPACE, version)
-        self.add_files_from_am('', feature='core')
+        self.add_files_from_am('', '', feature='core')
 
         self.add_file('bin/Reinteract.pyw', 'bin', feature='core')
         # This is a XDG icon-specification organized directory with a SVG in it, not useful
@@ -325,22 +325,22 @@ All rights reserved.
 
         self.compile_wrapper()
         
-        self.add_external_module('cairo', feature='pygtk')
-        self.add_external_module('gobject', feature='pygtk')
-        self.add_external_module('atk', feature='pygtk')
-        self.add_external_module('pango', feature='pygtk')
-        self.add_external_module('pangocairo', feature='pygtk')
-        self.add_external_module('gtk', feature='pygtk')
-        self.add_external_module('numpy', feature='scipy')
-        self.add_external_module('matplotlib', feature='scipy')
+        self.add_external_module('cairo', 'external', feature='pygtk')
+        self.add_external_module('gobject', 'external', feature='pygtk')
+        self.add_external_module('atk', 'external', feature='pygtk')
+        self.add_external_module('pango', 'external', feature='pygtk')
+        self.add_external_module('pangocairo', 'external', feature='pygtk')
+        self.add_external_module('gtk', 'external', feature='pygtk')
+        self.add_external_module('numpy', 'external', feature='scipy')
+        self.add_external_module('matplotlib', 'external', feature='scipy')
         # More matlab stuff
-        self.add_external_module('mpl_toolkits', feature='scipy')
+        self.add_external_module('mpl_toolkits', 'external', feature='scipy')
         # Some external deps installed with matplotlib
-        self.add_external_module('configobj', feature='scipy')
-        self.add_external_module('dateutil', feature='scipy')
-        self.add_external_module('pytz', feature='scipy')
+        self.add_external_module('configobj', 'external', feature='scipy')
+        self.add_external_module('dateutil', 'external', feature='scipy')
+        self.add_external_module('pytz', 'external', feature='scipy')
         # matlab-like toplevel module installed with matplotlib
-        self.add_external_module('pylab', feature='scipy')
+        self.add_external_module('pylab', 'external', feature='scipy')
 
         self.add_gtk_files()
 

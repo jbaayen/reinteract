@@ -106,7 +106,7 @@ class Builder(object):
                 destdir = os.path.join(directory, os.path.dirname(f))
                 self.add_file(absf, destdir, **attributes)
 
-    def add_external_module(self, module_name, **attributes):
+    def add_external_module(self, module_name, directory, **attributes):
         """
         Add files from a Python module in the current Python path into the temporary tree
 
@@ -115,6 +115,7 @@ class Builder(object):
         this might include data files, examples, and so forth.
 
         @param module_name: name of the module to import
+        @param directory: directory to copy module into (relative to treedir)
         @param attributes: attributes passed to add_file() for each file
 
         """
@@ -123,20 +124,23 @@ class Builder(object):
         f = mod.__file__
         if f.endswith('__init__.pyc') or f.endswith('__init__.pyo') or f.endswith('__init__.py'):
             dir = os.path.dirname(f)
-            self.add_files_from_directory(dir, os.path.join('external', os.path.basename(dir)), **attributes)
+            self.add_files_from_directory(dir, os.path.join(directory, os.path.basename(dir)), **attributes)
         else:
             if f.endswith('.pyc') or f.endswith('.pyo'):
                 # Don't worry about getting the compiled files, we'll recompile anyways
                 f = f[:-3] + "py"
-            self.add_file(f, 'external', **attributes)
+            self.add_file(f, directory, **attributes)
 
-    def add_files_from_am(self, relative, **attributes):
+    def add_files_from_am(self, relative, directory, **attributes):
         """
         Add files listed in a Makefile.am into the temporary tree
 
         The files that are added are files that are listed as _DATA or _PYTHON.
         Recursion is done via SUBDIRS. automake conditionals are ignored.
 
+        @param relative: path relative to the Reinteract source topdir of the
+          directory where the Makefile.am lives
+        @param directory: directory to copy files into (relative to tempory tree)
         @param attributes: attributes passed to add_file() for each file
 
         """
@@ -164,18 +168,18 @@ class Builder(object):
                 base = k[:-5]
                 dir = am_parser[base + 'dir']
                 for x in v.split():
-                    self.add_file(os.path.join(relative, x), dir, **attributes)
+                    self.add_file(os.path.join(relative, x), os.path.join(directory, dir), **attributes)
             elif k.endswith("_PYTHON"):
                 base = k[:-7]
                 dir = am_parser[base + 'dir']
                 for x in v.split():
-                    self.add_file(os.path.join(relative, x), dir, **attributes)
+                    self.add_file(os.path.join(relative, x), os.path.join(directory, dir), **attributes)
 
         if 'SUBDIRS' in am_parser:
             for subdir in am_parser['SUBDIRS'].split():
                 if subdir == '.':
                     continue
-                self.add_files_from_am(os.path.join(relative, subdir), **attributes)
+                self.add_files_from_am(os.path.join(relative, subdir), directory, **attributes)
 
     def get_file_attributes(self, relative):
         """
@@ -200,7 +204,7 @@ class Builder(object):
         """
         Get the Reinteract version from configure.ac
         """
-        
+
         ac_file = os.path.join(self.topdir, 'configure.ac')
         f = open(ac_file, "r")
         contents = f.read()
