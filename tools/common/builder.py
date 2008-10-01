@@ -17,13 +17,13 @@ class Builder(object):
     that tree of files into an installer.
     """
 
-    def __init__(self, topdir):
+    def __init__(self, topdir, treesubdir='Reinteract'):
         self.topdir = topdir
         self.file_attributes = {}
         self.main_am = None
 
         self.tempdir = tempfile.mkdtemp("", "reinteract_build.")
-        self.treedir = os.path.join(self.tempdir, "Reinteract")
+        self.treedir = os.path.join(self.tempdir, treesubdir)
 
         _logger.debug("Top source directory is %s", topdir)
         _logger.info("Temporary directory is %s", self.tempdir)
