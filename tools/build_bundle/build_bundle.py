@@ -85,6 +85,7 @@ DEP_LIBRARY_SOURCE_FILES = [
     'pygobject*/COPYING',
     'pygtk*/README',
     'pygtk*/COPYING',
+    'tiff*/README'
 ]
 
 # wrapper around subprocess.check_call that logs the command
