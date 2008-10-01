@@ -72,8 +72,13 @@ class Builder(object):
 
         """
 
-        for f in os.listdir(sourcedir):
-            absf = os.path.join(sourcedir, f)
+        if os.path.isabs(sourcedir):
+            abssourcedir = sourcedir
+        else:
+            abssourcedir = os.path.join(self.topdir, sourcedir)
+
+        for f in os.listdir(abssourcedir):
+            absf = os.path.join(abssourcedir, f)
             if os.path.isdir(absf):
                 self.add_files_from_directory(absf, os.path.join(directory, f), **attributes)
             else:
