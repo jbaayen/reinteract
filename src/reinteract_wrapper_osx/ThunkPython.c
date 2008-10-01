@@ -33,8 +33,6 @@ dlopen_framework(const char *framework_dir)
     void *handle = dlopen(buf, RTLD_GLOBAL | RTLD_LAZY);
 
     free(buf);
-    if (handle)
-        fprintf(stderr, "%s\n", buf);
 
     return handle;
 }
