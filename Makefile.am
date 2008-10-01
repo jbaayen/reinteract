@@ -97,6 +97,14 @@ WIX_EXTRA =					\
 	tools/build_msi/wrapper.c		\
 	tools/compiledir.py
 
+# Scripts and other files used for OS X installer
+BUNDLE_EXTRA =							\
+	tools/build_bundle/README				\
+	tools/build_bundle/build_bundle.py			\
+	tools/build_bundle/reinteract-dmg-background.png	\
+	tools/build_bundle/reinteract-dmg-background.svg	\
+	tools/build_bundle/reinteract.dsstore
+
 BUILD_DEPS_OSX_EXTRA =							\
 	tools/build_deps_osx/Python-2.5.2-framework-arch-only.patch	\
 	tools/build_deps_osx/Python-2.5.2-framework-arch.patch		\
@@ -107,6 +115,7 @@ BUILD_DEPS_OSX_EXTRA =							\
 	tools/build_deps_osx/gtk-clipboard-quartz-new0.patch		\
 	tools/build_deps_osx/i386.cache					\
 	tools/build_deps_osx/jhbuildrc-reinteract			\
+	tools/build_deps_osx/pango-relocate.patch			\
 	tools/build_deps_osx/ppc.cache					\
 	tools/build_deps_osx/pycairo-unknown-surface-types.patch	\
 	tools/build_deps_osx/reinteract-bootstrap.modules		\
@@ -152,6 +161,7 @@ EXTRA_DIST =					\
 	     $(TOOLS_EXTRA)			\
 	     $(WIX_FILES)			\
 	     $(WIX_EXTRA)			\
+	     $(BUNDLE_EXTRA)			\
 	     $(BUILD_DEPS_OSX_EXTRA)		\
 	     src/reinteract_wrapper_osx/README	\
              $(LIST_END)
