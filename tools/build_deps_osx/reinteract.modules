@@ -35,7 +35,9 @@
              makeargs="-k -C modules; make">
     <branch repo="gnomeftp"
             module="pango/1.22/pango-1.22.0.tar.bz2" version="1.22.0"
-            size="1459194" md5sum="37a185a3cb5c1a39ade7fdc3e6c75349"/>
+            size="1459194" md5sum="37a185a3cb5c1a39ade7fdc3e6c75349">
+      <patch file="pango-relocate.patch" strip="0" />
+    </branch>
     <dependencies>
       <dep package="glib"/>
       <dep package="cairo"/>

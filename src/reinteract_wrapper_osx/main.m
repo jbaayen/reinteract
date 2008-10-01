@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     if (!init_thunk_python())
         exit(1);
 
-    /* Normal Python initializatin */
+    /* Normal Python initialization */
     Py_Initialize();
     PySys_SetArgv(argc, (char **)argv);
 
@@ -94,6 +94,19 @@ int main(int argc, char *argv[])
         PyObject *toInsert = Py_BuildValue("(ss)", [pythonDir UTF8String], [externalDir UTF8String]);
         PySequence_SetSlice(sysPath, 0, 0, toInsert);
         Py_DECREF(toInsert);
+
+        /* Set environment variables used by dependencies */
+        NSString *libdir = [resourcePath stringByAppendingPathComponent:@"lib"];
+        NSString *sysconfdir = [resourcePath stringByAppendingPathComponent:@"etc"];
+        NSString *pixbufModuleFile = [sysconfdir stringByAppendingPathComponent:@"gtk-2.0/gdk-pixbuf.loaders"];
+        setenv("GDK_PIXBUF_MODULE_FILE", [pixbufModuleFile UTF8String], 1);
+        setenv("GTK_EXE_PREFIX", [resourcePath UTF8String], 1);
+        setenv("GTK_DATA_PREFIX", [resourcePath UTF8String], 1);
+        setenv("GTK_SYSCONFDIR", [sysconfdir UTF8String], 1);
+        NSString *imModuleFile = [sysconfdir stringByAppendingPathComponent:@"gtk-2.0/gtk.immodules"];
+        setenv("GTK_IM_MODULE_FILE", [imModuleFile UTF8String], 1);
+        setenv("PANGO_LIBDIR", [libdir UTF8String], 1);
+        setenv("PANGO_SYSCONFDIR", [sysconfdir UTF8String], 1);
     } else {
         NSString *baseDir = [[mainBundle bundlePath] stringByDeletingLastPathComponent];
         dialogsDir = [baseDir stringByAppendingPathComponent:@"dialogs"];
