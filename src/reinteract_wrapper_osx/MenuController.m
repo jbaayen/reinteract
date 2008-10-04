@@ -18,7 +18,7 @@
 
 -(id)init
 {
-    actionToMenuItem = [NSMutableDictionary dictionary];
+    actionToMenuItem = [[NSMutableDictionary alloc] init];
 
     return self;
 }
