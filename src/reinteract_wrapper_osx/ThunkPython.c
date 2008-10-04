@@ -78,6 +78,8 @@ init_thunk_python()
     LOOKUP_SYMBOL(PyGILState_Ensure);
     LOOKUP_SYMBOL(PyGILState_Release);
     LOOKUP_SYMBOL(PyImport_ImportModule);
+    LOOKUP_SYMBOL(PyList_New);
+    LOOKUP_SYMBOL(PyList_SetItem);
     LOOKUP_SYMBOL(PyModule_AddObject);
     LOOKUP_SYMBOL(PyObject_CallFunction);
     LOOKUP_SYMBOL(PyObject_CallMethod);

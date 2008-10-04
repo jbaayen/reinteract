@@ -23,6 +23,10 @@
  *        """Disable the action with the specified name"""
  *        [...]
  *
+ *     def get_action_names(self):
+ *        """Return a list of all action names in the menu"""
+ *        [...]
+ *
  *     def handle_key_press(self, event):
  *        """Check key equivalents and activate a menu item if appropriate
  *
@@ -114,6 +118,30 @@ pyNativeMainMenu_disable_action(pyNativeMainMenu *slf, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+pyNativeMainMenu_get_action_names(pyNativeMainMenu *slf)
+{
+    NSArray *names = [slf->controller actionNames];
+    PyObject *result = PyList_New([names count]);
+    int i;
+
+    if (!result)
+        return NULL;
+
+    for (i = 0; i < [names count]; i++) {
+        const char *name = [[names objectAtIndex:i] UTF8String];
+        PyObject *py_name = PyString_FromString(name);
+        if (!py_name) {
+            Py_DECREF(result);
+            return NULL;
+        }
+
+        PyList_SetItem(result, i, py_name); // Steals reference to py_name
+    }
+
+    return result;
+}
+
 static NSEvent *
 event_get_nsevent(GdkEvent *event)
 {
@@ -178,6 +206,9 @@ static PyMethodDef pyNativeMainMenu_methods[] = {
     },
     {"disable_action", (PyCFunction)pyNativeMainMenu_disable_action, METH_VARARGS,
      "Disable the menu item with the specified action name"
+    },
+    {"get_action_names", (PyCFunction)pyNativeMainMenu_get_action_names, METH_NOARGS,
+     "Return a list of all action names"
     },
     {"handle_key_press", (PyCFunction)pyNativeMainMenu_handle_key_press, METH_VARARGS,
      "Perform any key equivalents for the given key event"

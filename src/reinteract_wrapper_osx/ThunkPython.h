@@ -25,6 +25,8 @@ struct {
     PyGILState_STATE (*thunk_PyGILState_Ensure)(void);
     void (*thunk_PyGILState_Release)(PyGILState_STATE);
     PyObject * (*thunk_PyImport_ImportModule)(const char *name);
+    PyObject * (*thunk_PyList_New)(Py_ssize_t);
+    int (*thunk_PyList_SetItem)(PyObject *, Py_ssize_t, PyObject *);
     int (*thunk_PyModule_AddObject)(PyObject *, const char *, PyObject *);
     PyObject * (*thunk_PyObject_CallFunction)(PyObject *callable_object, char *format, ...);
     PyObject * (*thunk_PyObject_CallMethod)(PyObject *o, char *m, char *format, ...);
@@ -61,6 +63,8 @@ struct {
 #define PyGILState_Ensure (python_thunks.thunk_PyGILState_Ensure)
 #define PyGILState_Release (python_thunks.thunk_PyGILState_Release)
 #define PyImport_ImportModule (python_thunks.thunk_PyImport_ImportModule)
+#define PyList_New (python_thunks.thunk_PyList_New)
+#define PyList_SetItem (python_thunks.thunk_PyList_SetItem)
 #define PyModule_AddObject (python_thunks.thunk_PyModule_AddObject)
 #define PyObject_CallFunction (python_thunks.thunk_PyObject_CallFunction)
 #define PyObject_CallMethod (python_thunks.thunk_PyObject_CallMethod)

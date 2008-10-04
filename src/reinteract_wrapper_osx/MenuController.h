@@ -23,4 +23,6 @@ typedef void (*MenuActionCallback) (NSString *actionName, void *data);
 -(void)enableAction:(NSString *)actionName;
 -(void)disableAction:(NSString *)actionName;
 
+-(NSArray *)actionNames;
+
 @end

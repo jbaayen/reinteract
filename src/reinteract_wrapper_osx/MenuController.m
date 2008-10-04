@@ -205,4 +205,9 @@ selectorToActionName(SEL selector)
     [item setEnabled:NO];
 }
 
+-(NSArray *)actionNames
+{
+    return [actionToMenuItem allKeys];
+}
+
 @end
