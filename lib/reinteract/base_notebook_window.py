@@ -95,7 +95,7 @@ class BaseNotebookWindow(BaseWindow):
         self._update_open_files()
 
     def _update_editor_state(self, editor):
-        self._update_sensitivity()
+        self.update_sensitivity()
 
     def _update_editor_title(self, editor):
         if editor == self.current_editor:
@@ -123,19 +123,7 @@ class BaseNotebookWindow(BaseWindow):
         if not self._confirm_discard():
             return
 
-        application.window_closed(self)
-        self.window.destroy()
-
-    def _update_sensitivity(self):
-        BaseWindow._update_sensitivity(self)
-
-        some_need_calculate = False
-        for editor in self.editors:
-            if editor.needs_calculate:
-                some_need_calculate = True
-
-        calculate_all_action = self.action_group.get_action('calculate-all')
-        calculate_all_action.set_sensitive(some_need_calculate)
+        BaseWindow._close_window(self)
 
     #######################################################
     # Utility
@@ -236,7 +224,7 @@ class BaseNotebookWindow(BaseWindow):
                 self.current_editor = editor
                 self.__update_title()
                 self._update_current_file()
-                self._update_sensitivity()
+                self.update_sensitivity()
                 break
 
     def on_page_reordered(self, notebook, page, new_page_num):
@@ -251,7 +239,7 @@ class BaseNotebookWindow(BaseWindow):
 
     def on_editor_notify_modified(self, editor, *args):
         if editor == self.current_editor:
-            self._update_sensitivity()
+            self.update_sensitivity()
 
     def on_editor_notify_state(self, editor, *args):
         self._update_editor_state(editor)
@@ -295,3 +283,14 @@ class BaseNotebookWindow(BaseWindow):
         if len(self.editors) == 0:
             self.__initial_editor = self.__new_worksheet()
             self.__initial_editor.view.grab_focus()
+
+    def update_sensitivity(self):
+        BaseWindow.update_sensitivity(self)
+
+        some_need_calculate = False
+        for editor in self.editors:
+            if editor.needs_calculate:
+                some_need_calculate = True
+
+        self._set_action_sensitive('calculate-all', some_need_calculate)
+

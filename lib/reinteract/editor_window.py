@@ -72,8 +72,7 @@ class EditorWindow(BaseWindow):
         if not self.current_editor.confirm_discard():
             return True
 
-        application.window_closed(self)
-        self.window.destroy()
+        BaseWindow._close_window(self)
 
     #######################################################
     # Utility
@@ -134,14 +133,14 @@ class EditorWindow(BaseWindow):
             # Ignore for now
             return
 
-        self.current_editor.connect('notify::modified', lambda *args: self._update_sensitivity())
+        self.current_editor.connect('notify::modified', lambda *args: self.update_sensitivity())
         self.current_editor.connect('notify::title', self.__update_title)
-        self.current_editor.connect('notify::state', lambda *args: self._update_sensitivity())
+        self.current_editor.connect('notify::state', lambda *args: self.update_sensitivity())
         self.main_vbox.pack_start(self.current_editor.widget, expand=True, fill=True)
 
         self.path = filename
         self.current_editor.load(filename)
-        self._update_sensitivity()
+        self.update_sensitivity()
 
         self.current_editor.view.grab_focus()
         self.__update_title()

@@ -90,18 +90,25 @@ class BaseWindow:
         raise NotImplementedError()
 
     def _close_window(self):
-        raise NotImplementedError()
+        if global_settings.main_menu_mode and self.window.is_active():
+            main_menu.window_deactivated(self)
 
-    def _update_sensitivity(self):
-        calculate_action = self.action_group.get_action('calculate')
-        calculate_action.set_sensitive(self.current_editor.needs_calculate)
+        application.window_closed(self)
+        self.window.destroy()
 
-        break_action = self.action_group.get_action('break')
-        break_action.set_sensitive(self.current_editor.state == NotebookFile.EXECUTING)
+    #######################################################
+    # Utility
+    #######################################################
 
-        # This seems more annoying than useful. gedit doesn't desensitize save
-        # save_action = self.action_group.get_action('save')
-        # save_action.set_sensitive(self.current_editor.modified)
+    def _set_action_sensitive(self, action_name, sensitive):
+        action = self.action_group.get_action(action_name)
+        action.set_sensitive(sensitive)
+
+        if global_settings.main_menu_mode:
+            if sensitive:
+                main_menu.enable_action(action_name)
+            else:
+                main_menu.disable_action(action_name)
 
     #######################################################
     # Callbacks
@@ -213,3 +220,11 @@ class BaseWindow:
 
     def show(self):
         self.window.show()
+
+    def update_sensitivity(self):
+        self._set_action_sensitive('calculate', self.current_editor.needs_calculate)
+        self._set_action_sensitive('break', self.current_editor.state == NotebookFile.EXECUTING)
+
+        # This seems more annoying than useful. gedit doesn't desensitize save
+        # self._set_action_sensitive('save', self.current_editor.modified)
+

@@ -19,9 +19,16 @@ class MainMenu(NativeMainMenu):
     def __init__(self):
         NativeMainMenu.__init__(self)
         self.__active_window = None
+        self.__action_to_method_name = {}
+
+        for action_name in self.get_action_names():
+            method_name = 'on_' + action_name.replace('-', '_')
+            self.__action_to_method_name[action_name] = method_name
+
+        self.__update_sensitivity()
 
     def run_action(self, action_name):
-        method_name = 'on_' + action_name.replace('-', '_')
+        method_name = self.__action_to_method_name[action_name]
         if self.__active_window and hasattr(self.__active_window, method_name):
             getattr(self.__active_window, method_name)(None)
         elif hasattr(self, method_name):
@@ -38,20 +45,35 @@ class MainMenu(NativeMainMenu):
     def on_about(self):
         application.show_about_dialog()
 
-    def on_new_notebook(self, action):
+    def on_new_notebook(self):
         application.create_notebook_dialog()
 
-    def on_open_notebook(self, action):
+    def on_open_notebook(self):
         application.open_notebook_dialog()
 
     def on_quit(self):
         application.quit()
 
     def window_activated(self, window):
-        self.__active_window = window
+        if window != self.__active_window:
+            self.__active_window = window
+            self.__update_sensitivity()
 
     def window_deactivated(self, window):
         if window == self.__active_window:
             self.__active_window = None
+            self.__update_sensitivity()
+
+    def __update_sensitivity(self):
+        for action_name, method_name in self.__action_to_method_name.iteritems():
+            if hasattr(self, method_name):
+                pass # always active
+            elif self.__active_window and hasattr(self.__active_window, method_name):
+                self.enable_action(action_name)
+            else:
+                self.disable_action(action_name)
+
+        if self.__active_window:
+            self.__active_window.update_sensitivity()
 
 main_menu = MainMenu()
