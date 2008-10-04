@@ -222,9 +222,9 @@ class BaseWindow:
         self.window.show()
 
     def update_sensitivity(self):
-        self._set_action_sensitive('calculate', self.current_editor.needs_calculate)
-        self._set_action_sensitive('break', self.current_editor.state == NotebookFile.EXECUTING)
+        self._set_action_sensitive('calculate', self.current_editor != None and self.current_editor.needs_calculate)
+        self._set_action_sensitive('break', self.current_editor != None and self.current_editor.state == NotebookFile.EXECUTING)
 
         # This seems more annoying than useful. gedit doesn't desensitize save
-        # self._set_action_sensitive('save', self.current_editor.modified)
+        # self._set_action_sensitive('save', self.current_editor != None and self.current_editor.modified)
 
