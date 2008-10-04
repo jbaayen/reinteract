@@ -7,7 +7,6 @@ import os
 import re
 import shutil
 import StringIO
-import subprocess
 import sys
 import uuid
 
@@ -19,6 +18,7 @@ topdir = os.path.dirname(toolsdir)
 sys.path[0:0] = (toolsdir,)
 
 from common.builder import Builder
+from common.utils import check_call
 
 # The upgrade code must never change
 UPGRADE_CODE = uuid.UUID('636776fc-e72d-4fe4-af41-d6273b177683')
@@ -124,11 +124,6 @@ def generate_id():
     global id_count
     id_count += 1
     return "Id%04d" % id_count
-
-# wrapper around subprocess.check_call that logs the command
-def check_call(args):
-    _logger.info("%s", subprocess.list2cmdline(args))
-    subprocess.check_call(args)
 
 class MsiBuilder(Builder):
     def __init__(self, output, topdir):
@@ -344,11 +339,7 @@ All rights reserved.
 
         self.add_gtk_files()
 
-        # Byte-compile all the Python files. We run it twice to generate both .pyc and .pyo
-        # I'm not really sure that there is a point in having the .pyc files in the .MSI,
-        # but it matches what distutils and Fedora RPM packaging do.
-        check_call(['python', os.path.join(self.topdir, 'tools', 'compiledir.py'), self.treedir])
-        check_call(['python', "-O", os.path.join(self.topdir, 'tools', 'compiledir.py'), self.treedir])
+        self.compile_python()
 
         self.generate_components()
         self.generate_feature('core', allow_absent='no', title='Reinteract', description='The Reinteract Application')

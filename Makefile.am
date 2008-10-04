@@ -74,7 +74,8 @@ examples_DATA =					\
 TOOLS_EXTRA =					\
 	tools/common/__init__.py		\
 	tools/common/am_parser.py		\
-	tools/common/builder.py
+	tools/common/builder.py			\
+	tools/common/utils.py
 
 # Input files for the WiX-based Windows installer
 WIX_FILES =					\

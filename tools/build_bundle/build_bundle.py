@@ -24,6 +24,7 @@ topdir = dirname(toolsdir)
 sys.path[0:0] = (toolsdir,)
 
 from common.builder import Builder
+from common.utils import check_call
 
 # A set of patterns defining what files we should extract from the filesystem
 # for the dependencies libraries that we bundle into the installer. These patterns
@@ -87,11 +88,6 @@ DEP_LIBRARY_SOURCE_FILES = [
     'pygtk*/COPYING',
     'tiff*/README'
 ]
-
-# wrapper around subprocess.check_call that logs the command
-def check_call(args):
-    _logger.info("%s", subprocess.list2cmdline(args))
-    subprocess.check_call(args)
 
 class BundleBuilder(Builder):
     def __init__(self, output, topdir, output_type, arches):
@@ -272,6 +268,8 @@ class BundleBuilder(Builder):
         shutil.copy(join(self.topdir, 'ReinteractWrapper'),
                     join(self.tempdir, 'Reinteract'))
         self.add_file(join(self.tempdir, 'Reinteract'), 'Contents/MacOS')
+
+        self.compile_python()
 
         self.build_manifest('')
 

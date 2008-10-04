@@ -6,6 +6,7 @@ import shutil
 import tempfile
 
 from am_parser import AMParser
+from utils import check_call
 
 _logger = logging.getLogger("Builder")
 
@@ -185,6 +186,17 @@ class Builder(object):
                 if subdir == '.':
                     continue
                 self.add_files_from_am(os.path.join(relative, subdir), directory, **attributes)
+
+
+    def compile_python(self):
+        """
+        Byte-compile all Python files in the tree to .pyc and .pyo
+        """
+
+        # I'm not really sure that there is a point in having the .pyc files distributed
+        # but it matches what distutils and Fedora RPM packaging do.
+        check_call(['python', os.path.join(self.topdir, 'tools', 'compiledir.py'), self.treedir])
+        check_call(['python', "-O", os.path.join(self.topdir, 'tools', 'compiledir.py'), self.treedir])
 
     def get_file_attributes(self, relative):
         """
