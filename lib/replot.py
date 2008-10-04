@@ -1,3 +1,4 @@
+import cairo
 import gtk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
@@ -38,7 +39,9 @@ class PlotWidget(gtk.DrawingArea):
     __gsignals__ = {
         'button-press-event': 'override',
         'button-release-event': 'override',
-        'expose-event': 'override'
+        'expose-event': 'override',
+        'size-allocate': 'override',
+        'unrealize': 'override'
     }
 
     def __init__(self, result):
@@ -47,21 +50,42 @@ class PlotWidget(gtk.DrawingArea):
         self.canvas = _PlotResultCanvas(self.figure)
 
         self.axes = self.figure.add_subplot(111)
+
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
+
+        self.cached_contents = None
 
     def do_expose_event(self, event):
         cr = self.window.cairo_create()
-        
-        renderer = RendererCairo(self.figure.dpi)
-        renderer.set_width_height(self.allocation.width, self.allocation.height)
-        renderer.set_ctx_from_surface(cr.get_target())
-        
+
+        if not self.cached_contents:
+            self.cached_contents = cr.get_target().create_similar(cairo.CONTENT_COLOR,
+                                                                  self.allocation.width, self.allocation.height)
+
+            renderer = RendererCairo(self.figure.dpi)
+            renderer.set_width_height(self.allocation.width, self.allocation.height)
+            renderer.set_ctx_from_surface(self.cached_contents)
+
+            self.figure.draw(renderer)
+
         # event.region is not bound: http://bugzilla.gnome.org/show_bug.cgi?id=487158
 #        gdk_context = gtk.gdk.CairoContext(renderer.ctx)
 #        gdk_context.region(event.region)
 #        gdk_context.clip()
-        
-        self.figure.draw(renderer)
+
+        cr.set_source_surface(self.cached_contents, 0, 0)
+        cr.paint()
+
+    def do_size_allocate(self, allocation):
+        if allocation.width != self.allocation.width or allocation.height != self.allocation.height:
+            self.cached_contents = None
+
+        gtk.DrawingArea.do_size_allocate(self, allocation)
+
+    def do_unrealize(self):
+        gtk.DrawingArea.do_unrealize(self)
+
+        self.cached_contents = None
 
     def do_button_press_event(self, event):
         if event.button == 3:
