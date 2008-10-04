@@ -19,20 +19,33 @@
     while (0)
 
 static void *
-dlopen_framework(const char *framework_dir)
+dlopen_framework_version(const char *framework_dir, const char *version)
 {
-    static const char *library_path = "Versions/2.5/Python";
-    char *buf = malloc(strlen(framework_dir) + 1 + strlen(library_path) + 1);
+    char *buf = malloc(strlen(framework_dir) + 1 + strlen("Versions") + 1 + strlen(version) + 1 + strlen("Python") + 1);
     if (!buf)
         return NULL;
 
     strcpy(buf, framework_dir);
     strcat(buf, "/");
-    strcat(buf, library_path);
+    strcat(buf, "Versions");
+    strcat(buf, "/");
+    strcat(buf, version);
+    strcat(buf, "/");
+    strcat(buf, "Python");
 
     void *handle = dlopen(buf, RTLD_GLOBAL | RTLD_LAZY);
 
     free(buf);
+
+    return handle;
+}
+
+static void *
+dlopen_framework(const char *framework_dir)
+{
+    void *handle = dlopen_framework_version(framework_dir, "2.6");
+    if (!handle)
+        handle = dlopen_framework_version(framework_dir, "2.5");
 
     return handle;
 }
