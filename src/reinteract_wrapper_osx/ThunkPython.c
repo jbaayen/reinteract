@@ -18,6 +18,17 @@
     }                                                           \
     while (0)
 
+static int
+file_exists(const char *path)
+{
+    struct stat s;
+
+    if (stat(path, &s) != 0)
+        return 0;
+
+    return 1;
+}
+
 static void *
 dlopen_framework_version(const char *framework_dir, const char *version)
 {
@@ -32,6 +43,13 @@ dlopen_framework_version(const char *framework_dir, const char *version)
     strcat(buf, version);
     strcat(buf, "/");
     strcat(buf, "Python");
+
+    /* This is to prevent some magic behavior in dlopen where dlopening a
+     * non-existing version inside a framework will open a system-installed
+     * copy of that version instead: not what we want with PYTHON_FRAMEWORK_DIR
+     */
+    if (!file_exists(buf))
+        return NULL;
 
     void *handle = dlopen(buf, RTLD_GLOBAL | RTLD_LAZY);
 
