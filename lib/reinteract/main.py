@@ -18,7 +18,7 @@ def main():
     sys.argv = filter(lambda x: not x.startswith("-psn"), sys.argv)
 
     parser = OptionParser()
-    parser.add_option("-u", "--ui", choices=("standard", "mini"),
+    parser.add_option("-u", "--ui", choices=("standard", "mini"), default="standard",
                       help="the user interface mode (standard or mini)")
     parser.add_option("-d", "--debug", action="store_true",
                       help="enable internal debug messages")
