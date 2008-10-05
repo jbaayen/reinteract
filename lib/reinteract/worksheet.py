@@ -393,6 +393,9 @@ class Worksheet(gobject.GObject):
         if len(text) == 0:
             return
 
+        if self.state == NotebookFile.EXECUTING:
+            return
+
         self.__freeze_changes()
 
         self.emit('text-inserted', line, offset, text)
@@ -493,6 +496,9 @@ class Worksheet(gobject.GObject):
 
     def delete_range(self, start_line, start_offset, end_line, end_offset):
         _debug("Deleting from %s,%s to %s,%s", start_line, start_offset, end_line, end_offset)
+
+        if self.state == NotebookFile.EXECUTING:
+            return
 
         if start_line == end_line and start_offset == end_offset:
             return

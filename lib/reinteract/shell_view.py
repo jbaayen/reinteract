@@ -5,6 +5,7 @@ from shell_buffer import ShellBuffer, ADJUST_NONE, ADJUST_BEFORE, ADJUST_AFTER
 from chunks import StatementChunk, CommentChunk, BlankChunk
 from completion_popup import CompletionPopup
 from doc_popup import DocPopup
+from notebook import NotebookFile
 import sanitize_textview_ipc
 
 class ShellView(gtk.TextView):
@@ -13,16 +14,21 @@ class ShellView(gtk.TextView):
         'expose-event': 'override',
         'focus-out-event': 'override',
         'button-press-event': 'override',
+        'button-release-event': 'override',
+        'motion-notify-event': 'override',
         'key-press-event': 'override',
         'leave-notify-event': 'override',
         'motion-notify-event': 'override',
-        'realize': 'override'
+        'realize': 'override',
+        'unrealize': 'override',
+        'size-allocate': 'override'
    }
         
     def __init__(self, buf):
         buf.worksheet.connect('chunk-inserted', self.on_chunk_inserted)
         buf.worksheet.connect('chunk-changed', self.on_chunk_changed)
         buf.worksheet.connect('chunk-status-changed', self.on_chunk_status_changed)
+        buf.worksheet.connect('notify::state', self.on_notify_state)
         buf.connect('add-custom-result', self.on_add_custom_result)
         buf.connect('pair-location-changed', self.on_pair_location_changed)
             
@@ -74,6 +80,40 @@ class ShellView(gtk.TextView):
         gtk.TextView.do_realize(self)
 
         self.get_window(gtk.TEXT_WINDOW_LEFT).set_background(self.style.white)
+
+        # While the the worksheet is executing, we want to display a watch cursor
+        # Trying to override the cursor setting of GtkTextView is really hard because
+        # of things like hiding the cursor when typing, so we take the simple approach
+        # of using an input-only "cover window" that we set the cursor on and
+        # show on top of the GtkTextView's normal window.
+
+        self.__watch_window = gtk.gdk.Window(self.window,
+                                             self.allocation.width, self.allocation.height,
+                                             gtk.gdk.WINDOW_CHILD,
+                                             (gtk.gdk.SCROLL_MASK |
+                                              gtk.gdk.BUTTON_PRESS_MASK |
+                                              gtk.gdk.BUTTON_RELEASE_MASK |
+                                              gtk.gdk.POINTER_MOTION_MASK |
+                                              gtk.gdk.POINTER_MOTION_HINT_MASK),
+                                             gtk.gdk.INPUT_ONLY,
+                                             x=0, y=0)
+        self.__watch_window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
+        self.__watch_window.set_user_data(self)
+
+        if self.get_buffer().worksheet.state == NotebookFile.EXECUTING:
+            self.__watch_window.show()
+            self.__watch_window.raise_()
+
+    def do_unrealize(self):
+        self.__watch_window.set_user_data(None)
+        self.__watch_window.destroy()
+        self.__watch_window = None
+        gtk.TextView.do_unrealize(self)
+
+    def do_size_allocate(self, allocation):
+        gtk.TextView.do_size_allocate(self, allocation)
+        if (self.flags() & gtk.REALIZED) != 0:
+            self.__watch_window.resize(allocation.width, allocation.height)
 
     def __expose_window_left(self, event):
         (_, start_y) = self.window_to_buffer_coords(gtk.TEXT_WINDOW_LEFT, 0, event.area.y)
@@ -265,11 +305,32 @@ class ShellView(gtk.TextView):
         self.__doc_popup.popdown()
         return gtk.TextView.do_focus_out_event(self, event)
 
+    def __rewrite_window(self, event):
+        # Mouse events on the "watch window" that covers the text view
+        # during calculation need to be forwarded to the real text window
+        # since it looks bad if keynav works, but you can't click on the
+        # window to set the cursor, select text, and so forth
+
+        if event.window == self.__watch_window:
+            event.window = self.get_window(gtk.TEXT_WINDOW_TEXT)
+
     def do_button_press_event(self, event):
+        self.__rewrite_window(event)
+
         self.__doc_popup.popdown()
-            
+
         return gtk.TextView.do_button_press_event(self, event)
-    
+
+    def do_button_release_event(self, event):
+        self.__rewrite_window(event)
+
+        return gtk.TextView.do_button_release_event(self, event)
+
+    def do_motion_notify_event(self, event):
+        self.__rewrite_window(event)
+
+        return gtk.TextView.do_motion_notify_event(self, event)
+
     def do_key_press_event(self, event):
         buf = self.get_buffer()
 
@@ -478,6 +539,14 @@ class ShellView(gtk.TextView):
 
     def on_chunk_status_changed(self, worksheet, chunk):
         self.__invalidate_status(chunk)
+
+    def on_notify_state(self, worksheet, param_spec):
+        if (self.flags() & gtk.REALIZED) != 0:
+            if worksheet.state == NotebookFile.EXECUTING:
+                self.__watch_window.show()
+                self.__watch_window.raise_()
+            else:
+                self.__watch_window.hide()
 
     def on_add_custom_result(self, buf, result, anchor):
         widget = result.create_widget()
