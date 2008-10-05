@@ -286,25 +286,23 @@ class BundleBuilder(Builder):
 
 ############################################################
 
-usage = "usage: %prog [options]"
+parser = OptionParser()
+parser.add_option("-o", "--output",
+                  help="Filename of output to create")
+parser.add_option("-d", "--debug", action="store_true",
+                  help="Enable debugging messages")
+parser.add_option("-v", "--verbose", action="store_true",
+                  help="Enable verbose messages")
+parser.add_option("", "--add-arch", action="append",
+                  help="Specify a path to an alternate architecture jhbuild install tree")
+parser.add_option("", "--dmg", action="store_true",
+                  help="Create a .dmg file (default)")
+parser.add_option("", "--app", action="store_true",
+                  help="Create a .app directory")
 
-op = OptionParser(usage=usage)
-op.add_option("-o", "--output",
-              help=("Filename of output to create"))
-op.add_option("-d", "--debug", action="store_true",
-              help=("Enable debugging messages"))
-op.add_option("-v", "--verbose", action="store_true",
-              help=("Enable verbose messages"))
-op.add_option("", "--add-arch", action="append",
-              help=("Specify a path to an alternate architecture jhbuild install tree"))
-op.add_option("", "--dmg", action="store_true",
-              help=("Create a .dmg file (default)"))
-op.add_option("", "--app", action="store_true",
-              help=("Create a .app directory"))
-
-options, args = op.parse_args()
+options, args = parser.parse_args()
 if args:
-    op.print_usage(sys.stderr)
+    parser.print_usage(sys.stderr)
     sys.exit(1)
 
 if options.debug:

@@ -17,15 +17,13 @@ def main():
     # -psx (process serial number) argument. Strip that out.
     sys.argv = filter(lambda x: not x.startswith("-psn"), sys.argv)
 
-    usage = "usage: %prog [options]"
-    op = OptionParser(usage=usage)
-    op.add_option("-u", "--ui", type="choice", choices=("standard", "hildon", "mini"),
-                  default="standard",  help=("which user interface to use (standard, "
-                                             "hildon, or mini), default=%default"))
-    op.add_option("-d", "--debug", action="store_true",
-                  help=("enable internal debug messages"))
+    parser = OptionParser()
+    parser.add_option("-u", "--ui", choices=("standard", "hildon", "mini"),
+                      help="the user interface mode (standard, hildon, or mini)")
+    parser.add_option("-d", "--debug", action="store_true",
+                      help="enable internal debug messages")
 
-    options, args = op.parse_args()
+    options, args = parser.parse_args()
 
     if options.debug:
         logging.basicConfig(level=logging.DEBUG)

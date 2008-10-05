@@ -405,19 +405,17 @@ All rights reserved.
 
 ############################################################
 
-usage = "usage: %prog [options]"
+parser = OptionParser()
+parser.add_option("-o", "--output",
+                  help="Filename of MSI to create")
+parser.add_option("-d", "--debug", action="store_true",
+                  help="Enable debugging messages")
+parser.add_option("-v", "--verbose", action="store_true",
+                  help="Enable verbose messages")
 
-op = OptionParser(usage=usage)
-op.add_option("-o", "--output",
-              help=("Filename of MSI to create"))
-op.add_option("-d", "--debug", action="store_true",
-              help=("Enable debugging messages"))
-op.add_option("-v", "--verbose", action="store_true",
-              help=("Enable verbose messages"))
-
-options, args = op.parse_args()
+options, args = parser.parse_args()
 if args:
-    op.print_usage(sys.stderr)
+    parser.print_usage(sys.stderr)
     sys.exit(1)
 
 if options.debug:
