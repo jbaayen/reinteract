@@ -42,7 +42,9 @@ class Application():
         if example_state.get_last_opened() == -1:
             paths.append(global_settings.examples_dir)
         paths = [p for p in paths if os.path.isdir(p)]
-        paths = list(set(paths))
+        print paths
+        paths = list(set((os.path.normpath(path) for path in paths)))
+        print paths
 
         return [NotebookInfo(p) for p in paths]
 
