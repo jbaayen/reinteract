@@ -1,3 +1,10 @@
+# Copyright 2007 Owen Taylor
+#
+# This file is part of Reinteract and distributed under the terms
+# of the BSD license. See the file COPYING in the Reinteract
+# distribution for full details.
+#
+########################################################################
 #
 # Very, very partial implementation of g_markup_printf_escaped(). Doesn't
 # handling things like a %c with an integer argument that evaluates to

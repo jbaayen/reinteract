@@ -1,3 +1,11 @@
+# Copyright 2008 Owen Taylor
+#
+# This file is part of Reinteract and distributed under the terms
+# of the BSD license. See the file COPYING in the Reinteract
+# distribution for full details.
+#
+########################################################################
+#
 # The global application object; it from global_settings because it handles tracking
 # the user interface objects of the current session, rather than global options and
 # preferences.

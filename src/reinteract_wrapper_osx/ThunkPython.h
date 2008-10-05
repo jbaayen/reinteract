@@ -1,4 +1,13 @@
-/* -*- mode: C; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
+/* -*- mode: C; c-basic-offset: 4; indent-tabs-mode: nil; -*-
+ *
+ * Copyright 2008 Owen Taylor
+ *
+ * This file is part of Reinteract and distributed under the terms
+ * of the BSD license. See the file COPYING in the Reinteract
+ * distribution for full details.
+ *
+ ************************************************************************/
+
 /*
  * This header file is used to redirect the parts of the Python API that we
  * we use to a VTable of symbols dynamically looked up via dlopen/dlsym
