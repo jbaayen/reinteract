@@ -6,8 +6,11 @@ import gtk
 
 from application import application
 from file_list import FileList
+from format_escaped import format_escaped
 from global_settings import global_settings
+from library_editor import LibraryEditor
 from notebook import Notebook, NotebookFile
+from worksheet_editor import WorksheetEditor
 
 if global_settings.main_menu_mode:
     from main_menu import main_menu
@@ -109,6 +112,33 @@ class BaseWindow:
                 main_menu.enable_action(action_name)
             else:
                 main_menu.disable_action(action_name)
+
+    def _load_editor(self, filename):
+        if filename.endswith(".rws") or filename.endswith(".RWS"):
+            editor = WorksheetEditor(self.notebook)
+        elif filename.endswith(".py") or filename.endswith(".PY"):
+            editor = LibraryEditor(self.notebook)
+        else:
+            dialog = gtk.MessageDialog(buttons=gtk.BUTTONS_OK,
+                                       type=gtk.MESSAGE_ERROR)
+            dialog.set_markup(format_escaped("<big><b>Don't know how to open '%s'</b></big>", os.path.basename(filename)))
+            dialog.format_secondary_text("'%s' does not have a recognized file extension" % filename)
+            dialog.run()
+            dialog.destroy()
+            return None
+
+        try:
+            editor.load(filename)
+        except IOError, e:
+            dialog = gtk.MessageDialog(buttons=gtk.BUTTONS_OK,
+                                       type=gtk.MESSAGE_ERROR)
+            dialog.set_markup(format_escaped("<big><b>Cannot open '%s'</b></big>", os.path.basename(filename)))
+            dialog.format_secondary_text("Error opening '%s': %s" %(filename, e.strerror))
+            dialog.run()
+            dialog.destroy()
+            return None
+
+        return editor
 
     #######################################################
     # Callbacks

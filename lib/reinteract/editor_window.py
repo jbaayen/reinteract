@@ -7,9 +7,7 @@ import sys
 from application import application
 from base_window import BaseWindow
 from global_settings import global_settings
-from library_editor import LibraryEditor
 from notebook import Notebook
-from worksheet_editor import WorksheetEditor
 
 class EditorWindow(BaseWindow):
     UI_STRING="""
@@ -122,16 +120,14 @@ class EditorWindow(BaseWindow):
         return True
 
     def load(self, filename):
+        editor = self._load_editor(filename)
+        if not editor:
+            return False
+
         if self.current_editor:
             self.current_editor.destroy()
 
-        if filename.endswith(".rws") or filename.endswith(".RWS"):
-            self.current_editor = WorksheetEditor(self.notebook)
-        elif filename.endswith(".py") or filename.endswith(".PY"):
-            self.current_editor = LibraryEditor(self.notebook)
-        else:
-            # Ignore for now
-            return
+        self.current_editor = editor
 
         self.current_editor.connect('notify::modified', lambda *args: self.update_sensitivity())
         self.current_editor.connect('notify::title', self.__update_title)
@@ -139,8 +135,10 @@ class EditorWindow(BaseWindow):
         self.main_vbox.pack_start(self.current_editor.widget, expand=True, fill=True)
 
         self.path = filename
-        self.current_editor.load(filename)
+
         self.update_sensitivity()
 
         self.current_editor.view.grab_focus()
         self.__update_title()
+
+        return True

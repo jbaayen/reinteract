@@ -41,6 +41,8 @@ def main():
         if options.ui == "standard":
             for arg in args:
                 application.open_path(os.path.abspath(arg))
+            if len(application.windows) == 0: # nothing opened successfully
+                sys.exit(1)
         else: # mini-mode, can specify one notebook
             if len(args) > 1:
                 print >>sys.stderr, "Ignoring extra command line arguments."
@@ -62,7 +64,8 @@ def main():
                 dialog.run()
                 sys.exit(1)
 
-            application.open_path(absolute)
+            if not application.open_path(absolute):
+                sys.exit(1)
     else:
         recent_notebooks = application.state.get_recent_notebooks(max_count=1)
         if len(recent_notebooks) > 0:

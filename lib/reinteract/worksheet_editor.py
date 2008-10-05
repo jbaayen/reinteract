@@ -70,12 +70,9 @@ class WorksheetEditor(Editor):
         self.buf.worksheet.close()
 
     def load(self, filename):
-        if not os.path.exists(filename):
-            self.buf.worksheet.filename = filename
-        else:
-            self.buf.worksheet.load(filename)
-            self.buf.place_cursor(self.buf.get_start_iter())
-            self.calculate()
+        self.buf.worksheet.load(filename)
+        self.buf.place_cursor(self.buf.get_start_iter())
+        self.calculate()
 
     def calculate(self):
         self.view.calculate()

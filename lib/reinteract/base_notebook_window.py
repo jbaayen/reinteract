@@ -260,22 +260,18 @@ class BaseNotebookWindow(BaseWindow):
         for editor in self.editors:
             if editor.file == file:
                 self._make_editor_current(editor)
-                return
+                return True
 
-        if isinstance(file, WorksheetFile):
-            editor = WorksheetEditor(self.notebook)
-        elif isinstance(file, LibraryFile):
-            editor = LibraryEditor(self.notebook)
-        else:
-            # Unknown, ignore for now
-            return
-
-        editor.load(filename)
+        editor = self._load_editor(filename)
+        if not editor:
+            return False
 
         self._add_editor(editor)
         self._make_editor_current(editor)
 
         self.__close_initial_editor()
+
+        return True
 
     def add_initial_worksheet(self):
         """If there are no editors open, add a new blank worksheet"""

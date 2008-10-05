@@ -151,9 +151,14 @@ class Application():
             from editor_window import EditorWindow
 
             window = EditorWindow()
-            window.load(absolute)
+            if not window.load(absolute):
+                window.window.destroy()
+                return False
+
             window.show()
             self.windows.add(window)
+
+        return True
 
     def create_notebook(self, path, description=None):
         os.makedirs(path)
