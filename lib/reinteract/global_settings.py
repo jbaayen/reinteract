@@ -7,6 +7,5 @@ class GlobalSettings(gobject.GObject):
     examples_dir = gobject.property(type=str)
     mini_mode = gobject.property(type=bool, default=False)
     main_menu_mode = gobject.property(type=bool, default=False)
-    use_hildon = gobject.property(type=bool, default=False)
 
 global_settings = GlobalSettings()

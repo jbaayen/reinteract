@@ -154,13 +154,9 @@ def run(parent=None):
             selected_info = builder.get_selected_info()
             result_window = application.open_notebook(selected_info.folder)
         elif response == 1: # Browse...
-            if global_settings.use_hildon:
-                import hildon
-                chooser = hildon.FileChooserDialog(parent, gtk.FILE_CHOOSER_ACTION_OPEN)
-            else:
-                chooser = gtk.FileChooserDialog("Open Notebook...", parent, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
-                                                (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                                 gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
+            chooser = gtk.FileChooserDialog("Open Notebook...", parent, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+                                            (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                             gtk.STOCK_OPEN,   gtk.RESPONSE_OK))
             chooser.set_default_response(gtk.RESPONSE_OK)
 
             response = chooser.run()

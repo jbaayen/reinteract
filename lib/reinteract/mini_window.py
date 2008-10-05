@@ -10,7 +10,7 @@ from notebook import NotebookFile
 class MiniWindow(BaseNotebookWindow):
     UI_STRING="""
 <ui>
-   <%(menu_element)s name="TopMenu">
+   <menubar name="TopMenu">
       <menu action="notebook">
          <menuitem action="new-notebook"/>
          <menuitem action="open-notebook"/>
@@ -40,7 +40,7 @@ class MiniWindow(BaseNotebookWindow):
 	<menu action="help">
         <menuitem action="about"/>
       </menu>
-   </%(menu_element)s>
+   </menubar>
    <toolbar name="ToolBar">
       <toolitem action="new-worksheet"/>
       <toolitem action="save"/>
@@ -52,16 +52,6 @@ class MiniWindow(BaseNotebookWindow):
 </ui>
 """
     def __init__(self, notebook):
-        if global_settings.use_hildon:
-            global hildon
-            import hildon
-
-            menu_element = 'popup'
-        else:
-            menu_element = 'menubar'
-
-        self.UI_STRING = self.UI_STRING % { 'menu_element': menu_element }
-
         self.__pages_items = []
         BaseNotebookWindow.__init__(self, notebook)
 
@@ -72,17 +62,8 @@ class MiniWindow(BaseNotebookWindow):
     #######################################################
 
     def _create_window(self, menu, toolbar):
-        if global_settings.use_hildon:
-            self.window = hildon.Window()
-            self.window.set_menu(menu)
-            self.window.add_toolbar(toolbar)
-
-            settings = self.window.get_settings()
-            settings.set_property("gtk-button-images", False)
-            settings.set_property("gtk-menu-images", False)
-        else:
-            BaseNotebookWindow._create_window(self, menu, toolbar)
-            toolbar.set_style(gtk.TOOLBAR_ICONS)
+        BaseNotebookWindow._create_window(self, menu, toolbar)
+        toolbar.set_style(gtk.TOOLBAR_ICONS)
 
     def _fill_content(self):
         self.nb_widget.set_show_tabs(False)

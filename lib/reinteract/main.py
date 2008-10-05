@@ -18,8 +18,8 @@ def main():
     sys.argv = filter(lambda x: not x.startswith("-psn"), sys.argv)
 
     parser = OptionParser()
-    parser.add_option("-u", "--ui", choices=("standard", "hildon", "mini"),
-                      help="the user interface mode (standard, hildon, or mini)")
+    parser.add_option("-u", "--ui", choices=("standard", "mini"),
+                      help="the user interface mode (standard or mini)")
     parser.add_option("-d", "--debug", action="store_true",
                       help="enable internal debug messages")
 
@@ -28,15 +28,7 @@ def main():
     if options.debug:
         logging.basicConfig(level=logging.DEBUG)
 
-    global_settings.mini_mode = options.ui == "hildon" or options.ui == "mini"
-
-    if options.ui == "hildon":
-        try:
-            import hildon
-            global_settings.use_hildon = True
-        except ImportError, e:
-            print >>sys.stderr, "Error importing hildon. Falling back to mini ui."
-            options.ui = "mini"
+    global_settings.mini_mode = options.ui == "mini"
 
     user_ext_path = os.path.expanduser(os.path.join('~', '.reinteract', 'modules'))
     if os.path.exists(user_ext_path):
