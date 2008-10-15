@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
      * NSApp global variable */
     [NSApplication sharedApplication];
 
-#ifdef USE_PYTHON_THUNKs
+#ifdef USE_PYTHON_THUNKS
     /* Find the right version of Python and fill the vtable of "thunks"
      * to that library */
     if (!init_thunk_python())
