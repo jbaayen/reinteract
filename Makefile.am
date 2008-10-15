@@ -146,13 +146,13 @@ install-exec-hook: build-local-app
 	    b=`basename $$f` ;					\
 	    d=`dirname $$f` ;					\
 	    if test $$b = Reinteract ; then			\
-		$(MKDIR_P) $(APPDIR)/$$d ;			\
-		$(INSTALL_PROGRAM) $$f $(APPDIR)/$$f ;		\
+		$(MKDIR_P) $(DESTDIR)$(APPDIR)/$$d ;		\
+		$(INSTALL_PROGRAM) $$f $(DESTDIR)$(APPDIR)/$$f ;\
 	    elif test $$b = UNINSTALLED ; then			\
 		: ;						\
 	    else						\
-		$(MKDIR_P) $(APPDIR)/$$d ;			\
-		$(INSTALL_DATA) $$f $(APPDIR)/$$f ;		\
+		$(MKDIR_P) $(DESTDIR)$(APPDIR)/$$d ;		\
+		$(INSTALL_DATA) $$f $(DESTDIR)$(APPDIR)/$$f ;	\
 	    fi							\
 	done
 endif
