@@ -25,6 +25,21 @@ if test "x$GCC" = "xyes"; then
 fi
 changequote([,])dnl
 
+APPDIR=
+AC_ARG_WITH(appdir,
+	    [AC_HELP_STRING([--with-appdir=APPDIR],
+	         [On OS X, install Reinteract.app into APPDIR])],
+            [if test x$withval = xyes ; then
+	        AC_MSG_ERROR([Directory must be specified as argument to --with-appdir])
+	     elif test x$withval = xno ; then
+	        :
+	     else
+	        APPDIR=$withval
+	     fi])
+
+AM_CONDITIONAL(INSTALL_APP, test "x$APPDIR" != x)
+AC_SUBST(APPDIR)
+
 use_python_thunks=false
 AC_ARG_ENABLE(python-thunks,
               [AC_HELP_STRING([--enable-python-thunks],

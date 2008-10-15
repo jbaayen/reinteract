@@ -136,8 +136,27 @@ build-local-app: ReinteractWrapper
 	cp -p $(top_srcdir)/data/Info.plist Reinteract.app/Contents
 	cp -pr $(top_srcdir)/data/MainMenu.nib Reinteract.app/Contents/Resources
 	cp -p $(top_srcdir)/data/Reinteract.icns Reinteract.app/Contents/Resources
+	touch Reinteract.app/Contents/Resources/UNINSTALLED
 
 all-local: build-local-app
+
+if INSTALL_APP
+install-exec-hook: build-local-app
+	for f in `find Reinteract.app -type f` ; do		\
+	    b=`basename $$f` ;					\
+	    d=`dirname $$f` ;					\
+	    if test $$b = Reinteract ; then			\
+		$(MKDIR_P) $(APPDIR)/$$d ;			\
+		$(INSTALL_PROGRAM) $$f $(APPDIR)/$$f ;		\
+	    elif test $$b = UNINSTALLED ; then			\
+		: ;						\
+	    else						\
+		$(MKDIR_P) $(APPDIR)/$$d ;			\
+		$(INSTALL_DATA) $$f $(APPDIR)/$$f ;		\
+	    fi							\
+	done
+endif
+
 endif
 
 ReinteractWrapper_SOURCES  =					\
@@ -153,7 +172,12 @@ ReinteractWrapper_SOURCES  +=					\
 	     src/reinteract_wrapper_osx/ThunkPython.h
 endif
 
-INCLUDES = $(PYTHON_INCLUDES) $(WRAPPER_CFLAGS)
+INCLUDES =					\
+	$(PYTHON_INCLUDES)			\
+	$(WRAPPER_CFLAGS)			\
+	-DEXAMPLESDIR=\"$(examplesdir)\"	\
+	-DDIALOGSDIR=\"$(pkgdatadir)/dialogs\"
+
 ReinteractWrapper_LDFLAGS = -framework Cocoa $(PYTHON_LIBS)
 
 EXTRA_DIST =					\

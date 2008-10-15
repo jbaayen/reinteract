@@ -63,6 +63,17 @@ dirExists(NSString *path)
     return S_ISDIR(s.st_mode);
 }
 
+static BOOL
+fileExists(NSString *path)
+{
+    struct stat s;
+
+    if (stat([path UTF8String], &s) != 0)
+        return FALSE;
+
+    return TRUE;
+}
+
 int main(int argc, char *argv[])
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -95,8 +106,10 @@ int main(int argc, char *argv[])
 
     /* If we are being run from the full bundle, then our Python files, etc.
      * are inside the Resources directory of the bundle. If we running from
-     * the shell bundle we create uninstalled, then we expect to find stuff
-     * up one directory from the to of the bundle.
+     * the shell bundle we create uninstalled, then there is a special marker
+     * file indicating that, and we we expect to find stuff up one directory
+     * from the top of the bundle. Otherwise, the location of files is based
+     * on the installation directory that is configured.
      */
     NSString *pythonDir = [resourcePath stringByAppendingPathComponent:@"python"];
     if (dirExists(pythonDir)) {
@@ -120,7 +133,7 @@ int main(int argc, char *argv[])
         setenv("GTK_IM_MODULE_FILE", [imModuleFile UTF8String], 1);
         setenv("PANGO_LIBDIR", [libdir UTF8String], 1);
         setenv("PANGO_SYSCONFDIR", [sysconfdir UTF8String], 1);
-    } else {
+    } else if (fileExists([resourcePath stringByAppendingPathComponent:@"UNINSTALLED"])) {
         NSString *baseDir = [[mainBundle bundlePath] stringByDeletingLastPathComponent];
         dialogsDir = [baseDir stringByAppendingPathComponent:@"dialogs"];
         examplesDir = [baseDir stringByAppendingPathComponent:@"examples"];
@@ -130,6 +143,9 @@ int main(int argc, char *argv[])
         PyObject *toInsert = Py_BuildValue("(s)", [pythonDir UTF8String]);
         PySequence_SetSlice(sysPath, 0, 0, toInsert);
         Py_DECREF(toInsert);
+    } else {
+        dialogsDir = @DIALOGSDIR;
+        examplesDir = @EXAMPLESDIR;
     }
 
     /* Set attributes in the global_settings objects */
