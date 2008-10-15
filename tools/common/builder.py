@@ -172,6 +172,7 @@ class Builder(object):
 
                 # Some config variables irrelevant for our purposes
                 'PYTHON_INCLUDES' : '',
+                'PYTHON_LIBS' : '',
                 'WRAPPER_CFLAGS' : ''
            })
         if relative == '':
