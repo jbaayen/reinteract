@@ -10,6 +10,7 @@
 
 /* See comment in ThunkPython.h for what this is about */
 
+#include <config.h>
 #include <dlfcn.h>
 #include <stdlib.h>
 

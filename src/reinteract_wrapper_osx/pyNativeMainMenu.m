@@ -8,6 +8,8 @@
  *
  ************************************************************************/
 
+#include <config.h>
+
 #include "ThunkPython.h"
 #include <gdk/gdk.h>
 #include <gdk/gdkquartz.h>

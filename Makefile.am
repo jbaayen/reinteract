@@ -145,12 +145,16 @@ ReinteractWrapper_SOURCES  =					\
 	     src/reinteract_wrapper_osx/MenuController.m	\
 	     src/reinteract_wrapper_osx/MenuController.h	\
 	     src/reinteract_wrapper_osx/pyNativeMainMenu.m	\
-	     src/reinteract_wrapper_osx/pyNativeMainMenu.h	\
+	     src/reinteract_wrapper_osx/pyNativeMainMenu.h
+
+if USE_PYTHON_THUNKS
+ReinteractWrapper_SOURCES  +=					\
 	     src/reinteract_wrapper_osx/ThunkPython.c		\
 	     src/reinteract_wrapper_osx/ThunkPython.h
+endif
 
 INCLUDES = $(PYTHON_INCLUDES) $(WRAPPER_CFLAGS)
-ReinteractWrapper_LDFLAGS = -framework Cocoa
+ReinteractWrapper_LDFLAGS = -framework Cocoa $(PYTHON_LIBS)
 
 EXTRA_DIST =					\
              ChangeLog				\

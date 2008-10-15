@@ -8,6 +8,8 @@
  *
  ************************************************************************/
 
+#include <config.h>
+
 #import "MenuController.h"
 
 /* The MenuController object is a delegate that receives messages when

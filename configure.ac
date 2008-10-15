@@ -6,6 +6,8 @@ AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AM_MAINTAINER_MODE
 AM_PATH_PYTHON(2.4)
 
+AC_CONFIG_HEADERS(config.h)
+
 AC_PROG_CC
 AC_PROG_OBJC
 
@@ -23,6 +25,25 @@ if test "x$GCC" = "xyes"; then
 fi
 changequote([,])dnl
 
+use_python_thunks=false
+AC_ARG_ENABLE(python-thunks,
+              [AC_HELP_STRING([--enable-python-thunks],
+	         [On OS X, lazily locate Python at run-time (default is no)])],
+              [if test "x$enableval" != xno ; then use_python_thunks=true ; fi])
+
+if $use_python_thunks ; then
+   AC_DEFINE(USE_PYTHON_THUNKS, 1,
+             [Define to locate Python lazily at runtime])]
+fi
+
+AM_CONDITIONAL(USE_PYTHON_THUNKS, $use_python_thunks)
+
+dnl A macro to get a variable from distutils.sysconfig
+dnl reinteract_GET_CONFIG_VAR(SHELL_NAME, SYSCONFIG_NAME)
+dnl
+AC_DEFUN([reinteract_GET_CONFIG_VAR],
+    [$1=`$PYTHON -c "import sys; import distutils.sysconfig; sys.stdout.write(distutils.sysconfig.get_config_var('$2'))"`])
+
 AC_CANONICAL_HOST
 
 platform_osx=false
@@ -34,6 +55,31 @@ case $host in
         platform_osx=true
         PKG_CHECK_MODULES(WRAPPER, [pygobject-2.0 >= 2.12 gtk+-2.0 >= 2.12])
         JD_CHECK_PYTHON_HEADERS(,[AC_MSG_ERROR(could not find Python headers)])
+
+        if $use_python_thunks ; then : ; else
+	    # Need to figure out how to link against Python at compile time
+	    AC_MSG_CHECKING([how to link against Python])
+	    reinteract_GET_CONFIG_VAR(python_framework_prefix, PYTHONFRAMEWORKPREFIX)
+	    if test x$python_framework_prefix = x ; then
+	    	reinteract_GET_CONFIG_VAR(python_libdir, LIBDIR)
+	        PYTHON_LIBS="-L$python_libdir -lpython$PYTHON_VERSION"
+            else
+	        PYTHON_LIBS="-F$python_framework_prefix -framework Python"
+            fi
+	    AC_MSG_RESULT($PYTHON_LIBS)
+	    AC_SUBST(PYTHON_LIBS)
+
+	    # Test to see if what we found actually works
+	    save_CFLAGS="$CFLAGS"
+	    CFLAGS="$CFLAGS $PYTHON_INCLUDES"
+	    save_LIBS="$LIBS"
+	    LIBS="$LIBS $PYTHON_LIBS"
+            AC_LINK_IFELSE(AC_LANG_PROGRAM([#include <Python.h>], [Py_Initialize();]),
+	                   :,
+		  	   AC_MSG_ERROR([Linking against Python didn't work; see config.log for details]))
+	    CFLAGS="$save_CFLAGS"
+	    LIBS="$save_LIBS"
+	fi
      ;;
 esac
 AM_CONDITIONAL(PLATFORM_OSX, $platform_osx)

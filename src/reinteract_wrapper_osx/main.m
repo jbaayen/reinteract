@@ -8,6 +8,8 @@
  *
  ************************************************************************/
 
+#include <config.h>
+
 #include "ThunkPython.h"
 
 #include <stdio.h>
@@ -72,10 +74,12 @@ int main(int argc, char *argv[])
      * NSApp global variable */
     [NSApplication sharedApplication];
 
+#ifdef USE_PYTHON_THUNKs
     /* Find the right version of Python and fill the vtable of "thunks"
      * to that library */
     if (!init_thunk_python())
         exit(1);
+#endif
 
     /* Normal Python initialization */
     Py_Initialize();

@@ -26,6 +26,12 @@
 
 #include <Python.h>
 
+#ifndef PACKAGE_NAME
+#error "config.h must be included before ThunkPython.h"
+#endif
+
+#ifdef USE_PYTHON_THUNKS
+
 struct {
     int (*thunk_PyArg_ParseTuple)(PyObject *, const char *, ...);
     PyObject * (*thunk_PyErr_Occurred)(void);
@@ -97,5 +103,7 @@ struct {
 #define PyExc_TypeError (*python_thunks.thunk_PyExc_TypeError)
 
 int init_thunk_python();
+
+#endif USE_PYTHON_THUNKS
 
 #endif /* __THUNK_PYTHON_H__ */
