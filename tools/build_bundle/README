@@ -29,7 +29,7 @@ or to just build an app bundle and not a dmg.
 
  * Build a universal binary of ReinteractWrapper
 
-     JHB_VARIANT=release-i386 jhbuild shell
+     JHB=reinteract JHB_VARIANT=release-i386 jhbuild shell
      export OBJC="gcc -arch i386 -arch ppc"
      export CC="gcc -arch i386 -arch ppc"
      export CFLAGS="-O2"
