@@ -48,7 +48,7 @@ AC_ARG_ENABLE(python-thunks,
 
 if $use_python_thunks ; then
    AC_DEFINE(USE_PYTHON_THUNKS, 1,
-             [Define to locate Python lazily at runtime])]
+             [Define to locate Python lazily at runtime])
 fi
 
 AM_CONDITIONAL(USE_PYTHON_THUNKS, $use_python_thunks)
