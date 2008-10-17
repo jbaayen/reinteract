@@ -1,12 +1,10 @@
 [Desktop Entry]
-Encoding=UTF-8
 Name=Reinteract
 Comment=Interactive Python shell
 Exec=reinteract %U
 Terminal=false
 Type=Application
 StartupNotify=true
-MimeType=text/x-python;
-Icon=reinteract.svg
-Categories=GNOME;GTK;Utility;
-
+MimeType=text/x-reinteract-worksheet;application/x-reinteract-notebook;
+Icon=reinteract
+Categories=GNOME;GTK;Education;Science;
