@@ -2,7 +2,6 @@ LIST_END =
 
 SUBDIRS = data dialogs
 
-reinteractdir = $(bindir)
 bin_SCRIPTS = bin/reinteract
 dist_noinst_SCRIPTS =				\
 	bin/uninst.py				\
