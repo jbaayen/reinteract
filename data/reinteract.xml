@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+   <mime-type type="application/x-reinteract-notebook">
+     <glob pattern="*.rnb"/>
+   </mime-type>
+   <mime-type type="text/x-reinteract-worksheet">
+     <sub-class-of type="text/plain"/>
+     <glob pattern="*.rws"/>
+   </mime-type>
+</mime-info>
