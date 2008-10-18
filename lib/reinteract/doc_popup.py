@@ -271,7 +271,7 @@ class DocPopup(Popup):
         else:
             return self.event(event)
 
-if __name__ == "__main__":
+if __name__ == "__main__": # INTERACTIVE
     import re
     
     popup = DocPopup()

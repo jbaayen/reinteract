@@ -179,6 +179,8 @@ INCLUDES =					\
 
 ReinteractWrapper_LDFLAGS = -framework Cocoa $(PYTHON_LIBS)
 
+TESTS=tools/run_tests.sh
+
 EXTRA_DIST =					\
              ChangeLog				\
 	     autogen.sh				\
@@ -192,6 +194,7 @@ EXTRA_DIST =					\
 	     $(BUNDLE_EXTRA)			\
 	     $(BUILD_DEPS_OSX_EXTRA)		\
 	     src/reinteract_wrapper_osx/README	\
+	     tools/run_tests.sh			\
              $(LIST_END)
 
 DISTCLEANFILES =                                                              \
