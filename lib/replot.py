@@ -8,6 +8,7 @@
 
 import cairo
 import gtk
+import matplotlib
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
 import numpy
@@ -123,19 +124,25 @@ class PlotWidget(gtk.DrawingArea):
 
     def __save(self, filename):
         # The save/restore here was added to matplotlib's after 0.90. We duplicate
-        # it for compatibility with older versions.
-        
-        orig_dpi = self.figure.dpi.get()
-        orig_facecolor = self.figure.get_facecolor()
-        orig_edgecolor = self.figure.get_edgecolor()
+        # it for compatibility with older versions. (The code would need modification
+        # for 0.98 and newer, which is the reason for the particular version in the
+        # check)
+
+        version = [int(x) for x in matplotlib.__version__.split('.')]
+        need_save = version[:2] < [0, 98]
+        if need_save:
+            orig_dpi = self.figure.dpi.get()
+            orig_facecolor = self.figure.get_facecolor()
+            orig_edgecolor = self.figure.get_edgecolor()
 
         try:
             self.canvas.print_figure(filename)
         finally:
-            self.figure.dpi.set(orig_dpi)
-            self.figure.set_facecolor(orig_facecolor)
-            self.figure.set_edgecolor(orig_edgecolor)
-            self.figure.set_canvas(self.canvas)
+            if need_save:
+                self.figure.dpi.set(orig_dpi)
+                self.figure.set_facecolor(orig_facecolor)
+                self.figure.set_edgecolor(orig_edgecolor)
+                self.figure.set_canvas(self.canvas)
 
 #    def do_size_allocate(self, allocation):
 #        gtk.DrawingArea.do_size_allocate(self, allocation)
