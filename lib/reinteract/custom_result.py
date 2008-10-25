@@ -18,6 +18,7 @@ def show_menu(widget, event, save_callback=None):
     toplevel = widget.get_toplevel()
         
     menu = gtk.Menu()
+    menu.attach_to_widget(widget, None)
     menu_item = gtk.ImageMenuItem(stock_id=gtk.STOCK_SAVE_AS)
     menu_item.show()
     menu.add(menu_item)
