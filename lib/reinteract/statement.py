@@ -220,7 +220,7 @@ class Statement:
                 variable = mutation
 
             try:
-                if type(scope[variable]) != type(sys):
+                if variable in scope and type(scope[variable]) != type(sys):
                     scope[variable] = copy.copy(scope[variable])
             except:
                 self.results.append(WarningResult("Variable '%s' apparently modified, but can't copy it" % variable))
