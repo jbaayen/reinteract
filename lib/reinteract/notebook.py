@@ -147,6 +147,12 @@ class Notebook(gobject.GObject):
             if folder == None and f == "index.rnb":
                 continue
 
+            # We handle filenames starting with . as hidden on all platforms,
+            # valuing notebook portability over exact correspondance with
+            # local convention.
+            if f.startswith('.'):
+                continue
+
             if folder:
                 relative = os.path.join(folder, f)
             else:

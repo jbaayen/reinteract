@@ -85,6 +85,8 @@ class Application():
             raise ValueError("Name contains invalid character: %s" % bad)
         elif len(bad_chars) > 0:
             raise ValueError("Name contains invalid characters: %s" % bad)
+        elif name.startswith("."):
+            raise ValueError("Name cannot start with a '.'")
 
         return name
 
