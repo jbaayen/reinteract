@@ -12,7 +12,7 @@ import sys
 
 from custom_result import CustomResult
 from notebook import HelpResult
-from rewrite import Rewriter
+from rewrite import Rewriter, UnsupportedSyntaxError
 from stdout_capture import StdoutCapture
 
 class WarningResult(object):
