@@ -179,8 +179,9 @@ def __format_sequence(obj, open, close, nl, object_stack):
     return result
 
 def __format(obj, nl, object_stack):
-    if obj in object_stack:
-        return "<Recursion>", 1
+    for o in object_stack:
+        if obj is o:
+            return "<Recursion>", 1
 
     object_stack += (obj,)
 
@@ -318,6 +319,21 @@ if __name__ == "__main__":
             ['aaaaaaaaa', 'aaaaaaaaa', 'aaaaaaaaa',
              'aaaaaaaaa']
             """)
+
+    try:
+        import numpy
+
+        do_test([numpy.float64(1.0)],
+                """
+                [1.0]
+                """)
+
+        do_test([numpy.float64(1.0), numpy.float64(1.0)],
+                """
+                [1.0, 1.0]
+                """)
+    except ImportError:
+        pass
 
     a = [1]
     a.append(a)
