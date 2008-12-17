@@ -92,6 +92,24 @@ class NotebookState:
         except NoSectionError:
             return None
 
+    def get_size(self):
+        try:
+            width = self.app_state.parser.getint(self.section_name, 'width')
+            height = self.app_state.parser.getint(self.section_name, 'height')
+            return (width, height)
+        except NoOptionError:
+            return (-1, -1)
+        except NoSectionError:
+            return (-1, -1)
+
+    def get_pane_position(self):
+        try:
+            return self.app_state.parser.getint(self.section_name, 'pane_position')
+        except NoOptionError:
+            return -1
+        except NoSectionError:
+            return -1
+
     def set_open_files(self, files):
         self.__ensure_section()
         self.app_state.parser.set(self.section_name, 'open_files', _quote_list(files))
@@ -103,6 +121,17 @@ class NotebookState:
             self.app_state.parser.set(self.section_name, 'current_file', _quote(file))
         else:
             self.app_state.parser.remove_option(self.section_name, 'current_file')
+        self.app_state.queue_flush()
+
+    def set_size(self, width, height):
+        self.__ensure_section()
+        self.app_state.parser.set(self.section_name, 'width', str(width))
+        self.app_state.parser.set(self.section_name, 'height', str(height))
+        self.app_state.queue_flush()
+
+    def set_pane_position(self, position):
+        self.__ensure_section()
+        self.app_state.parser.set(self.section_name, 'pane_position', str(position))
         self.app_state.queue_flush()
 
     def update_last_opened(self):

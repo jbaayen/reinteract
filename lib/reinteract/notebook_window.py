@@ -75,7 +75,12 @@ class NotebookWindow(BaseNotebookWindow):
 
     def _fill_content(self):
         hpaned = gtk.HPaned()
-        hpaned.set_position(200)
+        position = self.state.get_pane_position()
+        if position == -1:
+            hpaned.set_position(200)
+        else:
+            hpaned.set_position(position)
+        hpaned.connect('notify::position', self.on_hpaned_notify_position)
         self.main_vbox.pack_start(hpaned, expand=True, fill=True)
 
         scrolled_window = gtk.ScrolledWindow()
@@ -131,3 +136,6 @@ class NotebookWindow(BaseNotebookWindow):
 
     def on_file_list_open_file(self, file_list, file):
         self.open_file(file)
+
+    def on_hpaned_notify_position(self, pane, gparamspec):
+        self.state.set_pane_position(pane.get_property('position'))

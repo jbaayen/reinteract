@@ -24,6 +24,13 @@ class BaseNotebookWindow(BaseWindow):
         BaseWindow.__init__(self, notebook)
 
         self.state = application.state.get_notebook_state(notebook.folder)
+        # We'll call window.set_default_size() later with an appropriate
+        # default size for the BaseNotebookWindow subclass. The size set by
+        # window.resize() takes precedence.
+        (width, height) = self.state.get_size()
+        if width != -1 and height != -1:
+            self.window.resize(width, height)
+        self.window.connect('configure-event', self.on_configure_event)
 
         self.path = notebook.folder
 
@@ -196,6 +203,9 @@ class BaseNotebookWindow(BaseWindow):
         else:
             self.state.set_current_file(None)
 
+    def _update_size(self, width, height):
+        self.state.set_size(width, height)
+
     #######################################################
     # Callbacks
     #######################################################
@@ -251,6 +261,10 @@ class BaseNotebookWindow(BaseWindow):
 
     def on_editor_notify_state(self, editor, *args):
         self._update_editor_state(editor)
+
+    def on_configure_event(self, window, event):
+        self._update_size(event.width, event.height)
+        return False
 
     #######################################################
     # Public API
