@@ -483,7 +483,8 @@ class ShellView(gtk.TextView):
         if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT) and not self.__doc_popup.focused:
             buf = self.get_buffer()
             
-            iter, _ = self.get_iter_at_position(int(event.x), int(event.y))
+            x, y = self.window_to_buffer_coords(gtk.TEXT_WINDOW_TEXT, int(event.x), int(event.y))
+            iter, _ = self.get_iter_at_position(x, y)
             line, offset = buf.iter_to_pos(iter, adjust=ADJUST_NONE)
             if line != None:
                 obj, start_line, start_offset, _,_ = buf.worksheet.get_object_at_location(line, offset)
