@@ -628,7 +628,13 @@ class Rewriter:
 
         rewritten = _rewrite_file_input(self.original, state)
         encoded = (symbol.encoding_decl, rewritten, self.encoding)
-        compiled = parser.sequence2ast(encoded).compile()
+        try:
+            compiled = parser.sequence2ast(encoded).compile()
+        except parser.ParserError, e:
+            if "Illegal number of children for try/finally node" in e.message:
+                raise UnsupportedSyntaxError("try/except/finally not supported due to Python issue 4529")
+            else:
+                raise UnsupportedSyntaxError("Unexpected parser error: " + e.message);
 
         return (compiled, state.mutated)
 
