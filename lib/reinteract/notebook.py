@@ -11,6 +11,7 @@ import copy
 import gobject
 import imp
 import os
+import pkgutil
 import sys
 
 from notebook_info import NotebookInfo
@@ -217,7 +218,7 @@ class Notebook(gobject.GObject):
 
                 return module
 
-    def __load_local_module(self, fullname, f, pathname, description):
+    def __load_local_module(self, fullname, loader):
         prefixed = self.__prefix + "." + fullname
         
         # Trick ... to change the builtins array for the module we are about
@@ -230,36 +231,49 @@ class Notebook(gobject.GObject):
         
         assert not prefixed in sys.modules
         sys.modules[prefixed] = new
-        result =  imp.load_module(prefixed, f, pathname, description)
+        result = loader.load_module(prefixed)
         assert result == new
         
         return result
 
+    # Unlike imp.find_module(), pkgutil.find_loader() doesn't take a path
+    # argument, so when we want to look in a specific path we need to "roll
+    # our own" out of lower level functionality.
+    def __find_loader_in_path(self, fullname, path):
+        for item in path:
+            importer = pkgutil.get_importer(item)
+            loader = importer.find_module(fullname)
+            if loader is not None:
+                return loader
+
+        raise ImportError("no module named " + fullname)
+
     def __find_and_load(self, fullname, name, parent=None, local=None):
+        # The 'imp' module doesn't support PEP 302 extensions like
+        # sys.path_hooks (used for zipped eggs), so we use (undocumented)
+        # functionality from pkgutil instead.
         if parent == None:
             assert local == None
             try:
-                f, pathname, description = imp.find_module(name, self.__path)
+                loader = self.__find_loader_in_path(fullname, self.__path)
                 local = True
             except ImportError:
-                f, pathname, description = imp.find_module(name)
+                loader = pkgutil.find_loader(fullname)
+                if loader is None:
+                    raise ImportError("no module named " + fullname)
                 local = False
         else:
             assert local != None
-            f, pathname, description = imp.find_module(name, parent.__path__)
+            loader = self.__find_loader_in_path(fullname, parent.__path__)
 
-        try:
-            if local:
-                module = self.__load_local_module(fullname, f, pathname, description)
-                self.__modules[name] = module
-            else:
-                module = imp.load_module(fullname, f, pathname, description)
+        if local:
+            module = self.__load_local_module(fullname, loader)
+            self.__modules[name] = module
+        else:
+            module =  loader.load_module(fullname)
 
-            if parent != None:
-                parent.__dict__[name] = module
-        finally:
-            if f != None:
-                f.close()
+        if parent != None:
+            parent.__dict__[name] = module
 
         return module, local
         
@@ -396,6 +410,7 @@ if __name__ == '__main__':
     import copy
     import os
     import tempfile
+    import zipfile
     
     from test_utils import assert_equals
 
@@ -428,6 +443,21 @@ if __name__ == '__main__':
         f.write(contents)
         f.close()
 
+    def write_zipfile(zippath, name, contents):
+        abspath = os.path.join(base, zippath)
+        dirpath = os.path.dirname(abspath)
+        try:
+            os.makedirs(dirpath)
+        except:
+            pass
+
+        if os.path.exists(abspath):
+            zip = zipfile.ZipFile(abspath, "a")
+        else:
+            zip = zipfile.ZipFile(abspath, "w")
+        zip.writestr(name, contents)
+        zip.close()
+
     def do_test(import_text, evaluate_text, expected):
         nb = Notebook(base)
 
@@ -448,6 +478,11 @@ if __name__ == '__main__':
         write_file("package2/__init__.py", "")
         write_file("package2/mod3.py", "import package1.mod2\nc = package1.mod2.b + 1")
 
+        sys.path.append(os.path.join(base, "ZippedModules.zip"))
+        write_zipfile("ZippedModules.zip", "zipmod.py", "d = 4");
+        write_zipfile("ZippedModules.zip", "zippackage/__init__.py", "");
+        write_zipfile("ZippedModules.zip", "zippackage/mod2.py", "e = 5");
+
         do_test("import mod1", "mod1.__file__", os.path.join(base, "mod1.py"))
 
         do_test("import mod1", "mod1.a", 1)
@@ -462,6 +497,9 @@ if __name__ == '__main__':
 
         # http://www.reinteract.org/trac/ticket/5
         do_test("import package2.mod3", "package2.mod3.c", 3)
+
+        do_test("import zipmod", "zipmod.d", 4)
+        do_test("import zippackage.mod2", "zippackage.mod2.e", 5)
 
         nb = Notebook(base)
         assert_equals(nb.file_for_absolute_path(os.path.dirname(base)), None)
