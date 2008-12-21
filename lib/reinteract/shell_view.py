@@ -136,7 +136,9 @@ class ShellView(gtk.TextView):
 
         for chunk in buf.worksheet.iterate_chunks(start_line, end_line + 1):
             if isinstance(chunk, StatementChunk):
-                if chunk.error_message != None:
+                if chunk.executing:
+                    self.paint_chunk(cr, event.area, chunk, (0, 1, 0), (0, 0.5, 0))
+                elif chunk.error_message != None:
                     self.paint_chunk(cr, event.area, chunk, (1, 0, 0), (0.5, 0, 0))
                 elif chunk.needs_compile:
                     self.paint_chunk(cr, event.area, chunk, (1, 1, 0), (0.5, 0.5, 0))

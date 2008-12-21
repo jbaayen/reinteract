@@ -78,6 +78,7 @@ class StatementChunk(Chunk):
         self.status_changed = False
         self.results_changed = False
 
+        self.executing = False
         self.needs_compile = False
         self.needs_execute = False
         self.statement = None
@@ -130,7 +131,10 @@ class StatementChunk(Chunk):
         if self.statement.state == Statement.COMPILE_SUCCESS:
             self.needs_compile = False
             self.needs_execute = True
+        elif self.statement.state == Statement.EXECUTING:
+            self.executing = True
         elif self.statement.state == Statement.EXECUTE_SUCCESS:
+            self.executing = False
             self.needs_compile = False
             self.needs_execute = False
             if self.results != self.statement.results:
@@ -148,6 +152,7 @@ class StatementChunk(Chunk):
             self.results = None
             self.results_changed = True
         elif self.statement.state == Statement.EXECUTE_ERROR:
+            self.executing = False
             self.needs_compile = False
             self.needs_execute = True
             self.error_message = self.statement.error_message
@@ -156,6 +161,7 @@ class StatementChunk(Chunk):
             self.results = None
             self.results_changed = True
         elif self.statement.state == Statement.INTERRUPTED:
+            self.executing = False
             self.needs_compile = False
             self.needs_execute = True
             self.error_message = "Interrupted"

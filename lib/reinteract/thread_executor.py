@@ -62,12 +62,14 @@ class ThreadExecutor(gobject.GObject):
 
     Signals
     =======
+     -  B{statement-executing}(executor, statement) emitted when the executor starts processing a statement. There is no guarantee that this signal will be emitted for each processed statement.
      -  B{statement-complete}(executor, statement) emitted when the executor is done with all processing it will do on a statement
      -  B{complete}(executor): emitted when the executor is done with all processing
 
     """
 
     __gsignals__ = {
+        'statement-executing' : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
         'statement-complete' : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
         'complete' : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
@@ -104,6 +106,8 @@ class ThreadExecutor(gobject.GObject):
 
         if self.complete:
             self.emit('complete')
+        elif last_complete < len(self.statements) - 1:
+            self.emit('statement-executing', self.statements[last_complete + 1])
 
         return False
 
@@ -133,6 +137,7 @@ class ThreadExecutor(gobject.GObject):
             for i, statement in enumerate(self.statements):
                 self.lock.acquire()
                 statement.before_execute()
+                self.__queue_idle()
                 try:
                     self.lock.release()
                     statement.execute()

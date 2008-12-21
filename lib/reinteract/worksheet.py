@@ -597,7 +597,7 @@ class Worksheet(gobject.GObject):
             if wait:
                 loop = gobject.MainLoop()
 
-            def on_statement_complete(executor, statement):
+            def on_statement_execution_state_changed(executor, statement):
                 if (statement.state == Statement.COMPILE_ERROR or
                     statement.state == Statement.EXECUTE_ERROR or
                     statement.state == Statement.INTERRUPTED):
@@ -621,7 +621,8 @@ class Worksheet(gobject.GObject):
             self.__executor = executor
             self.__executor_error = False
             self.__set_state(NotebookFile.EXECUTING)
-            executor.connect('statement-complete', on_statement_complete)
+            executor.connect('statement-executing', on_statement_execution_state_changed)
+            executor.connect('statement-complete', on_statement_execution_state_changed)
             executor.connect('complete', on_complete)
 
             if executor.compile():
