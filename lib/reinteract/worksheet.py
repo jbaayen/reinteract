@@ -210,7 +210,8 @@ class Worksheet(gobject.GObject):
             self.__changed_chunks.remove(chunk)
         except KeyError:
             pass
-        self.__deleted_chunks.add(chunk)
+        if not chunk.newly_inserted:
+            self.__deleted_chunks.add(chunk)
         if isinstance(chunk, StatementChunk):
             self.__mark_rest_for_execute(chunk.end)
 
@@ -1266,6 +1267,20 @@ if __name__ == '__main__': #pragma: no cover
     calculate()
     insert(1, 0, "#")
     assert worksheet.get_chunk(2).needs_execute
+
+    # Test that we don't send out ::chunk-deleted signal for chunks for
+    # which we never sent a ::chunk-inserted signal
+
+    clear()
+
+    insert(0, 0, "[1]")
+    clear_log()
+    worksheet.begin_user_action()
+    insert(0, 2, "\n")
+    worksheet.rescan()
+    insert(1, 0, "    ")
+    worksheet.end_user_action()
+    expect_log([CC(0,2,[0,1])])
 
     #
     # Undo tests
