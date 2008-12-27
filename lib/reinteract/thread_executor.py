@@ -255,13 +255,20 @@ if __name__ == '__main__': #pragma: no cover
             statement = Statement(s, worksheet)
             statement._expected_state = expected_state
             statement._expected_results = expected_results
+            statement._got_executing = False
             executor.add_statement(statement)
 
         loop = gobject.MainLoop()
 
+        def on_statement_executing(executor, statement):
+            if hasattr(statement, '_got_state'):
+                statement._out_of_order = True
+            statement._got_executing = True
+
         def on_statement_complete(executor, statement):
             statement._got_state = statement.state
             statement._got_results = statement.results
+            statement._out_of_order = False
 
         def on_complete(executor):
             loop.quit()
@@ -276,6 +283,7 @@ if __name__ == '__main__': #pragma: no cover
             timed_out = True
             loop.quit()
 
+        executor.connect('statement-executing', on_statement_executing)
         executor.connect('statement-complete', on_statement_complete)
         executor.connect('complete', on_complete)
 
@@ -292,6 +300,10 @@ if __name__ == '__main__': #pragma: no cover
         for s in executor.statements:
             assert_equals(s._got_state, s._expected_state)
             assert_equals(s._got_results, s._expected_results)
+            if s._out_of_order:
+                raise AssertionError("ThreadExecutor sent 'statement-executing' after 'statement-complete'")
+            if s._expected_state == Statement.INTERRUPTED and not s._got_executing:
+                raise AssertionError("ThreadExecutor did not send 'statement-executing' within timeout")
 
     test_execute(
         [
