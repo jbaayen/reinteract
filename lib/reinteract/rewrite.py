@@ -29,42 +29,68 @@ class _RewriteState(object):
         if not method_spec in self.mutated:
             self.mutated.append(method_spec)
 
-def _do_match(t, pattern):
+def _do_match(t, pattern, start_pos=0, start_pattern_index=0):
     # Match an AST tree against a pattern. Along with symbol/token names, patterns
     # can contain strings:
     #
     #  '': ignore the matched item
     #  'name': store the matched item into the result dict under 'name'
-    #  '*': matches items to the end of the sequence; ignore matched items
-    #  '*name': matches items to the end of the sequence; store the matched items as a sequence into the result dict
-    #
-    # Things following '*" like ((token.LPAR, ''), '*', (token.RPAR, '')) are not currently
-    # supported, but could be if needed
+    #  '*': matches multiple items (greedy); ignore matched items
+    #  '*name': matches items (greedy); store the matched items as a sequence into the result dict
     #
     # Returns None if nothing matched or a dict of key/value pairs
     #
-    if (t[0] != pattern[0]):
-        return None
-    
-    result = {}
-    for i in (xrange(1, len(pattern))):
-        if i >= len(t):
+    # start_pos/start_pattern_index are used to match a trailing portion of the
+    # tree against a trailing portion of the pattern; this is used internally to implement
+    # non-terminal wildcards in patterns.
+    #
+    if start_pattern_index == 0:
+        if (t[0] != pattern[0]):
             return None
+
+    result = {}
+    pos = max(1, start_pos)
+    for i in xrange(max(1, start_pattern_index), len(pattern)):
         if isinstance(pattern[i], tuple):
-            subresult = _do_match(t[i], pattern[i])
+            if pos >= len(t):
+                return None
+            subresult = _do_match(t[pos], pattern[i])
             if subresult == None:
                 return None
             result.update(subresult)
         else:
-            if pattern[i] == '':
-                pass
-            elif pattern[i][0] == '*':
-                if pattern[i] != '*':
-                    result[pattern[i][1:]] = t[i:]
-            else:
-                result[pattern[i]] = t[i]
+            if len(pattern[i]) > 0 and pattern[i][0] == '*':
+                if i + 1 < len(pattern):
+                    # Non-final *, need to find where the tail portion matches, start
+                    # backwards from the end to implement a greedy match
+                    for tail_pos in xrange(len(t) - 1, pos - 1, -1):
+                        tail_result = _do_match(t, pattern,
+                                                start_pos=tail_pos,
+                                                start_pattern_index=i + 1)
+                        if tail_result != None:
+                            result.update(tail_result)
+                            break
+                    else:
+                        return None
+                else:
+                    tail_pos = len(t)
 
-    return result
+                if pattern[i] != '*':
+                    result[pattern[i][1:]] = t[pos:tail_pos]
+
+                return result
+            else:
+                if pos >= len(t):
+                    return None
+                if pattern[i] != '':
+                    result[pattern[i]] = t[pos]
+
+        pos += 1
+
+    if pos > len(t):
+        return None
+    else:
+        return result
 
 _method_call_pattern = \
                      (symbol.test,
@@ -83,6 +109,7 @@ _method_call_pattern = \
                                  (symbol.power,
                                   (symbol.atom,
                                    (token.NAME, 'variable')),
+                                  '*path',
                                   (symbol.trailer,
                                    (token.DOT, ''),
                                    (token.NAME, 'method')),
@@ -116,6 +143,7 @@ _attribute_pattern = \
                                  (symbol.power,
                                   (symbol.atom,
                                    (token.NAME, 'variable')),
+                                  '*path',
                                   (symbol.trailer,
                                    (token.DOT, ''),
                                    (token.NAME, '')))))))))))))))
@@ -148,6 +176,7 @@ _slice_pattern = \
                                  (symbol.power,
                                   (symbol.atom,
                                    (token.NAME, 'variable')),
+                                  '*path',
                                   (symbol.trailer,
                                    (token.LSQB, ''),
                                    '*'))))))))))))))
@@ -668,10 +697,13 @@ if __name__ == '__main__':
     
     test_mutated('a.b = 1', ('a',))
     test_mutated('a.b += 1', ('a',))
+    test_mutated('a.b.c += 1', ('a',))
     
     test_mutated('a.b()', (('a','b'),))
     test_mutated('a.b(1,2)', (('a','b'),))
-    test_mutated('a.b.c(1,2)', ())
+    test_mutated('a.b.c(1,2)', (('a', 'c'),))
+
+    test_mutated('a.b().c += 1', ('a',))
 
     #
     # Test handling of encoding
