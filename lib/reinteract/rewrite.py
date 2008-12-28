@@ -66,31 +66,7 @@ def _do_match(t, pattern):
 
     return result
 
-if sys.version_info < (2, 5, 0):
-    _method_call_pattern = \
-                     (symbol.test,
-                      (symbol.and_test,
-                       (symbol.not_test,
-                        (symbol.comparison,
-                         (symbol.expr,
-                          (symbol.xor_expr,
-                           (symbol.and_expr,
-                            (symbol.shift_expr,
-                             (symbol.arith_expr,
-                              (symbol.term,
-                               (symbol.factor,
-                                 
-                                (symbol.power,
-                                 (symbol.atom,
-                                  (token.NAME, 'variable')),
-                                 (symbol.trailer,
-                                  (token.DOT, ''),
-                                  (token.NAME, 'method')),
-                                 (symbol.trailer,
-                                  (token.LPAR, ''),
-                                  '*')))))))))))))
-else:
-    _method_call_pattern = \
+_method_call_pattern = \
                      (symbol.test,
                       (symbol.or_test,
                        (symbol.and_test,
@@ -103,7 +79,7 @@ else:
                               (symbol.arith_expr,
                                (symbol.term,
                                 (symbol.factor,
-                                 
+
                                  (symbol.power,
                                   (symbol.atom,
                                    (token.NAME, 'variable')),
@@ -123,28 +99,7 @@ def _is_test_method_call(t):
     else:
         return args['variable'], args['method']
 
-if sys.version_info < (2, 5, 0):
-    _attribute_pattern = \
-                     (symbol.test,
-                      (symbol.and_test,
-                       (symbol.not_test,
-                        (symbol.comparison,
-                         (symbol.expr,
-                          (symbol.xor_expr,
-                           (symbol.and_expr,
-                            (symbol.shift_expr,
-                             (symbol.arith_expr,
-                              (symbol.term,
-                               (symbol.factor,
-                                
-                                (symbol.power,
-                                 (symbol.atom,
-                                  (token.NAME, 'variable')),
-                                 (symbol.trailer,
-                                  (token.DOT, ''),
-                                  (token.NAME, ''))))))))))))))
-else:
-    _attribute_pattern = \
+_attribute_pattern = \
                      (symbol.test,
                       (symbol.or_test,
                        (symbol.and_test,
@@ -157,7 +112,7 @@ else:
                               (symbol.arith_expr,
                                (symbol.term,
                                 (symbol.factor,
-                                 
+
                                  (symbol.power,
                                   (symbol.atom,
                                    (token.NAME, 'variable')),
@@ -176,28 +131,7 @@ def _is_test_attribute(t):
     else:
         return args['variable']
 
-if sys.version_info < (2, 5, 0):
-    _slice_pattern = \
-                     (symbol.test,
-                       (symbol.and_test,
-                        (symbol.not_test,
-                         (symbol.comparison,
-                          (symbol.expr,
-                           (symbol.xor_expr,
-                            (symbol.and_expr,
-                             (symbol.shift_expr,
-                              (symbol.arith_expr,
-                               (symbol.term,
-                                (symbol.factor,
-                                 
-                                 (symbol.power,
-                                  (symbol.atom,
-                                   (token.NAME, 'variable')),
-                                  (symbol.trailer,
-                                   (token.LSQB, ''),
-                                   '*')))))))))))))
-else:
-    _slice_pattern = \
+_slice_pattern = \
                      (symbol.test,
                       (symbol.or_test,
                        (symbol.and_test,
@@ -210,7 +144,7 @@ else:
                               (symbol.arith_expr,
                                (symbol.term,
                                 (symbol.factor,
-                                 
+
                                  (symbol.power,
                                   (symbol.atom,
                                    (token.NAME, 'variable')),
@@ -230,45 +164,25 @@ def _is_test_slice(t):
     else:
         return args['variable']
 
-if sys.version_info < (2, 5, 0):
-    def _do_create_funccall_expr_stmt(name, trailer):
-        return (symbol.expr_stmt,
-                (symbol.testlist,
-                 (symbol.test,
-                  (symbol.and_test,
-                   (symbol.not_test,
-                    (symbol.comparison,
-                     (symbol.expr,
-                      (symbol.xor_expr,
-                       (symbol.and_expr,
-                        (symbol.shift_expr,
-                         (symbol.arith_expr,
-                          (symbol.term,
-                           (symbol.factor,
-                            (symbol.power,
-                             (symbol.atom,
-                              (token.NAME, name)),
-                             trailer))))))))))))))
-else:
-    def _do_create_funccall_expr_stmt(name, trailer):
-        return (symbol.expr_stmt,
-                (symbol.testlist,
-                 (symbol.test,
-                  (symbol.or_test,
-                   (symbol.and_test,
-                    (symbol.not_test,
-                     (symbol.comparison,
-                      (symbol.expr,
-                       (symbol.xor_expr,
-                        (symbol.and_expr,
-                         (symbol.shift_expr,
-                          (symbol.arith_expr,
-                           (symbol.term,
-                            (symbol.factor,
-                             (symbol.power,
-                              (symbol.atom,
-                               (token.NAME, name)),
-                              trailer)))))))))))))))
+def _do_create_funccall_expr_stmt(name, trailer):
+    return (symbol.expr_stmt,
+            (symbol.testlist,
+             (symbol.test,
+              (symbol.or_test,
+               (symbol.and_test,
+                (symbol.not_test,
+                 (symbol.comparison,
+                  (symbol.expr,
+                   (symbol.xor_expr,
+                    (symbol.and_expr,
+                     (symbol.shift_expr,
+                      (symbol.arith_expr,
+                       (symbol.term,
+                        (symbol.factor,
+                         (symbol.power,
+                          (symbol.atom,
+                           (token.NAME, name)),
+                          trailer)))))))))))))))
     
 def _create_funccall_expr_stmt(name, args):
     # Creates an 'expr_stmt' that calls a function. args is a list of
@@ -400,12 +314,8 @@ _rewrite_compound_stmt_actions = {
     symbol.for_stmt:   _rewrite_block_stmt,
     symbol.try_stmt:   _rewrite_block_stmt,
     symbol.funcdef:    _rewrite_block_stmt,
+    symbol.with_stmt:  _rewrite_block_stmt
 }
-
-if sys.version_info >= (2, 5, 0):
-    # with statement is new in 2.5
-    _rewrite_compound_stmt_actions[symbol.with_stmt] = _rewrite_block_stmt
-    
 
 def _rewrite_compound_stmt(t, state):
     # compound_stmt: if_stmt | while_stmt | for_stmt | try_stmt | with_stmt | funcdef | classdef
@@ -654,41 +564,23 @@ if __name__ == '__main__':
                   (token.NEWLINE, '\n'))),
                 (token.ENDMARKER, '\n'))
 
-    if sys.version_info < (2, 5, 0):
-        def create_constant_test(c):
-            # Create a test symbol which is a constant number
-            return (symbol.test,
-                    (symbol.and_test,
-                     (symbol.not_test,
-                      (symbol.comparison,
-                       (symbol.expr,
-                        (symbol.xor_expr,
-                         (symbol.and_expr,
-                          (symbol.shift_expr,
-                           (symbol.arith_expr,
-                            (symbol.term,
-                             (symbol.factor,
-                              (symbol.power,
-                               (symbol.atom,
-                                (token.NUMBER, str(c)))))))))))))))
-    else:
-        def create_constant_test(c):
-            # Create a test symbol which is a constant number
-            return (symbol.test,
-                    (symbol.or_test,
-                     (symbol.and_test,
-                      (symbol.not_test,
-                       (symbol.comparison,
-                        (symbol.expr,
-                         (symbol.xor_expr,
-                          (symbol.and_expr,
-                           (symbol.shift_expr,
-                            (symbol.arith_expr,
-                             (symbol.term,
-                              (symbol.factor,
-                               (symbol.power,
-                                (symbol.atom,
-                                 (token.NUMBER, str(c))))))))))))))))
+    def create_constant_test(c):
+        # Create a test symbol which is a constant number
+        return (symbol.test,
+                (symbol.or_test,
+                 (symbol.and_test,
+                  (symbol.not_test,
+                   (symbol.comparison,
+                    (symbol.expr,
+                     (symbol.xor_expr,
+                      (symbol.and_expr,
+                       (symbol.shift_expr,
+                        (symbol.arith_expr,
+                         (symbol.term,
+                          (symbol.factor,
+                           (symbol.power,
+                            (symbol.atom,
+                             (token.NUMBER, str(c))))))))))))))))
             
 
     #
