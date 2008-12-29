@@ -878,6 +878,11 @@ if __name__ == '__main__':
     test_mutated('a[0][1] = 1', ('a', 'a[...]'),
                  'a = [[0,2],1]', 'a[0][1] == 2', 'a[0][1] == 1')
 
+    # This isn't fully right - in the new scope b should be [1], not []
+    test_mutated('a[0].append(1)', ('a', 'a[...]'),
+                 'b = []; a = [b]',
+                 'b == [] and a == [b]', 'b == [] and a == [[1]]')
+
     test_mutated('a[0] += 1', ('a',))
 
     prepare = """
