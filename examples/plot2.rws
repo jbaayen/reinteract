@@ -1,0 +1,20 @@
+import replot
+from numpy import *
+
+x = linspace(0, 2*pi, 100)
+
+# In addition to using plot() to create simple figures,
+# you can also build up more complex plots using the
+# matplotlib API
+#   http://matplotlib.sourceforge.net/api/axes_api.html
+p = replot.Axes()
+p.plot(x, sin(x), 'bo')
+p.plot(x, cos(x))
+p.set_xlabel("X axis")
+p.set_ylabel("Y Axis")
+p
+
+p.set_xlim(0, 2*pi)
+p
+
+help(p.set_xlim)

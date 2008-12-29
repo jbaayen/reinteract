@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
 import numpy
 
+from reinteract.recorded_object import RecordedObject, default_filter
 import reinteract.custom_result as custom_result
 
 class _PlotResultCanvas(FigureCanvasCairo):
@@ -22,28 +23,6 @@ class _PlotResultCanvas(FigureCanvasCairo):
         # ourselves
         pass
 
-class PlotResult(custom_result.CustomResult):
-    def __init__(self, *args, **kwargs):
-        self.__args = args
-        self.__kwargs = kwargs
-
-    def create_widget(self):
-        widget = PlotWidget(self)
-        widget.axes.plot(*self.__args, **self.__kwargs)
-
-        return widget
-    
-class ImshowResult(custom_result.CustomResult):
-    def __init__(self, *args, **kwargs):
-        self.__args = args
-        self.__kwargs = kwargs
-
-    def create_widget(self):
-        widget = PlotWidget(self)
-        widget.axes.imshow(*self.__args, **self.__kwargs)
-
-        return widget
-    
 class PlotWidget(gtk.DrawingArea):
     __gsignals__ = {
         'button-press-event': 'override',
@@ -221,10 +200,33 @@ def _validate_args(args):
         if formati != None and not isinstance(args[formati], basestring):
             raise TypeError("Expected format string for argument %d" % (formati + 1))
 
+class Axes(RecordedObject, custom_result.CustomResult):
+    def _check_plot(self, name, args, kwargs, spec):
+        _validate_args(args)
+
+    def create_widget(self):
+        widget = PlotWidget(self)
+        self._replay(widget.axes)
+        return widget
+
+def filter_method(baseclass, name):
+    if not default_filter(baseclass, name):
+        return False
+    if name.startswith('get_'):
+        return False
+    if name == 'create_widget':
+        return False
+    return True
+
+Axes._set_target_class(matplotlib.axes.Axes, filter_method)
+
 
 def plot(*args, **kwargs):
-    _validate_args(args)
-    return PlotResult(*args, **kwargs)
+    axes = Axes()
+    axes.plot(*args, **kwargs)
+    return axes
 
 def imshow(*args, **kwargs):
-    return ImshowResult(*args, **kwargs)
+    axes = Axes()
+    axes.imshow(*args, **kwargs)
+    return axes

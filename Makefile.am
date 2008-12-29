@@ -38,6 +38,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/notebook_window.py                         \
                     lib/reinteract/open_notebook.py                           \
                     lib/reinteract/popup.py                                   \
+                    lib/reinteract/recorded_object.py                         \
                     lib/reinteract/retokenize.py                              \
                     lib/reinteract/rewrite.py                                 \
                     lib/reinteract/sanitize_textview_ipc.py                   \
@@ -68,6 +69,7 @@ examples_DATA =					\
              examples/index.rnb			\
              examples/play.rws			\
              examples/plot.rws			\
+             examples/plot2.rws			\
 	     $(LIST_END)
 
 TOOLS_EXTRA =					\
