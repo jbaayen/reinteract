@@ -938,5 +938,5 @@ a.foo()""")
 ...     def foo(x): return x
 >>> a = A()
 >>> a.foo()
-Variable 'a' apparently modified, but can't copy it
+'a' apparently modified, but can't copy it
 A()""")
