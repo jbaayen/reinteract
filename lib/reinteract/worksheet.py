@@ -492,7 +492,7 @@ class Worksheet(gobject.GObject):
                     chunk.end -= chunk.start - start_line
                     chunk.start = start_line
             else:
-                chunk.delete_lines(start_line, chunk.start)
+                chunk.delete_lines(start_line, min(chunk.end, end_line))
                 self.__chunk_changed(chunk)
 
         self.__lines[start_line:end_line] = ()
@@ -1121,6 +1121,11 @@ if __name__ == '__main__': #pragma: no cover
     delete(2, 1, 1, 0)
     expect_text("bb\n3")
     expect([S(0,1), S(1,2)])
+
+    # Test deleting part of a BlankChunk
+    clear()
+    insert(0, 0, "if True\n:    pass\n    \n")
+    delete(2, 4, 3, 0)
 
     # Check that tracking of changes works properly when there
     # is an insertion or deletion before the change
