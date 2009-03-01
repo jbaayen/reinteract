@@ -46,6 +46,7 @@ class CompletionPopup(Popup):
         self.__tree.set_headers_visible(False)
         
         self.__tree.get_selection().connect('changed', self.__on_selection_changed)
+        self.__tree.connect('row-activated', self.__on_row_activated)
 
         cell = gtk.CellRendererText()
         column = gtk.TreeViewColumn(None, cell, text=0)
@@ -112,16 +113,23 @@ class CompletionPopup(Popup):
         self.__doc_popup.set_target(obj)
         self.__doc_popup.popup()
 
-    def __insert_selected(self):
-        model, iter = self.__tree.get_selection().get_selected()
-        completion = model.get_value(iter, 1)
+    def __insert_completion(self, iter):
+        completion = self.__tree_model.get_value(iter, 1)
 
         self.__view.get_buffer().insert_interactive_at_cursor(completion, True)
+
+    def __insert_selected(self):
+        model, iter = self.__tree.get_selection().get_selected()
+        self.__insert_completion(iter)
             
     def __on_selection_changed(self, selection):
         if not self.__in_change:
             self.__update_doc_popup()
-        
+
+    def __on_row_activated(self, view, path, column):
+        self.__insert_completion(self.__tree_model.get_iter(path))
+        self.popdown()
+
     def popup(self):
         """Pop up the completion popup.
 
