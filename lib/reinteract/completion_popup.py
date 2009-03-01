@@ -7,6 +7,7 @@
 ########################################################################
 
 import gtk
+import inspect
 
 from popup import Popup
 from doc_popup import DocPopup
@@ -115,8 +116,20 @@ class CompletionPopup(Popup):
 
     def __insert_completion(self, iter):
         completion = self.__tree_model.get_value(iter, 1)
+        obj = self.__tree_model.get_value(iter, 2)
 
-        self.__view.get_buffer().insert_interactive_at_cursor(completion, True)
+        buf = self.__view.get_buffer()
+        default_editable = self.__view.get_editable()
+
+        buf.insert_interactive_at_cursor(completion, default_editable)
+        if inspect.isclass(obj) or inspect.isroutine(obj):
+            # Insert a () and put the cursor in the middle
+            buf.insert_interactive_at_cursor('(', default_editable)
+            insert = buf.get_iter_at_mark(buf.get_insert())
+            mark_between_parens = buf.create_mark(None, insert, left_gravity=True)
+            buf.insert_interactive_at_cursor(')', default_editable)
+            buf.place_cursor(buf.get_iter_at_mark(mark_between_parens))
+            buf.delete_mark(mark_between_parens)
 
     def __insert_selected(self):
         model, iter = self.__tree.get_selection().get_selected()
