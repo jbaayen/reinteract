@@ -16,6 +16,9 @@ from popup import Popup
 MAX_HEIGHT = 300
 PADDING = 5
 
+# Size of fonts in the doc popup relative to normal application font size
+FONT_SCALE = 0.9
+
 class DocPopup(Popup):
     
     """Class implementing a popup showing docs about an object"""
@@ -23,7 +26,8 @@ class DocPopup(Popup):
     __gsignals__ = {
         'size-request': 'override',
         'size-allocate': 'override',
-        'map': 'override'
+        'map': 'override',
+        'style-set': 'override'
     }
 
     #
@@ -50,8 +54,6 @@ class DocPopup(Popup):
         self.__max_height = max_height
         self.__can_focus = can_focus
 
-        self.__font = pango.FontDescription("Sans 9")
-
         self.__view = gtk.TextView()
         self.__view.set_editable(False)
         
@@ -60,10 +62,11 @@ class DocPopup(Popup):
         self.modify_bg(gtk.STATE_NORMAL, bg_color)
         
         self.__view.modify_text(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
-        self.__view.modify_font(self.__font)
         self.__view.set_parent(self)
         self.__view.show()
         self.__view.grab_focus()
+
+        self.__update_font()
 
         self.__scrollbar = gtk.VScrollbar()
         self.__scrollbar.set_parent(self)
@@ -82,6 +85,14 @@ class DocPopup(Popup):
 
         self.__target = None
         self.focused = False
+
+    def __update_font(self):
+        self.__font = self.get_style().font_desc
+        # We round the scaled font size to an integer point size, because fonts may
+        # (or may not be) set up to look better at integer point sizes
+        new_size = 1024 * int(FONT_SCALE * self.__font.get_size() / 1024)
+        self.__font.set_size(new_size)
+        self.__view.modify_font(self.__font)
 
     def set_target(self, target):
         """Set the object that the popup is showing documentation about"""
@@ -195,6 +206,12 @@ class DocPopup(Popup):
         self.__view.map()
         if self.focused and self.__vscrolled:
             self.__scrollbar.map()
+
+    def do_style_set(self, old_style):
+        # Calling update_font() from the ::style-set handler on the view would
+        # trigger an infinite loop, but it's fine to do it from the handler on
+        # the toplevel window
+        self.__update_font()
 
     def __show(self, focus):
         if self.showing:
