@@ -16,6 +16,8 @@ from doc_popup import DocPopup
 from notebook import NotebookFile
 import sanitize_textview_ipc
 
+LEFT_MARGIN_WIDTH = 10
+
 class ShellView(gtk.TextView):
     __gsignals__ = {
         'backspace' : 'override',
@@ -41,7 +43,7 @@ class ShellView(gtk.TextView):
         buf.connect('pair-location-changed', self.on_pair_location_changed)
             
         gtk.TextView.__init__(self, buf)
-        self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, 10)
+        self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, LEFT_MARGIN_WIDTH)
         self.set_left_margin(2)
 
         # Attach a "behavior object" to the view which, by ugly hacks, makes it
@@ -79,7 +81,7 @@ class ShellView(gtk.TextView):
         cr.set_source_rgb(*fill_color)
         cr.fill()
                 
-        cr.rectangle(0.5, window_y + 0.5, 10 - 1, height - 1)
+        cr.rectangle(0.5, window_y + 0.5, LEFT_MARGIN_WIDTH - 1, height - 1)
         cr.set_source_rgb(*outline_color)
         cr.set_line_width(1)
         cr.stroke()
@@ -324,6 +326,17 @@ class ShellView(gtk.TextView):
         if event.window == self.__watch_window:
             event.window = self.get_window(gtk.TEXT_WINDOW_TEXT)
 
+        # Events on the left-margin window also get written so the user can
+        # click there when starting a drag selection. We need to adjust the
+        # X coordinate in that case
+        if event.window == self.get_window(gtk.TEXT_WINDOW_LEFT):
+            event.window = self.get_window(gtk.TEXT_WINDOW_TEXT)
+            if event.type == gtk.gdk._3BUTTON_PRESS:
+                # Workaround for http://bugzilla.gnome.org/show_bug.cgi?id=573664
+                event.x = 50.
+            else:
+                event.x -= LEFT_MARGIN_WIDTH
+
     def do_button_press_event(self, event):
         self.__rewrite_window(event)
 
@@ -540,8 +553,10 @@ class ShellView(gtk.TextView):
         (_, window_y) = self.buffer_to_window_coords(gtk.TEXT_WINDOW_LEFT, 0, start_y)
 
         if self.window:
-            self.get_window(gtk.TEXT_WINDOW_LEFT).invalidate_rect((0, window_y, 10, end_y + end_height - start_y), False)
-            
+            left_margin_window = self.get_window(gtk.TEXT_WINDOW_LEFT)
+            left_margin_window.invalidate_rect((0, window_y, LEFT_MARGIN_WIDTH, end_y + end_height - start_y),
+                                               False)
+
     def on_chunk_inserted(self, worksheet, chunk):
         self.__invalidate_status(chunk)
 
