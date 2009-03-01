@@ -123,6 +123,10 @@ class CompletionPopup(Popup):
 
         buf.insert_interactive_at_cursor(completion, default_editable)
         if inspect.isclass(obj) or inspect.isroutine(obj):
+            # Show the doc popup to give the user information about what arguments
+            # are posssible/required
+            self.__view.show_doc_popup()
+
             # Insert a () and put the cursor in the middle
             buf.insert_interactive_at_cursor('(', default_editable)
             insert = buf.get_iter_at_mark(buf.get_insert())

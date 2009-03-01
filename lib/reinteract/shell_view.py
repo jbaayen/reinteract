@@ -370,20 +370,8 @@ class ShellView(gtk.TextView):
             if self.__doc_popup.showing:
                 self.__doc_popup.focus()
             else:
-                insert = buf.get_iter_at_mark(buf.get_insert())
-                line, offset = buf.iter_to_pos(insert, adjust=ADJUST_NONE)
-                if line != None:
-                    obj, start_line, start_offset, _, _ = buf.worksheet.get_object_at_location(line, offset, include_adjacent=True)
-                else:
-                    obj = None
+                self.show_doc_popup(focus_popup=True)
 
-                if obj != None:
-                    start = buf.pos_to_iter(start_line, start_offset)
-                    self.__stop_mouse_over()
-                    self.__doc_popup.set_target(obj)
-                    self.__doc_popup.position_at_location(self, start)
-                    self.__doc_popup.popup_focused()
-            
             return True
         
         self.__doc_popup.popdown()
@@ -620,3 +608,29 @@ class ShellView(gtk.TextView):
 
         doctests = buf.worksheet.get_doctests(start_line, end_line + 1)
         self.get_clipboard(gtk.gdk.SELECTION_CLIPBOARD).set_text(doctests)
+
+    def show_doc_popup(self, focus_popup=False):
+        """Pop up the doc popup for the symbol at the insertion point, if any
+
+        @param focus_popup: if True, the popup will be given keyboard focus
+
+        """
+
+        buf = self.get_buffer()
+
+        insert = buf.get_iter_at_mark(buf.get_insert())
+        line, offset = buf.iter_to_pos(insert, adjust=ADJUST_NONE)
+        if line != None:
+            obj, start_line, start_offset, _, _ = buf.worksheet.get_object_at_location(line, offset, include_adjacent=True)
+        else:
+            obj = None
+
+        if obj != None:
+            start = buf.pos_to_iter(start_line, start_offset)
+            self.__stop_mouse_over()
+            self.__doc_popup.set_target(obj)
+            self.__doc_popup.position_at_location(self, start)
+            if focus_popup:
+                self.__doc_popup.popup_focused()
+            else:
+                self.__doc_popup.popup()
