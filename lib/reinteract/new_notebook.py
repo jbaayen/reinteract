@@ -10,6 +10,7 @@ import gtk
 import os
 
 from application import application
+from global_settings import global_settings
 from window_builder import WindowBuilder
 
 class CreateNotebookBuilder(WindowBuilder):
@@ -26,7 +27,7 @@ class CreateNotebookBuilder(WindowBuilder):
         self.other_folder_radio_button.connect('toggled', self.__update_other_folder_sensitivity)
         self.__update_other_folder_sensitivity(self.other_folder_radio_button)
 
-        self.other_folder_chooser.set_filename(application.get_notebooks_folder())
+        self.other_folder_chooser.set_filename(global_settings.notebooks_dir)
 
         self.create_button.set_image(gtk.image_new_from_stock('gtk-new', gtk.ICON_SIZE_BUTTON))
 
@@ -61,7 +62,7 @@ def run(parent=None):
             if builder.other_folder_radio_button.get_active():
                 parent_folder = builder.other_folder_chooser.get_filename()
             else:
-                parent_folder = application.get_notebooks_folder()
+                parent_folder = global_settings.notebooks_dir
 
             fullname = os.path.join(parent_folder, name)
             if os.path.exists(fullname):

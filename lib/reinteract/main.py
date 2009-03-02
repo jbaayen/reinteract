@@ -81,7 +81,7 @@ def main():
             notebook_dir = recent_notebooks[0].path
             window = application.open_notebook(notebook_dir)
         else:
-            notebook_dir = os.path.expanduser(os.path.join(application.get_notebooks_folder(), "Main"))
+            notebook_dir = os.path.expanduser(os.path.join(global_settings.notebooks_dir, "Main"))
             if not os.path.exists(notebook_dir):
                 window = application.create_notebook(notebook_dir,
                                                      description="Notebook for scratch work.\nCreate worksheets here if they are not part of a larger project, or for quick experiments.")

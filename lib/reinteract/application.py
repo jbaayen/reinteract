@@ -21,6 +21,7 @@ import sys
 # We'll have to rethink this if we ever statically compile reinteract
 
 from application_state import ApplicationState
+from global_settings import global_settings
 
 _VALID_CHAR = re.compile("[A-Za-z0-9._ -]")
 
@@ -30,7 +31,7 @@ class Application():
         self.windows = set()
         self.__about_dialog = None
 
-        config_folder = self.get_config_folder()
+        config_folder = global_settings.config_dir
         if not os.path.exists(config_folder):
             os.makedirs(config_folder)
 
@@ -41,9 +42,9 @@ class Application():
         paths = []
 
         recent = self.state.get_recent_notebooks()
-        notebooks_folder = self.get_notebooks_folder()
+        notebooks_dir = global_settings.notebooks_dir
         recent_paths = [os.path.abspath(r.path) for r in recent]
-        folder_paths = [os.path.join(notebooks_folder, f) for f in os.listdir(notebooks_folder)]
+        folder_paths = [os.path.join(notebooks_dir, f) for f in os.listdir(notebooks_dir)]
         paths = recent_paths + folder_paths
 
         example_state = self.state.get_notebook_state(global_settings.examples_dir)
@@ -53,17 +54,6 @@ class Application():
         paths = list(set((os.path.normpath(path) for path in paths)))
 
         return [NotebookInfo(p) for p in paths]
-
-    def get_config_folder(self):
-        if sys.platform == 'win32':
-            return os.path.join(os.getenv('APPDATA'), 'Reinteract')
-        else:
-            return os.path.expanduser("~/.reinteract")
-
-    def get_notebooks_folder(self):
-        # In a shocking example of cross-platform convergence, ~/Documents
-        # is the documents directory on OS X, Windows, and Linux
-        return os.path.expanduser("~/Documents/Reinteract")
 
     def validate_name(self, name):
         # Remove surrounding whitespace
@@ -232,7 +222,6 @@ class Application():
 application = Application()
 
 from about_dialog import AboutDialog
-from global_settings import global_settings
 from notebook import Notebook
 from notebook_info import NotebookInfo
 import new_notebook
