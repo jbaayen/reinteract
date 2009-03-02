@@ -68,6 +68,7 @@
             size="17475873" md5sum="fb1614d4b2adba7b078e2e799b5db604">
       <patch file="gdk-quartz-eventloop-rework-20080905.patch" strip="1" />
       <patch file="gdk-window-process-updates-hook.patch" strip="0" />
+      <patch file="gtk-dont-steal-update-region.patch" strip="0" />
     </branch>
     <dependencies>
       <dep package="pango"/>
