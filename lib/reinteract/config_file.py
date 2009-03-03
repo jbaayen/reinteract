@@ -88,6 +88,14 @@ class ConfigFile(object):
         except NoSectionError:
             return default
 
+    def get_bool(self, section, option, default=None):
+        try:
+            return self.parser.get(section, option).lower() == 'true'
+        except NoOptionError:
+            return default
+        except NoSectionError:
+            return default
+
     def get_string(self, section, option, default=None):
         try:
             return _unquote(self.parser.get(section, option))
@@ -115,6 +123,9 @@ class ConfigFile(object):
         self.__set(section, option, str(value))
 
     def set_float(self, section, option, value):
+        self.__set(section, option, str(value))
+
+    def set_bool(self, section, option, value):
         self.__set(section, option, str(value))
 
     def set_string(self, section, option, value):
