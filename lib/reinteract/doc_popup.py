@@ -62,6 +62,7 @@ class DocPopup(Popup):
         bg_color = gtk.gdk.Color(0xffff, 0xffff, 0xbfbf)
         self.__view.modify_base(gtk.STATE_NORMAL, bg_color)
         self.modify_bg(gtk.STATE_NORMAL, bg_color)
+        self.set_app_paintable(True)
         
         self.__view.modify_text(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
         self.__view.set_parent(self)
