@@ -6,46 +6,15 @@
 #
 ########################################################################
 
-from ConfigParser import RawConfigParser, ParsingError, NoOptionError, NoSectionError
 import gobject
 import os
 import re
 import time
 
-from notebook_info import format_duration
-
-_FLUSH_INTERVAL = 1000 # 1 second
-
-_need_quote_re = re.compile(r'[\s"]');
-_backslash_re = re.compile(r'(\\)')
-_backslash_quote_re = re.compile(r'([\\"])')
-_unescape_re = re.compile(r'\\(.)')
-_list_item_re = re.compile(r'"(?:[^\\\"]+|\\.)*"|[^\s"]+')
 _brackets_re = re.compile(r'([\]\[])')
 
-def _escape(s, unsafe_re):
-    return unsafe_re.sub(r'\\\1', s)
-
-def _unescape(s):
-    return _unescape_re.sub(r'\1', s)
-
-def _quote(s):
-    if s == "" or _need_quote_re.search(s):
-        return '"' + _escape(s, _backslash_quote_re) + '"'
-    else:
-        return _escape(s, _backslash_re)
-
-def _unquote(s):
-    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
-        return _unescape(s[1:-1])
-    else:
-        return _unescape(s)
-
-def _quote_list(l):
-    return " ".join((_quote(x) for x in l))
-
-def _unquote_list(s):
-    return [_unquote(x.group(0)) for x in _list_item_re.finditer(s)]
+from notebook_info import format_duration
+from config_file import ConfigFile
 
 def _hex_escape(s, unsafe_re):
     return unsafe_re.sub(lambda x: '%%%02x' % ord(x.group(1)), s)
@@ -59,120 +28,53 @@ class NotebookState:
         self.app_state = app_state
         self.section_name = _section_name(path)
 
-    def __ensure_section(self):
-        if not self.app_state.parser.has_section(self.section_name):
-            self.app_state.parser.add_section(self.section_name)
-
     def get_open_files(self):
-        try:
-            return _unquote_list(self.app_state.parser.get(self.section_name, 'open_files'))
-        except NoOptionError:
-            return []
-        except NoSectionError:
-            return []
-
-        return _unquote_list(s)
+        return self.app_state.get_list(self.section_name, 'open_files', [])
 
     def get_last_opened(self):
-        try:
-            return self.app_state.parser.getfloat(self.section_name, 'last_opened')
-        except NoOptionError:
-            return -1
-        except NoSectionError:
-            return -1
+        return self.app_state.get_float(self.section_name, 'last_opened', -1)
 
     def get_last_opened_text(self):
         return format_duration(self.get_last_opened())
 
     def get_current_file(self):
-        try:
-            return _unquote(self.app_state.parser.get(self.section_name, 'current_file'))
-        except NoOptionError:
-            return None
-        except NoSectionError:
-            return None
+        value = self.app_state.get_string(self.section_name, 'current_file')
 
     def get_size(self):
-        try:
-            width = self.app_state.parser.getint(self.section_name, 'width')
-            height = self.app_state.parser.getint(self.section_name, 'height')
-            return (width, height)
-        except NoOptionError:
-            return (-1, -1)
-        except NoSectionError:
-            return (-1, -1)
+        width = self.app_state.get_int(self.section_name, 'width', -1)
+        height = self.app_state.get_int(self.section_name, 'height', -1)
+
+        return (width, height)
 
     def get_pane_position(self):
-        try:
-            return self.app_state.parser.getint(self.section_name, 'pane_position')
-        except NoOptionError:
-            return -1
-        except NoSectionError:
-            return -1
+        return self.app_state.get_int(self.section_name, 'pane_position', -1)
 
     def set_open_files(self, files):
-        self.__ensure_section()
-        self.app_state.parser.set(self.section_name, 'open_files', _quote_list(files))
-        self.app_state.queue_flush()
+        self.app_state.set_list(self.section_name, 'open_files', files)
 
     def set_current_file(self, file):
-        self.__ensure_section()
         if file:
-            self.app_state.parser.set(self.section_name, 'current_file', _quote(file))
+            self.app_state.set_string(self.section_name, 'current_file', file)
         else:
-            self.app_state.parser.remove_option(self.section_name, 'current_file')
-        self.app_state.queue_flush()
+            self.app_state.remove_option(self.section_name, 'current_file')
 
     def set_size(self, width, height):
-        self.__ensure_section()
-        self.app_state.parser.set(self.section_name, 'width', str(width))
-        self.app_state.parser.set(self.section_name, 'height', str(height))
-        self.app_state.queue_flush()
+        self.app_state.set_int(self.section_name, 'width', width)
+        self.app_state.set_int(self.section_name, 'height', height)
 
     def set_pane_position(self, position):
-        self.__ensure_section()
-        self.app_state.parser.set(self.section_name, 'pane_position', str(position))
-        self.app_state.queue_flush()
+        self.app_state.set_int(self.section_name, 'pane_position', position)
 
     def update_last_opened(self):
-        self.__ensure_section()
-        self.app_state.parser.set(self.section_name, 'last_opened', str(time.time()))
-        self.app_state.queue_flush()
+        self.app_state.set_float(self.section_name, 'last_opened', time.time())
 
-class ApplicationState:
+class ApplicationState(ConfigFile):
     def __init__(self, location):
-        self.location = location
-        self.flush_timeout = 0
-        self.parser = RawConfigParser()
+        ConfigFile.__init__(self, location)
         self.notebook_states = {}
 
-        try:
-            f = open(location, "r")
-        except IOError, e:
-            # If not readable, just ignore
-            return
-
-        try:
-            self.parser.readfp(f)
-        except ParsingError:
-            # If not readable, just ignore
-            return
-        finally:
-            f.close()
-
-    def __ensure_section(self):
-        if not self.parser.has_section('Reinteract'):
-            self.parser.add_section('Reinteract')
-
     def __get_recent_notebook_paths(self):
-        try:
-            s = self.parser.get('Reinteract', 'recent_notebooks')
-        except NoOptionError:
-            return []
-        except NoSectionError:
-            return []
-
-        return _unquote_list(s)
+        return self.get_list('Reinteract', 'recent_notebooks', [])
 
     def notebook_opened(self, path):
         nb_state = self.get_notebook_state(path)
@@ -185,10 +87,7 @@ class ApplicationState:
             pass
         old_paths.insert(0, path)
 
-        self.__ensure_section()
-        self.parser.set('Reinteract', 'recent_notebooks', _quote_list(old_paths))
-
-        self.queue_flush()
+        self.set_list('Reinteract', 'recent_notebooks', old_paths)
 
     def get_recent_notebooks(self, max_count=10):
         paths = self.__get_recent_notebook_paths()
@@ -203,61 +102,11 @@ class ApplicationState:
 
         return self.notebook_states[path]
 
-    def flush(self):
-        if self.flush_timeout != 0:
-            gobject.source_remove(self.flush_timeout)
-            self.flush_timeout = 0
-
-        tmpname = self.location + ".tmp"
-        f = open(tmpname, "w")
-        success = False
-        try:
-            self.parser.write(f)
-            f.close()
-            if os.path.exists(self.location):
-                os.remove(self.location)
-            os.rename(tmpname, self.location)
-            success = True
-        finally:
-            if not success:
-                f.close()
-                try:
-                    os.remove(tmpname)
-                except:
-                    pass
-
-    def queue_flush(self):
-        if self.flush_timeout == 0:
-            self.flush_timeout = gobject.timeout_add(_FLUSH_INTERVAL, self.flush)
-
 ######################################################################
 
 if __name__ == '__main__': #pragma: no cover
     import tempfile
     from test_utils import assert_equals
-
-    def test_quote(s, expected):
-        quoted = _quote(s)
-        assert_equals(quoted, expected)
-        unquoted = _unquote(quoted)
-        assert_equals(unquoted, s)
-
-    test_quote(r'',  r'""')
-    test_quote(r'foo',  r'foo')
-    test_quote(r'fo"o', r'"fo\"o"')
-    test_quote(r'fo o', r'"fo o"')
-    test_quote(r'fo\o', r'fo\\o')
-
-    def test_quote_list(l, expected):
-        quoted = _quote_list(l)
-        assert_equals(quoted, expected)
-        unquoted = _unquote_list(quoted)
-        assert_equals(unquoted, l)
-
-    test_quote_list(['foo'], 'foo')
-    test_quote_list(['foo bar'], '"foo bar"')
-    test_quote_list(['foo', 'bar'], 'foo bar')
-    test_quote_list(['foo', 'bar baz'], 'foo "bar baz"')
 
     def test_section_name(path, expected):
         section_name = _section_name(path)
