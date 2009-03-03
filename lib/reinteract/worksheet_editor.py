@@ -15,6 +15,7 @@ import pango
 from application import application
 from editor import Editor
 from format_escaped import format_escaped
+from global_settings import global_settings
 from shell_buffer import ShellBuffer
 from shell_view import ShellView
 
@@ -27,7 +28,10 @@ class WorksheetEditor(Editor):
 
         self.buf = ShellBuffer(self.notebook)
         self.view = ShellView(self.buf)
-        self.view.modify_font(pango.FontDescription("monospace"))
+
+        self.__font_is_custom_connection = global_settings.connect('notify::editor-font-is-custom', self.__update_font)
+        self.__font_name_connection = global_settings.connect('notify::editor-font-name', self.__update_font)
+        self.__update_font()
 
         self.widget = gtk.ScrolledWindow()
         self.widget.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -40,6 +44,17 @@ class WorksheetEditor(Editor):
         self.buf.worksheet.connect('notify::file', lambda *args: self._update_file())
         self.buf.worksheet.connect('notify::code-modified', lambda *args: self._update_modified())
         self.buf.worksheet.connect('notify::state', lambda *args: self._update_state())
+
+    #######################################################
+    # Callbacks
+    #######################################################
+
+    def __update_font(self, *arg):
+        font_name = "monospace"
+        if global_settings.editor_font_is_custom:
+            font_name = global_settings.editor_font_name
+
+        self.view.modify_font(pango.FontDescription(font_name))
 
     #######################################################
     # Overrides
@@ -76,6 +91,8 @@ class WorksheetEditor(Editor):
     def close(self):
         Editor.close(self)
         self.buf.worksheet.close()
+        global_settings.disconnect(self.__font_is_custom_connection)
+        global_settings.disconnect(self.__font_name_connection)
 
     def load(self, filename):
         self.buf.worksheet.load(filename)

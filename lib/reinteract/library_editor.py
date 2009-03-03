@@ -23,6 +23,7 @@ if use_sourceview:
 
 from application import application
 from editor import Editor
+from global_settings import global_settings
 from shell_view import ShellView
 from window_builder import WindowBuilder
 
@@ -50,7 +51,9 @@ class LibraryEditor(Editor):
             self.buf = gtk.TextBuffer()
             self.view = gtk.TextView(self.buf)
 
-        self.view.modify_font(pango.FontDescription("monospace"))
+        self.__font_is_custom_connection = global_settings.connect('notify::editor-font-is-custom', self.__update_font)
+        self.__font_name_connection = global_settings.connect('notify::editor-font-name', self.__update_font)
+        self.__update_font()
 
         self.buf.connect_after('insert-text', lambda *args: self.__set_modified(True))
         self.buf.connect_after('delete-range', lambda *args: self.__set_modified(True))
@@ -61,6 +64,17 @@ class LibraryEditor(Editor):
         self.widget.add(self.view)
 
         self.widget.show_all()
+
+    #######################################################
+    # Callbacks
+    #######################################################
+
+    def __update_font(self, *arg):
+        font_name = "monospace"
+        if global_settings.editor_font_is_custom:
+            font_name = global_settings.editor_font_name
+
+        self.view.modify_font(pango.FontDescription(font_name))
 
     #######################################################
     # Overrides
@@ -169,6 +183,8 @@ class LibraryEditor(Editor):
         if self.__file:
             self.__file.active = False
             self.__file.modified = False
+        global_settings.disconnect(self.__font_is_custom_connection)
+        global_settings.disconnect(self.__font_name_connection)
 
     def undo(self):
         if use_sourceview:

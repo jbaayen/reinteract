@@ -2,6 +2,7 @@ DIALOGS =					\
 	open-notebook.xml			\
 	new-notebook.xml			\
 	notebook-properties.xml			\
+	preferences.xml				\
 	save-file.xml
 
 dialogsdir=$(pkgdatadir)/dialogs

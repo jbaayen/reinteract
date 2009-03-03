@@ -11,6 +11,7 @@ import gtk
 
 import data_format
 import doc_format
+from global_settings import global_settings
 from popup import Popup
 
 MAX_HEIGHT = 300
@@ -24,6 +25,7 @@ class DocPopup(Popup):
     """Class implementing a popup showing docs about an object"""
     
     __gsignals__ = {
+        'destroy': 'override',
         'size-request': 'override',
         'size-allocate': 'override',
         'map': 'override',
@@ -66,6 +68,8 @@ class DocPopup(Popup):
         self.__view.show()
         self.__view.grab_focus()
 
+        self.__font_is_custom_connection = global_settings.connect('notify::doc-tooltip-font-is-custom', self.__update_font)
+        self.__font_name_connection = global_settings.connect('notify::doc-tooltip-font-name', self.__update_font)
         self.__update_font()
 
         self.__scrollbar = gtk.VScrollbar()
@@ -86,12 +90,16 @@ class DocPopup(Popup):
         self.__target = None
         self.focused = False
 
-    def __update_font(self):
-        self.__font = self.get_style().font_desc
-        # We round the scaled font size to an integer point size, because fonts may
-        # (or may not be) set up to look better at integer point sizes
-        new_size = 1024 * int(FONT_SCALE * self.__font.get_size() / 1024)
-        self.__font.set_size(new_size)
+    def __update_font(self, *args):
+        if global_settings.doc_tooltip_font_is_custom:
+            self.__font = pango.FontDescription(global_settings.doc_tooltip_font_name)
+        else:
+            self.__font = self.get_style().font_desc
+            # We round the scaled font size to an integer point size, because fonts may
+            # (or may not be) set up to look better at integer point sizes
+            new_size = 1024 * int(FONT_SCALE * self.__font.get_size() / 1024)
+            self.__font.set_size(new_size)
+
         self.__view.modify_font(self.__font)
 
     def set_target(self, target):
@@ -113,6 +121,10 @@ class DocPopup(Popup):
             buf.place_cursor(buf.get_start_iter())
 
         self.__scrollbar.get_adjustment().set_value(0.)
+
+    def do_destroy(self):
+        global_settings.disconnect(self.__font_is_custom_connection)
+        global_settings.disconnect(self.__font_name_connection)
 
     def do_size_request(self, request):
         view_width, view_height = self.__view.size_request()

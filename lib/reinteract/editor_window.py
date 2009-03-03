@@ -40,6 +40,8 @@ class EditorWindow(BaseWindow):
          <separator/>
          <menuitem action="calculate"/>
          <menuitem action="break"/>
+         <separator/>
+         <menuitem action="preferences"/>
       </menu>
 	<menu action="help">
         <menuitem action="about"/>

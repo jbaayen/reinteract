@@ -51,6 +51,8 @@ class NotebookWindow(BaseNotebookWindow):
          <menuitem action="break"/>
          <separator/>
          <menuitem action="calculate-all"/>
+         <separator/>
+         <menuitem action="preferences"/>
       </menu>
 	<menu action="help">
         <menuitem action="about"/>

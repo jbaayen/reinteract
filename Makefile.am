@@ -18,6 +18,7 @@ reinteractpkg_PYTHON =                                                        \
 		    lib/reinteract/change_range.py			      \
 		    lib/reinteract/chunks.py			      	      \
                     lib/reinteract/completion_popup.py                        \
+                    lib/reinteract/config_file.py                             \
                     lib/reinteract/custom_result.py                           \
                     lib/reinteract/data_format.py                             \
                     lib/reinteract/doc_format.py                              \
@@ -38,6 +39,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/notebook_window.py                         \
                     lib/reinteract/open_notebook.py                           \
                     lib/reinteract/popup.py                                   \
+                    lib/reinteract/preferences_dialog.py                      \
                     lib/reinteract/recorded_object.py                         \
                     lib/reinteract/retokenize.py                              \
                     lib/reinteract/rewrite.py                                 \

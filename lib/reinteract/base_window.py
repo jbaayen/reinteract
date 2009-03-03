@@ -19,6 +19,7 @@ from global_settings import global_settings
 from library_editor import LibraryEditor
 from notebook import Notebook, NotebookFile
 from worksheet_editor import WorksheetEditor
+from preferences_dialog import show_preferences
 
 if global_settings.main_menu_mode:
     from main_menu import main_menu
@@ -95,6 +96,7 @@ class BaseWindow:
             ('about',   gtk.STOCK_ABOUT,     None,         None,              None, self.on_about),
             ('calculate', gtk.STOCK_REFRESH, "Ca_lculate", '<control>Return', None,  self.on_calculate),
             ('break',   gtk.STOCK_CANCEL,    "_Break",     '<control>Break',  None,  self.on_break),
+            ('preferences', gtk.STOCK_PREFERENCES, "Prefere_nces",     None,  None,  self.on_preferences),
         ])
 
     def _close_current(self):
@@ -222,6 +224,9 @@ class BaseWindow:
     def on_break(self, action):
         if self.current_editor:
             self.current_editor.buf.worksheet.interrupt()
+
+    def on_preferences(self, action):
+        show_preferences(parent=self.window)
 
     def on_about(self, action):
         application.show_about_dialog(self.window)
