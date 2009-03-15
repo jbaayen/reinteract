@@ -11,7 +11,9 @@ import traceback
 import sys
 
 from custom_result import CustomResult
+import notebook
 from notebook import HelpResult
+import pkgutil
 from rewrite import Rewriter, UnsupportedSyntaxError
 from stdout_capture import StdoutCapture
 
@@ -202,6 +204,26 @@ class Statement:
         self.__capture.pop()
         self.__capture = None
 
+    def __get_module_filename(self, m):
+        filename = m.__file__
+        if filename[-4:] in ('.pyc', '.PYC', '.pyo', '.PYO'):
+            return filename[:-1]
+        else:
+            return filename
+
+    def __format_traceback(self, error_type, value, tb):
+        # The top two frames are always statement.__do_execute and the compiled
+        # statement, so we skip them as not useful. We additionally skip frames that
+        # are inside the notebook and pkgutil modules because these are likely our
+        # our custom import implementation
+        skip_filenames = [self.__get_module_filename(m) for m in (notebook, pkgutil)]
+        extracted = filter(lambda x: x[0] not in skip_filenames, traceback.extract_tb(tb)[2:])
+
+        formatted = "".join(traceback.format_list(extracted))
+        last_line = "".join(traceback.format_exception_only(error_type, value))
+
+        return (formatted + last_line).rstrip()
+
     def __do_execute(self):
         root_scope = self.__worksheet.global_scope
         if self.__parent:
@@ -237,7 +259,7 @@ class Statement:
             self.result_scope = None
             error_type, value, tb = sys.exc_info()
 
-            self.error_message = ("\n".join(traceback.format_tb(tb)[2:]) + "\n".join(traceback.format_exception_only(error_type, value))).strip()
+            self.error_message = self.__format_traceback(error_type, value, tb)
             self.error_line = tb.tb_frame.f_lineno
             self.error_offset = None
 
