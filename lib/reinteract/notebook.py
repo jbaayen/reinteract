@@ -264,7 +264,10 @@ class Notebook(gobject.GObject):
                 local = False
         else:
             assert local != None
-            loader = self.__find_loader_in_path(fullname, parent.__path__)
+            if hasattr(parent, '__path__'):
+                loader = self.__find_loader_in_path(fullname, parent.__path__)
+            else:
+                raise ImportError("no module named " + fullname)
 
         if local:
             module = self.__load_local_module(fullname, loader)
