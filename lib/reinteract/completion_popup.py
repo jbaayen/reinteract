@@ -80,8 +80,9 @@ class CompletionPopup(Popup):
             completions = buf.worksheet.find_completions(line, offset)
         for display, completion, obj in completions:
             self.__tree_model.append([display, completion, obj])
-        
-        self.__tree.set_cursor(0)
+
+        if len(completions) > 0:
+            self.__tree.set_cursor(0)
         self.__in_change = False
         self.__update_doc_popup()
 
