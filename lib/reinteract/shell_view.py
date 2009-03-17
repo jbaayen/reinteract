@@ -57,8 +57,11 @@ class ShellView(gtk.TextView):
         self.__mouse_over_object = None
         self.__mouse_over_timeout = None
 
-        buf = self.get_buffer()
         self.__mouse_over_start = buf.create_mark(None, buf.get_start_iter(), True)
+
+        self.__arg_highlight_start = None
+        self.__arg_highlight_end = None
+        buf.connect('mark-set', self.on_mark_set)
 
     def __get_worksheet_line_yrange(self, line):
         buffer_line = self.get_buffer().pos_to_iter(line)
@@ -149,15 +152,7 @@ class ShellView(gtk.TextView):
                 else:
                     self.paint_chunk(cr, event.area, chunk, (0, 0, 1), (0, 0, 0.5))
 
-    def __expose_pair_location(self, event):
-        pair_location = self.get_buffer().get_pair_location()
-        if pair_location == None:
-            return
-        
-        rect = self.get_iter_location(pair_location)
-
-        rect.x, rect.y = self.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, rect.x, rect.y)
-        
+    def __draw_rect_outline(self, event, rect):
         if (rect.y + rect.height <= event.area.y or rect.y >= event.area.y + event.area.height):
             return
 
@@ -166,7 +161,39 @@ class ShellView(gtk.TextView):
         cr.rectangle(rect.x + 0.5, rect.y + 0.5, rect.width - 1, rect.height - 1)
         cr.set_source_rgb(0.6, 0.6, 0.6)
         cr.stroke()
+
+    def __expose_arg_highlight(self, event):
+        buf = self.get_buffer()
+
+        # We want a rectangle enclosing the range between arg_highlight_start and
+        # arg_highlight_end; the method here isn't correct in the presence of
+        # RTL text, but the necessary Pango functionality isn't exposed to
+        # a GtkTextView user. RTL code is rare. We also don't handle multiple-line
+        # highlight regions right. (Return ends the highlight, so you'd need to paste)
+        rect = self.get_iter_location(buf.get_iter_at_mark (self.__arg_highlight_start))
+        rect.x, rect.y = self.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT,
+                                                      rect.x, rect.y)
+        rect.width = 0
+        end_rect = self.get_iter_location(buf.get_iter_at_mark (self.__arg_highlight_end))
+        end_rect.x, end_rect.y = self.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT,
+                                                              end_rect.x, end_rect.y)
+        end_rect.width = 0
+
+        rect = rect.union(end_rect)
+
+        self.__draw_rect_outline(event, rect)
+
+    def __expose_pair_location(self, event):
+        pair_location = self.get_buffer().get_pair_location()
+        if pair_location == None:
+            return
         
+        rect = self.get_iter_location(pair_location)
+
+        rect.x, rect.y = self.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, rect.x, rect.y)
+
+        self.__draw_rect_outline(event, rect)
+
     def do_expose_event(self, event):
         if event.window == self.get_window(gtk.TEXT_WINDOW_LEFT):
             self.__expose_window_left(event)
@@ -175,7 +202,10 @@ class ShellView(gtk.TextView):
         gtk.TextView.do_expose_event(self, event)
 
         if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT):
-            self.__expose_pair_location(event)
+            if self.__arg_highlight_start:
+                self.__expose_arg_highlight(event)
+            else:
+                self.__expose_pair_location(event)
         
         return False
 
@@ -354,6 +384,27 @@ class ShellView(gtk.TextView):
 
         return gtk.TextView.do_motion_notify_event(self, event)
 
+    def __remove_arg_highlight(self, cursor_to_end=True):
+        buf = self.get_buffer()
+
+        end = buf.get_iter_at_mark (self.__arg_highlight_end)
+
+        buf.delete_mark(self.__arg_highlight_start)
+        self.__arg_highlight_start = None
+        buf.delete_mark(self.__arg_highlight_end)
+        self.__arg_highlight_end = None
+
+        if cursor_to_end:
+            # If the arg_highlight ends at closing punctuation, skip over it
+            tmp = end.copy()
+            tmp.forward_char()
+            text = buf.get_slice(end, tmp)
+
+            if text in (")", "]", "}"):
+                buf.place_cursor(tmp)
+            else:
+                buf.place_cursor(end)
+
     def do_key_press_event(self, event):
         buf = self.get_buffer()
 
@@ -373,11 +424,17 @@ class ShellView(gtk.TextView):
                 self.show_doc_popup(focus_popup=True)
 
             return True
-        
-        self.__doc_popup.popdown()
+
+        if not self.__arg_highlight_start:
+            self.__doc_popup.popdown()
         
         if event.keyval in (gtk.keysyms.KP_Enter, gtk.keysyms.Return):
             self.__hide_completion()
+
+            if self.__arg_highlight_start:
+                self.__remove_arg_highlight()
+                self.__doc_popup.popdown()
+                return True
             
             increase_indent = False
             insert = buf.get_iter_at_mark(buf.get_insert())
@@ -567,6 +624,17 @@ class ShellView(gtk.TextView):
         widget.show()
         self.add_child_at_anchor(widget, anchor)
 
+    def on_mark_set(self, buffer, iter, mark):
+        if self.__arg_highlight_start:
+            # See if the user moved the cursor out of the highlight regionb
+            buf = self.get_buffer()
+            if mark != buf.get_insert():
+                return
+
+            if (iter.compare(buf.get_iter_at_mark(self.__arg_highlight_start)) < 0 or
+                iter.compare(buf.get_iter_at_mark(self.__arg_highlight_end)) > 0):
+                self.__remove_arg_highlight(cursor_to_end=False)
+
     def __invalidate_char_position(self, iter):
         y, height = self.get_line_yrange(iter)
         if self.window:
@@ -634,3 +702,19 @@ class ShellView(gtk.TextView):
                 self.__doc_popup.popup_focused()
             else:
                 self.__doc_popup.popup()
+
+    def highlight_arg_region(self, start, end):
+        """Highlight the region between start and end for argument insertion.
+        A box will be drawn around the region as long as the cursor is inside
+        the region. If the user hits return, the cursor will be moved to the
+        end (and past a single closing punctuation at the end, if any.)
+
+        @param start iter at the start of the highlight region
+        @param end iter at the end of the highlight region
+
+        """
+
+        buf = self.get_buffer()
+
+        self.__arg_highlight_start = buf.create_mark(None, start, left_gravity=True)
+        self.__arg_highlight_end = buf.create_mark(None, end, left_gravity=False)

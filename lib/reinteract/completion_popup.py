@@ -133,7 +133,9 @@ class CompletionPopup(Popup):
             insert = buf.get_iter_at_mark(buf.get_insert())
             mark_between_parens = buf.create_mark(None, insert, left_gravity=True)
             buf.insert_interactive_at_cursor(')', default_editable)
-            buf.place_cursor(buf.get_iter_at_mark(mark_between_parens))
+            iter = buf.get_iter_at_mark(mark_between_parens)
+            self.__view.highlight_arg_region(iter, iter)
+            buf.place_cursor(iter)
             buf.delete_mark(mark_between_parens)
 
     def __insert_selected(self):
