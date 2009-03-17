@@ -7,13 +7,13 @@
 ########################################################################
 
 import copy
+import pkgutil
 import traceback
 import sys
 
 from custom_result import CustomResult
 import notebook
 from notebook import HelpResult
-import pkgutil
 from rewrite import Rewriter, UnsupportedSyntaxError
 from stdout_capture import StdoutCapture
 
