@@ -108,6 +108,7 @@ class BaseNotebookWindow(BaseWindow):
         editor.close()
         self.__update_title()
         self._update_open_files()
+        self.update_sensitivity()
 
     def _update_editor_state(self, editor):
         self.update_sensitivity()
