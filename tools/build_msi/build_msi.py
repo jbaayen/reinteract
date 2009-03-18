@@ -339,7 +339,6 @@ All rights reserved.
         # More matlab stuff
         self.add_external_module('mpl_toolkits', 'external', feature='scipy')
         # Some external deps installed with matplotlib
-        self.add_external_module('configobj', 'external', feature='scipy')
         self.add_external_module('dateutil', 'external', feature='scipy')
         self.add_external_module('pytz', 'external', feature='scipy')
         # matlab-like toplevel module installed with matplotlib
