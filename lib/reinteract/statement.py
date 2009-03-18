@@ -135,7 +135,7 @@ class Statement:
         if len(args) == 1:
             arg = args[0]
             
-            if args[0] == None:
+            if args[0] is None:
                 return
             elif isinstance(args[0], CustomResult) or isinstance(args[0], HelpResult):
                 self.results.append(args[0])
