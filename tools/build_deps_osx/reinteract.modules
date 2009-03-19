@@ -21,6 +21,19 @@
     </after>
   </metamodule>
 
+  <!-- We force a version of 1.11, since after that a dependency on xml2po, which
+       in turns depends on the Python bindings for libxml2, which we don't build -->
+  <autotools id="gtk-doc" autogenargs="--disable-scrollkeepeer --with-xml-catalog=$JHBUILD_PREFIX/etc/xml/catalog">
+    <branch repo="gnomeftp"
+            module="gtk-doc/1.11/gtk-doc-1.11.tar.bz2" version="1.11"
+            size="453459" md5sum="b5e268c71fa90aad890cf53715664d0a"/>
+    <dependencies>
+      <dep package="libxslt"/>
+      <dep package="docbook-setup"/>
+      <dep package="gnome-doc-utils-fake"/>
+    </dependencies>
+  </autotools>
+
   <autotools id="glib">
     <branch repo="gnomeftp"
             module="glib/2.18/glib-2.18.4.tar.bz2" version="2.18.4"
