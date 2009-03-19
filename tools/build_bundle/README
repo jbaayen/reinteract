@@ -37,16 +37,14 @@ or to just build an app bundle and not a dmg.
      ./autogen.sh --enable-python-thunks
      make
 
-   FIXME: To get make to pass, you'll need to delete libJPEG.dylib,
-     libPng.dylib, libTIFF.dylib from the release-i386 directory.
-     (paths will be obvious from the errors.)
-     These names are not needed for the deployment and cause the
-     system frameworks to try and link against the single-arch
-     versions of these libraries instead of of the system versions.
-
-     Don't delete the lowercase libjpeg.., etc, names.
-
-     This probably should be done by build.sh.
+   FIXME: To get make to pass, you'll need to move libjpeg.dylib,
+     libpng.dylib, libtiff.dylib from the release-i386 lib directory.
+     These names cause the system frameworks to try and link against
+     the single-arch versions of these libraries instead of of the
+     system versions. If you need to rebuild GTK+ subsequently,
+     you'll have to move these files back or force libjpeg and
+     libtiff to be rebuilt. The real fix is probably to get GTK+
+     to use the system libraries.
 
  * Now build the .dmg
 
