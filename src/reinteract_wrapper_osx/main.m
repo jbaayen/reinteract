@@ -128,7 +128,10 @@ int main(int argc, char *argv[])
         setenv("GDK_PIXBUF_MODULE_FILE", [pixbufModuleFile UTF8String], 1);
         setenv("GTK_EXE_PREFIX", [resourcePath UTF8String], 1);
         setenv("GTK_DATA_PREFIX", [resourcePath UTF8String], 1);
-        setenv("GTK_SYSCONFDIR", [sysconfdir UTF8String], 1);
+        NSString *systemGtkrcFile = [sysconfdir stringByAppendingPathComponent:@"gtk-2.0/gtkrc"];
+        NSString *userGtkrcFile = [NSHomeDirectory() stringByAppendingPathComponent:@".gtkrc-2.0"];
+        NSString *gtkrcFiles = [NSString stringWithFormat:@"%@:%@", systemGtkrcFile, userGtkrcFile];
+        setenv("GTK2_RC_FILES", [gtkrcFiles UTF8String], 1);
         NSString *imModuleFile = [sysconfdir stringByAppendingPathComponent:@"gtk-2.0/gtk.immodules"];
         setenv("GTK_IM_MODULE_FILE", [imModuleFile UTF8String], 1);
         setenv("PANGO_LIBDIR", [libdir UTF8String], 1);
