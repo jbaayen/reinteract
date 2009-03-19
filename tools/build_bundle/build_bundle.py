@@ -214,7 +214,6 @@ class BundleBuilder(Builder):
         # More matlab stuff
         self.add_external_module('mpl_toolkits', externaldir)
         # Some external deps installed with matplotlib
-        self.add_external_module('configobj', externaldir)
         self.add_external_module('dateutil', externaldir)
         self.add_external_module('pytz', externaldir)
         # matlab-like toplevel module installed with matplotlib
