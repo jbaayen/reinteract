@@ -83,10 +83,10 @@ class ShellBuffer(gtk.TextBuffer):
         'pair-location-changed': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT))
     }
 
-    def __init__(self, notebook):
+    def __init__(self, notebook, edit_only=False):
         gtk.TextBuffer.__init__(self)
 
-        self.worksheet = Worksheet(notebook)
+        self.worksheet = Worksheet(notebook, edit_only)
         self.worksheet.connect('text-inserted', self.on_text_inserted)
         self.worksheet.connect('text-deleted', self.on_text_deleted)
         self.worksheet.connect('lines-inserted', self.on_lines_inserted)

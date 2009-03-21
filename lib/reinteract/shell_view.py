@@ -35,15 +35,19 @@ class ShellView(gtk.TextView):
    }
         
     def __init__(self, buf):
-        buf.worksheet.connect('chunk-inserted', self.on_chunk_inserted)
-        buf.worksheet.connect('chunk-changed', self.on_chunk_changed)
-        buf.worksheet.connect('chunk-status-changed', self.on_chunk_status_changed)
-        buf.worksheet.connect('notify::state', self.on_notify_state)
+        self.edit_only = buf.worksheet.edit_only
+
+        if not self.edit_only:
+            buf.worksheet.connect('chunk-inserted', self.on_chunk_inserted)
+            buf.worksheet.connect('chunk-changed', self.on_chunk_changed)
+            buf.worksheet.connect('chunk-status-changed', self.on_chunk_status_changed)
+            buf.worksheet.connect('notify::state', self.on_notify_state)
         buf.connect('add-custom-result', self.on_add_custom_result)
         buf.connect('pair-location-changed', self.on_pair_location_changed)
             
         gtk.TextView.__init__(self, buf)
-        self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, LEFT_MARGIN_WIDTH)
+        if not self.edit_only:
+            self.set_border_window_size(gtk.TEXT_WINDOW_LEFT, LEFT_MARGIN_WIDTH)
         self.set_left_margin(2)
 
         # Attach a "behavior object" to the view which, by ugly hacks, makes it
@@ -92,7 +96,8 @@ class ShellView(gtk.TextView):
     def do_realize(self):
         gtk.TextView.do_realize(self)
 
-        self.get_window(gtk.TEXT_WINDOW_LEFT).set_background(self.style.white)
+        if not self.edit_only:
+            self.get_window(gtk.TEXT_WINDOW_LEFT).set_background(self.style.white)
 
         # While the the worksheet is executing, we want to display a watch cursor
         # Trying to override the cursor setting of GtkTextView is really hard because
@@ -195,7 +200,7 @@ class ShellView(gtk.TextView):
         self.__draw_rect_outline(event, rect)
 
     def do_expose_event(self, event):
-        if event.window == self.get_window(gtk.TEXT_WINDOW_LEFT):
+        if not self.edit_only and event.window == self.get_window(gtk.TEXT_WINDOW_LEFT):
             self.__expose_window_left(event)
             return False
         
@@ -359,7 +364,7 @@ class ShellView(gtk.TextView):
         # Events on the left-margin window also get written so the user can
         # click there when starting a drag selection. We need to adjust the
         # X coordinate in that case
-        if event.window == self.get_window(gtk.TEXT_WINDOW_LEFT):
+        if not self.edit_only and event.window == self.get_window(gtk.TEXT_WINDOW_LEFT):
             event.window = self.get_window(gtk.TEXT_WINDOW_TEXT)
             if event.type == gtk.gdk._3BUTTON_PRESS:
                 # Workaround for http://bugzilla.gnome.org/show_bug.cgi?id=573664
@@ -415,7 +420,7 @@ class ShellView(gtk.TextView):
             self.__doc_popup.on_key_press_event(event)
             return True
 
-        if event.keyval in (gtk.keysyms.F2, gtk.keysyms.KP_F2):
+        if not self.edit_only and event.keyval in (gtk.keysyms.F2, gtk.keysyms.KP_F2):
             self.__hide_completion()
 
             if self.__doc_popup.showing:
@@ -540,6 +545,11 @@ class ShellView(gtk.TextView):
         self.__mouse_over_object = None
         
     def do_motion_notify_event(self, event):
+        # Successful mousing-over depends on knowing the types of symbols; in edit-only mode
+        # we never do that, so return immediately
+        if not self.edit_only:
+            return
+
         if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT) and not self.__doc_popup.focused:
             buf = self.get_buffer()
             

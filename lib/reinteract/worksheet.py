@@ -93,10 +93,11 @@ class Worksheet(gobject.GObject):
         'place-cursor': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (int, int))
     }
 
-    def __init__(self, notebook):
+    def __init__(self, notebook, edit_only=False):
         gobject.GObject.__init__(self)
 
         self.notebook = notebook
+        self.edit_only = edit_only
         self.__file = None
         self.__filename = None
         self.__code_modified = False
@@ -794,6 +795,8 @@ class Worksheet(gobject.GObject):
         return self.__lines[line]
 
     def __set_state(self, new_state):
+        if self.edit_only:
+            return
         self.state = new_state
         if self.__file:
             self.__file.state = new_state
