@@ -78,6 +78,7 @@ class LibraryEditor(Editor):
 
     def _save(self, filename):
         self.buf.worksheet.save(filename)
+        self.notebook.reset_module_by_filename(filename)
 
     #######################################################
     # Public API
