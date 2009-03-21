@@ -171,6 +171,9 @@ class _BgPixbufRenderer(gtk.CellRendererPixbuf):
 class FileList(gtk.TreeView):
     __gsignals__ = {
         'open-file':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+        'close-file':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+        'rename-file':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+        'delete-file':  (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
         'row-activated':  'override',
         'destroy': 'override'
     }
@@ -204,6 +207,28 @@ class FileList(gtk.TreeView):
 
         self.__rescan()
 
+    def do_button_press_event(self, event):
+        # We hard-code support for the Mac-style control-click here because the
+        # rename/delete functionality is only available in the popup menu, so
+        # there needs to be a way for everybody to get to ti.
+        if (event.window == self.get_bin_window() and
+            event.button == 3 or (event.button == 1 and event.state == gtk.gdk.CONTROL_MASK)):
+
+            info = self.get_path_at_pos(int(event.x), int(event.y))
+            if info == None:
+                return False
+
+            path, column, cell_x, cell_y = info
+            self.set_cursor(path, column)
+            self.grab_focus()
+
+            iter = self.__model.get_iter(path)
+            self.__popup_menu(iter, event)
+
+            return True
+        else:
+            return gtk.TreeView.do_button_press_event(self, event)
+
     def do_destroy(self):
         iter = self.__model.get_iter_first()
         while iter:
@@ -218,6 +243,10 @@ class FileList(gtk.TreeView):
         item = self.__model.get_value(iter, 0)
         if isinstance(item, _FileItem):
             self.emit('open-file', item.file)
+
+    def do_popup_menu(self):
+        _, iter = self.get_selection().get_selected()
+        self.__popup_menu(iter)
 
     def __filename_cell_data_func(self, column, cell, model, iter):
         item = model.get_value(iter, 0)
@@ -262,6 +291,16 @@ class FileList(gtk.TreeView):
 
         return None
 
+    def __iter_for_file(self, file):
+        iter = self.__model.get_iter_first()
+        while iter:
+            row_item = self.__model.get_value(iter, 0)
+            if isinstance(row_item, _FileItem) and row_item.file == file:
+                return iter
+            iter = _next_row_depthfirst(self.__model, iter)
+
+        return None
+
     def __refresh_item(self, item):
         iter = self.__iter_for_item(item)
         path = self.__model.get_path(iter)
@@ -286,6 +325,69 @@ class FileList(gtk.TreeView):
             item.notify_modified_handler = None
             item.file.disconnect(item.notify_state_handler)
             item.notify_state_handler = None
+
+    def __popup_menu(self, iter, event=None):
+        item = self.__model.get_value(iter, 0)
+        if not isinstance(item, _FileItem):
+            return
+
+        menu = gtk.Menu()
+        menu_item = gtk.ImageMenuItem(stock_id="gtk-open")
+        menu_item.set_sensitive(not item.file.active)
+        menu_item.connect('activate', lambda m: self.emit('open-file', item.file))
+        menu.add(menu_item)
+        menu_item = gtk.ImageMenuItem(stock_id="gtk-close")
+        menu_item.set_sensitive(item.file.active)
+        menu_item.connect('activate', lambda m: self.emit('close-file', item.file))
+        menu.add(menu_item)
+        menu_item = gtk.SeparatorMenuItem()
+        menu.add(menu_item)
+        menu_item = gtk.MenuItem("Rename...")
+        menu_item.connect('activate', lambda m: self.emit('rename-file', item.file))
+        menu.add(menu_item)
+        menu_item = gtk.ImageMenuItem(stock_id="gtk-delete")
+        menu_item.set_sensitive(not item.file.modified)
+        menu_item.connect('activate', lambda m: self.emit('delete-file', item.file))
+        menu.add(menu_item)
+        menu.show_all()
+
+        if event:
+            button = event.button
+            time = event.time
+            position_func = None
+        else:
+            # Triggered from the keyboard
+            button = -1
+            time = gtk.get_current_event_time()
+
+            # Position the popup with respect to the row in the TreeView that
+            # we are popping it up for, not wherever the mouse happens to be
+            def position_func(menu):
+                # Reference point is the middle of the cell
+                cell_rect = self.get_cell_area(self.__model.get_path(iter),
+                                               self.get_column(0))
+                window_x, window_y = self.get_bin_window().get_origin()
+                x = window_x + cell_rect.x + cell_rect.width / 2
+                y = window_y + cell_rect.y + cell_rect.height / 2
+
+                # Make sure we fit within the monitor
+                monitor_n = self.get_screen().get_monitor_at_point(x, y)
+                monitor_rect = self.get_screen().get_monitor_geometry(monitor_n)
+                width, height = menu.size_request()
+                if x < monitor_rect.x:
+                    x = monitor_rect.x
+                elif x + width >= monitor_rect.x +  monitor_rect.width:
+                    x = monitor_rect.x +  monitor_rect.width - width
+                if y < monitor_rect.y:
+                    y = monitor_rect.y
+                elif y + height >= monitor_rect.y +  monitor_rect.height:
+                    # At the bottom we position above the reference point rather
+                    # then just forcing onto the screen by the minimum amount
+                    y = window_y + cell_rect.y + cell_rect.height / 2 - height
+
+                return (x, y, False)
+
+        menu.popup(None, None, position_func, button, time)
 
     ############################################################
 
@@ -377,6 +479,22 @@ class FileList(gtk.TreeView):
 
     def on_files_changed(self, notebook):
         self.__rescan()
+
+    ############################################################
+
+    def select_file(self, file):
+        """Select the row corresponding to the given file. The row will
+        be scrolled into the visible area if necesary.
+
+        @param file the file to select
+
+        """
+
+        iter = self.__iter_for_file(file)
+        if iter == None:
+            return
+
+        self.set_cursor(self.__model.get_path(iter), self.get_column(0))
 
 ######################################################################
 

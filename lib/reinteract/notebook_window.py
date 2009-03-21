@@ -7,10 +7,13 @@
 ########################################################################
 
 import gtk
+import os
 
 from base_notebook_window import BaseNotebookWindow
 from file_list import FileList
-from notebook import NotebookFile
+from format_escaped import format_escaped
+from notebook import NotebookFile, WorksheetFile, LibraryFile
+from save_file import SaveFileBuilder
 
 gtk.rc_parse_string(
     """
@@ -92,6 +95,9 @@ class NotebookWindow(BaseNotebookWindow):
         self.__file_list = FileList(self.notebook)
         scrolled_window.add(self.__file_list)
         self.__file_list.connect('open-file', self.on_file_list_open_file)
+        self.__file_list.connect('close-file', self.on_file_list_close_file)
+        self.__file_list.connect('rename-file', self.on_file_list_rename_file)
+        self.__file_list.connect('delete-file', self.on_file_list_delete_file)
 
         hpaned.pack2(self.nb_widget, resize=True)
 
@@ -138,6 +144,72 @@ class NotebookWindow(BaseNotebookWindow):
 
     def on_file_list_open_file(self, file_list, file):
         self.open_file(file)
+
+    def on_file_list_close_file(self, file_list, file):
+        for editor in self.editors:
+            if editor.file == file:
+                self._close_editor(editor)
+
+    def on_file_list_rename_file(self, file_list, file):
+        if file.active:
+            # If we have the file open, we need to rename via the editor
+            for editor in self.editors:
+                if editor.file == file:
+                    editor.rename()
+                # Reselect the new item in the list
+                new_file = self.notebook.file_for_absolute_path(editor.filename)
+                file_list.select_file(new_file)
+        else:
+            # Otherwise do it directly
+            def check_name(name):
+                return name != "" and name != file.path
+
+            def do_rename(new_path):
+                old_path = os.path.join(self.notebook.folder, file.path)
+                os.rename(old_path, new_path)
+                self.notebook.refresh()
+
+                # Reselect the new item in the list
+                new_file = self.notebook.file_for_absolute_path(new_path)
+                file_list.select_file(new_file)
+
+            title = "Rename '%s'" % file.path
+            builder = SaveFileBuilder(title, file.path, "Rename", check_name)
+            builder.dialog.set_transient_for(self.window)
+            builder.name_entry.set_text(file.path)
+
+            if isinstance(file, WorksheetFile):
+                extension = "rws"
+            elif isinstance(file, LibraryFile):
+                extension = "py"
+            else:
+                extension = ""
+
+            builder.prompt_for_name(self.notebook.folder, extension, do_rename)
+            builder.dialog.destroy()
+
+    def on_file_list_delete_file(self, file_list, file):
+        dialog = gtk.MessageDialog(parent=self.window, buttons=gtk.BUTTONS_NONE,
+                                   type=gtk.MESSAGE_WARNING)
+        message = format_escaped("<big><b>Really delete '%s'?</b></big>", file.path)
+        dialog.set_markup(message)
+
+        dialog.add_buttons(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                           gtk.STOCK_DELETE, gtk.RESPONSE_OK)
+        dialog.set_default_response(gtk.RESPONSE_CANCEL)
+        response = dialog.run()
+        dialog.destroy()
+
+        if response != gtk.RESPONSE_OK:
+            return
+
+        for editor in self.editors:
+            if editor.file == file:
+                self._close_editor(editor)
+
+        abspath = os.path.join(self.notebook.folder, file.path)
+        os.remove(abspath)
+        self.notebook.refresh()
 
     def on_hpaned_notify_position(self, pane, gparamspec):
         self.state.set_pane_position(pane.get_property('position'))
