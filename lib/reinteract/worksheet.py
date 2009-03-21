@@ -1226,6 +1226,12 @@ if __name__ == '__main__': #pragma: no cover
     expect([S(0,1), S(1,2), B(2,3)])
     expect_log([CC(0,1,[]),CI(1,2)])
 
+    # Shortening the last chunk in the buffer
+    clear()
+    insert(0, 0, "def a():\n    x = 1\n    return 1")
+    delete(1, 0, 2, 0)
+    expect([S(0, 2)])
+
     # Inserting a statement above a continuation line at the start of the buffer
     clear()
     insert(0, 0, "#def a(x):\n    return x")

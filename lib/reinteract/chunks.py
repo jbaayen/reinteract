@@ -53,10 +53,12 @@ class Chunk(object):
 
     def delete_lines(self, start, end):
         self.changes.delete_range(start - self.start, end - self.start)
-        if end == self.end:
-            self.end = start
-        elif start == self.start:
+        # Note: deleting everything gives [end,end], which is legitimate
+        # but maybe a little surprising. Doesn't matter for us.
+        if start == self.start:
             self.start = end
+        else:
+            self.end -= (end - start)
 
 class StatementChunk(Chunk):
 
