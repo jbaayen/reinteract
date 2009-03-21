@@ -48,6 +48,8 @@ class GlobalSettings(gobject.GObject):
     doc_tooltip_font_is_custom = _bool_property('doc_tooltip_font_is_custom', default=False)
     doc_tooltip_font_name = _string_property('doc_tooltip_font_name', default="Sans 11")
 
+    autocomplete = _bool_property('autocomplete', default=True)
+
     def __init__(self):
         gobject.GObject.__init__(self)
 

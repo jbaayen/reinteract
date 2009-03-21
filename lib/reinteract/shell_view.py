@@ -13,6 +13,7 @@ from shell_buffer import ShellBuffer, ADJUST_NONE, ADJUST_BEFORE, ADJUST_AFTER
 from chunks import StatementChunk, CommentChunk, BlankChunk
 from completion_popup import CompletionPopup
 from doc_popup import DocPopup
+from global_settings import global_settings
 from notebook import NotebookFile
 import sanitize_textview_ipc
 
@@ -644,7 +645,7 @@ class ShellView(gtk.TextView):
                 if self.__inserted_in_user_action or self.__deleted_in_user_action:
                     self.__completion_popup.update()
             else:
-                if self.__inserted_in_user_action:
+                if self.__inserted_in_user_action and global_settings.autocomplete:
                     self.__completion_popup.popup(spontaneous=True)
             self.__inserted_in_user_action = False
             self.__deleted_in_user_action = False
