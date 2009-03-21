@@ -292,8 +292,8 @@ if __name__=='__main__':
 
     stdout_capture.init()
 
-    notebook = Notebook()
-    worksheet = Worksheet(notebook)
+    nb = Notebook()
+    worksheet = Worksheet(nb)
 
     def expect_result(text, result):
         s = Statement(text, worksheet)
