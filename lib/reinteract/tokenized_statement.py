@@ -273,8 +273,10 @@ class TokenizedStatement(object):
                     iter.next()
                 except StopIteration:
                     break
-            if iter.token_type == TOKEN_KEYWORD and self.lines[iter.line][iter.start:iter.end] == 'import':
-                return True
+            if iter.token_type == TOKEN_KEYWORD:
+                keyword = self.lines[iter.line][iter.start:iter.end]
+                if keyword == 'import' or keyword == 'from':
+                    return True
 
         return False
 
@@ -723,7 +725,8 @@ if __name__ == '__main__':
     test_completion("obj.m", ['method', '__doc__', '__module__'], index=4)
     test_completion("obj.m", ['method'])
     test_completion("obj.m().n", [])
-    test_completion("import a", [])
+    test_completion("import b, a", [])
+    test_completion("from foo import a", [])
 
     test_multiline_completion(["(obj.", "m"], 1, 0, ['method', '__doc__', '__module__'])
     test_multiline_completion(["(obj.", "m"], 1, 1, ['method'])
