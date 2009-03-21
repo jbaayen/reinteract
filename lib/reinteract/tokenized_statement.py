@@ -9,6 +9,22 @@
 import inspect
 from retokenize import *
 
+# These are keywords where completion doesn't make sense afterwords, for
+# various reasons
+NO_COMPLETION_KEYWORDS = set([
+        'as', 'class', 'def', 'for', 'lambda', # introduce new names
+        'from', 'import', # different completion space
+        'break', 'continue', 'finally', 'pass', 'try' # nothing allowed after keyword
+        ])
+
+# These are tokens that the Python grammer won't allow a TOKEN_NAME after; by
+# preventing completion here we prevent auto-complete from popping up completions
+# to a name when the user was trying to enter a keyword (like 'for x <in>')
+NO_COMPLETION_TOKENS = set([
+        TOKEN_NAME, TOKEN_STRING, TOKEN_NUMBER, TOKEN_JUNK, TOKEN_RPAREN,
+        TOKEN_RSQB, TOKEN_BUILTIN_CONSTANT
+        ])
+
 class _TokenIter(object):
     def __init__(self, statement, line, i):
         self.statement = statement
@@ -280,6 +296,21 @@ class TokenizedStatement(object):
 
         return False
 
+    # See if the iter points to a place where completion on the next
+    # word doesn't make sense.
+    def __check_no_completion_after(self, iter):
+        if iter.token_type == TOKEN_KEYWORD:
+            keyword = self.lines[iter.line][iter.start:iter.end]
+
+            # example: no completion after 'for'
+            return keyword in NO_COMPLETION_KEYWORDS
+
+        if iter.token_type in NO_COMPLETION_TOKENS:
+            # example: no completion after 'for x '
+            return True
+
+        return False
+
     def __resolve_names(self, names, scope):
         obj = None
         for name in names:
@@ -379,7 +410,7 @@ class TokenizedStatement(object):
             try:
                 iter.prev()
             except StopIteration:
-                pass
+                iter = None
         else:
             # For a TOKEN_DOT, we can be more forgiving and accept white space between the
             # token and the current position
@@ -392,11 +423,12 @@ class TokenizedStatement(object):
             elif iter != None and iter.token_type in (TOKEN_NAME, TOKEN_BUILTIN_CONSTANT, TOKEN_RPAREN, TOKEN_RSQB, TOKEN_RBRACE,
                                                       TOKEN_STRING, TOKEN_NUMBER):
                 return []
-            
+            elif iter != None and self.__check_no_completion_after(iter):
+                return []
             else:
                 return self.__find_no_symbol_completions(scope)
 
-        while iter.token_type == TOKEN_DOT:
+        while iter and iter.token_type == TOKEN_DOT:
             try:
                 iter.prev()
             except StopIteration:
@@ -406,6 +438,14 @@ class TokenizedStatement(object):
                 return []
 
             names.insert(0, self.lines[iter.line][iter.start:iter.end])
+
+            try:
+                iter.prev()
+            except StopIteration:
+                iter = None
+
+        if iter and self.__check_no_completion_after(iter):
+            return []
 
         # We resolve the leading portion of the name path
         if len(names) > 1:
@@ -691,6 +731,7 @@ if __name__ == '__main__':
         'a': 1,
         'abcd': 2,
         'bcde': 3,
+        'indecent': 4,
         'obj': MyObject()
     }
             
@@ -718,8 +759,8 @@ if __name__ == '__main__':
     test_completion("ab", ['a', 'abcd'], index=1) 
     test_completion("foo.", []) 
     test_completion("(a + b)", []) 
-    test_completion("", ['a', 'abcd', 'bcde', 'len', 'obj', "__builtins__"])
-    test_completion("foo + ", ['a', 'abcd', 'bcde', 'len', 'obj', "__builtins__"])
+    test_completion("", ['a', 'abcd', 'bcde', 'indecent', 'len', 'obj', "__builtins__"])
+    test_completion("foo + ", ['a', 'abcd', 'bcde', 'indecent', 'len', 'obj', "__builtins__"])
     test_completion("l", ['len'])
     test_completion("obj.", ['method', '__doc__', '__module__'])
     test_completion("obj.m", ['method', '__doc__', '__module__'], index=4)
@@ -727,6 +768,8 @@ if __name__ == '__main__':
     test_completion("obj.m().n", [])
     test_completion("import b, a", [])
     test_completion("from foo import a", [])
+    test_completion("for a", []) # No completion to existing variables
+    test_completion("for a in", []) # Don't complete to 'indecent'
 
     test_multiline_completion(["(obj.", "m"], 1, 0, ['method', '__doc__', '__module__'])
     test_multiline_completion(["(obj.", "m"], 1, 1, ['method'])
