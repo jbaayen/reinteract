@@ -18,6 +18,8 @@ import sanitize_textview_ipc
 
 LEFT_MARGIN_WIDTH = 10
 
+ALL_WHITESPACE_RE = re.compile("^\s*$")
+
 class ShellView(gtk.TextView):
     __gsignals__ = {
         'backspace' : 'override',
@@ -223,7 +225,7 @@ class ShellView(gtk.TextView):
         return start.get_slice(end)
     
     # This is likely overengineered, since we're going to try as hard as possible not to
-    # have tabs in our worksheets
+    # have tabs in our worksheets. We don't do the funky handling of \f.
     def __count_indent(self, text):
         indent = 0
         for c in text:
@@ -245,6 +247,9 @@ class ShellView(gtk.TextView):
         while line > 0:
             line -= 1
             line_text = buf.worksheet.get_line(line)
+            # Empty lines don't establish indentation
+            if ALL_WHITESPACE_RE.match(line_text):
+                continue
 
             indent = self.__count_indent(line_text)
             if indent < current_indent:
