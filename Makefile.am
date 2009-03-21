@@ -105,6 +105,7 @@ WIX_EXTRA =					\
 BUNDLE_EXTRA =							\
 	tools/build_bundle/README				\
 	tools/build_bundle/build_bundle.py			\
+	tools/build_bundle/build_bundle.sh			\
 	tools/build_bundle/reinteract-dmg-background.png	\
 	tools/build_bundle/reinteract-dmg-background.svg	\
 	tools/build_bundle/reinteract.dsstore
