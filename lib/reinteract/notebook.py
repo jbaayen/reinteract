@@ -381,6 +381,7 @@ class Notebook(gobject.GObject):
 
     def setup_globals(self, globals):
         globals['__reinteract_notebook'] = self
+        globals['__reinteract_copy'] = copy.copy
         globals['help'] = _Helper()
 
     def file_for_absolute_path(self, absolute_path):

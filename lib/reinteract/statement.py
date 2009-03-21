@@ -104,7 +104,8 @@ class Statement:
         try:
             rewriter = Rewriter(self.__text, future_features=self.__parent_future_features)
             self.imports = rewriter.get_imports()
-            self.__compiled, self.__mutated = rewriter.rewrite_and_compile(output_func_name='reinteract_output')
+            self.__compiled, self.__mutated = rewriter.rewrite_and_compile(output_func_name='reinteract_output',
+                                                                           copy_func_name="__reinteract_copy")
         except SyntaxError, e:
             self.error_message = e.msg
             self.error_line = e.lineno
@@ -235,17 +236,14 @@ class Statement:
         self.result_scope = scope
         self.__stdout_buffer = None
 
-        for mutation in self.__mutated:
-            if isinstance(mutation, tuple):
-                variable, method = mutation
-            else:
-                variable = mutation
-
+        for root, description, copy_code in self.__mutated:
             try:
-                if variable in scope and type(scope[variable]) != type(sys):
-                    scope[variable] = copy.copy(scope[variable])
+                # If the path to the mutated object starts with a module, ignore it;
+                # our copy magic only applies to worksheet-loca variables
+                if root in scope and type(scope[root]) != type(sys):
+                    exec copy_code in scope, scope
             except:
-                self.results.append(WarningResult("Variable '%s' apparently modified, but can't copy it" % variable))
+                self.results.append(WarningResult("'%s' apparently modified, but can't copy it" % description))
 
         try:
             exec self.__compiled in scope, scope

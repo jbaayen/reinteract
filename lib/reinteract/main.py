@@ -22,6 +22,17 @@ from global_settings import global_settings
 from application import application
 
 def main():
+    if sys.version_info < (2, 5, 0):
+        message = "Reinteract requires Python 2.5 or newer"
+        print >>sys.stderr, message
+        try:
+            dialog = gtk.MessageDialog(buttons=gtk.BUTTONS_OK,
+                                       type=gtk.MESSAGE_ERROR,
+                                       message_format=message)
+            dialog.run()
+        finally:
+            sys.exit(1)
+
     # When launched from the finder on OS X, the command line will have a
     # -psx (process serial number) argument. Strip that out.
     sys.argv = filter(lambda x: not x.startswith("-psn"), sys.argv)
