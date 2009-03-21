@@ -47,7 +47,13 @@ class AboutDialog(gtk.AboutDialog):
 
         gtk.AboutDialog.__init__(self)
         self.set_name("Reinteract")
-        icon = gtk.gdk.pixbuf_new_from_file_at_size(global_settings.icon_file, 64, 64)
+        if global_settings.icon_file.endswith(".icns"):
+            # Workaround for limitations of the .icns loader; it can't do
+            # the incremental loading needed for from_file_at_size()
+            icon = gtk.gdk.pixbuf_new_from_file(global_settings.icon_file)
+            icon = icon.scale_simple(64, 64, gtk.gdk.INTERP_BILINEAR)
+        else:
+            icon = gtk.gdk.pixbuf_new_from_file_at_size(global_settings.icon_file, 64, 64)
         self.set_logo(icon)
         self.set_version(global_settings.version)
         self.set_copyright("Copyright \302\251 2007-2009 Owen Taylor, Red Hat, Inc., and others")
