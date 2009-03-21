@@ -14,7 +14,6 @@ import pango
 
 from application import application
 from editor import Editor
-from format_escaped import format_escaped
 from global_settings import global_settings
 from shell_buffer import ShellBuffer
 from shell_view import ShellView
