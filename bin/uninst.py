@@ -18,6 +18,7 @@ topdir = os.path.dirname(os.path.dirname(script_path))
 libdir = os.path.join(topdir, 'lib')
 builderdir = os.path.join(topdir, 'dialogs')
 examplesdir = os.path.join(topdir, 'examples')
+icon_file = os.path.join(topdir, 'data', 'Reinteract.ico')
 
 try:
     # Get the git description of the current commit, e.g.
@@ -38,6 +39,7 @@ from reinteract.global_settings import global_settings
 
 global_settings.dialogs_dir = builderdir
 global_settings.examples_dir = examplesdir
+global_settings.icon_file = icon_file
 global_settings.version = version
 
 import reinteract.main

@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
 
     NSString *dialogsDir;
     NSString *examplesDir;
+    NSString *iconFile;
 
     /* If we are being run from the full bundle, then our Python files, etc.
      * are inside the Resources directory of the bundle. If we running from
@@ -115,6 +116,7 @@ int main(int argc, char *argv[])
     if (dirExists(pythonDir)) {
         dialogsDir = [resourcePath stringByAppendingPathComponent:@"dialogs"];
         examplesDir = [resourcePath stringByAppendingPathComponent:@"examples"];
+        iconFile = [resourcePath stringByAppendingPathComponent:@"Reinteract.icns"];
 
         NSString *externalDir = [resourcePath stringByAppendingPathComponent:@"external"];
         PyObject *toInsert = Py_BuildValue("(ss)", [pythonDir UTF8String], [externalDir UTF8String]);
@@ -140,6 +142,8 @@ int main(int argc, char *argv[])
         NSString *baseDir = [[mainBundle bundlePath] stringByDeletingLastPathComponent];
         dialogsDir = [baseDir stringByAppendingPathComponent:@"dialogs"];
         examplesDir = [baseDir stringByAppendingPathComponent:@"examples"];
+        NSString *dataDir = [baseDir stringByAppendingPathComponent:@"data"];
+        iconFile = [dataDir stringByAppendingPathComponent:@"Reinteract.icns"];
 
         pythonDir = [baseDir stringByAppendingPathComponent:@"lib"];
 
@@ -162,6 +166,10 @@ int main(int argc, char *argv[])
     PyObject *pyExamplesDir = PyString_FromString([examplesDir UTF8String]);
     PyObject_SetAttrString(globalSettings, "examples_dir", pyExamplesDir);
     Py_DECREF(pyExamplesDir);
+
+    PyObject *pyIconFile = PyString_FromString([iconFile UTF8String]);
+    PyObject_SetAttrString(globalSettings, "icon_file", pyIconFile);
+    Py_DECREF(pyIconFile);
 
     PyObject *pyVersion = PyString_FromString(VERSION);
     PyObject_SetAttrString(globalSettings, "version", pyVersion);

@@ -36,6 +36,7 @@ class GlobalSettings(gobject.GObject):
     dialogs_dir = gobject.property(type=str)
     examples_dir = gobject.property(type=str)
     config_dir = gobject.property(type=str)
+    icon_file = gobject.property(type=str)
     notebooks_dir = gobject.property(type=str)
     mini_mode = gobject.property(type=bool, default=False)
     main_menu_mode = gobject.property(type=bool, default=False)
