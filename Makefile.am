@@ -116,7 +116,7 @@ BUILD_DEPS_OSX_EXTRA =							\
 	tools/build_deps_osx/build.sh					\
 	tools/build_deps_osx/gdk-quartz-eventloop-rework-20080905.patch	\
 	tools/build_deps_osx/gdk-window-process-updates-hook.patch	\
-	tools/build_deps_osx/gtk-clipboard-quartz-new0.patch		\
+	tools/build_deps_osx/gtk-dont-steal-update-region.patch		\
 	tools/build_deps_osx/i386.cache					\
 	tools/build_deps_osx/jhbuildrc-reinteract			\
 	tools/build_deps_osx/pango-relocate.patch			\
