@@ -545,12 +545,9 @@ class ShellView(gtk.TextView):
         self.__mouse_over_object = None
         
     def do_motion_notify_event(self, event):
-        # Successful mousing-over depends on knowing the types of symbols; in edit-only mode
-        # we never do that, so return immediately
-        if not self.edit_only:
-            return
-
-        if event.window == self.get_window(gtk.TEXT_WINDOW_TEXT) and not self.__doc_popup.focused:
+        # Successful mousing-over depends on knowing the types of symbols so doing the
+        # checks are pointless in edit-only mode
+        if not self.edit_only and event.window == self.get_window(gtk.TEXT_WINDOW_TEXT) and not self.__doc_popup.focused:
             buf = self.get_buffer()
             
             x, y = self.window_to_buffer_coords(gtk.TEXT_WINDOW_TEXT, int(event.x), int(event.y))
