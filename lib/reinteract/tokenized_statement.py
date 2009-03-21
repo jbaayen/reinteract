@@ -25,6 +25,24 @@ NO_COMPLETION_TOKENS = set([
         TOKEN_RSQB, TOKEN_BUILTIN_CONSTANT
         ])
 
+def get_prefixes(items):
+    result = set()
+    for s in items:
+        for l in xrange(1, len(s) + 1):
+            result.add(s[0:l])
+    return result
+
+# We don't complete to keywords currently, so when in spontaneous completion
+# mode, it's annoying when you trying to type a keyword, we offer to complete
+# to random variables. Even if we supported keyword completion (nice addition)
+# it would still be annoying for common keywords
+KEYWORD_PREFIXES = get_prefixes([
+        'and', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del',
+        'elif', 'else', 'except', 'exec', 'finally', 'for', 'from'
+        'if', 'import', 'in', 'is', 'global', 'lambda', 'not', 'or',
+        'pass', 'print', 'raise', 'return', 'try', 'with', 'while', 'yield'
+])
+
 class _TokenIter(object):
     def __init__(self, statement, line, i):
         self.statement = statement
@@ -461,6 +479,10 @@ class TokenizedStatement(object):
         else:
             if len(names[0]) < min_length:
                 return []
+            # When we are in "spontaneous mode" (slightly hackish to use min_length
+            # for this), we don't want to complete if the user might be typing a keyword
+            if min_length > 0 and names[0] in KEYWORD_PREFIXES:
+                return []
 
             object = None
 
@@ -780,7 +802,8 @@ if __name__ == '__main__':
     test_completion("import b, a", [])
     test_completion("from foo import a", [])
     test_completion("for a", []) # No completion to existing variables
-    test_completion("for a in", []) # Don't complete to 'indecent'
+    test_completion("for a in", []) # Don't complete to 'indecent', syntax doesn't allow it
+    test_completion("in", [], min_length=2) # Don't complete to 'indecent', because we have a keyword prefix
 
     test_multiline_completion(["(obj.", "m"], 1, 0, ['method', '__doc__', '__module__'])
     test_multiline_completion(["(obj.", "m"], 1, 1, ['method'])
