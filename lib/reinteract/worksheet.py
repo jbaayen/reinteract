@@ -659,13 +659,17 @@ class Worksheet(gobject.GObject):
 
         return self.global_scope
 
-    def find_completions(self, line, offset):
+    def find_completions(self, line, offset, min_length=0):
         """Returns a list of possible completions at the given position.
 
         Each element in the returned list is a tuple of (display_form,
         text_to_insert, object_completed_to)' where
         object_completed_to can be used to determine the type of the
         completion or get docs about it.
+
+        @param min_length if supplied, the minimum length to require for an isolated
+           name before we complete against the scope. This is useful if we are suggesting
+           completions without the user explicitly requesting it.
 
         """
 
@@ -678,13 +682,14 @@ class Worksheet(gobject.GObject):
         if isinstance(chunk, StatementChunk):
             return chunk.tokenized.find_completions(line - chunk.start,
                                                     offset,
-                                                    scope)
+                                                    scope,
+                                                    min_length=min_length)
         else:
             # A BlankChunk Create a dummy TokenizedStatement to get the completions
             # appropriate for the start of a line
             ts = TokenizedStatement()
             ts.set_lines([''])
-            return ts.find_completions(0, 0, scope)
+            return ts.find_completions(0, 0, scope, min_length=min_length)
 
     def get_object_at_location(self, line, offset, include_adjacent=False):
         """Find the object at a particular location within the worksheet

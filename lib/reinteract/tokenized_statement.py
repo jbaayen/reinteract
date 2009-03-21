@@ -376,13 +376,17 @@ class TokenizedStatement(object):
 
         return self.__sort_completions(result)
     
-    def find_completions(self, line, index, scope):
+    def find_completions(self, line, index, scope, min_length=0):
         """Returns a list of possible completions at the given line and index.
 
         Scope is the scope to start calculating the comptions from. Each element
         in the returned list is a tuple of (display_form, text_to_insert, object_completed_to)'
         where object_completed_to can be used to determine the type of the completion
         or get docs about it.
+
+        @param min_length if supplied, the minimum length to require for an isolated
+           name before we complete against the scope. This is useful if we are suggesting
+           completions without the user explicitly requesting it.
 
         """
 
@@ -417,6 +421,8 @@ class TokenizedStatement(object):
             iter = self._get_iter_before(line, index)
             if iter != None and iter.token_type == TOKEN_DOT:
                 names = ['']
+            elif min_length > 0:
+                return []
             # This is a non-exhaustive list of places where we know that we shouldn't complete to the
             # the scope. (We could do better by special casing actual completions for TOKEN_RSQB, TOKEN_RBRACE,
             # TOKEN_STRING)
@@ -453,6 +459,9 @@ class TokenizedStatement(object):
             if object == None:
                 return []
         else:
+            if len(names[0]) < min_length:
+                return []
+
             object = None
 
         # Then we complete the last element of the name path against what we resolved
@@ -735,13 +744,13 @@ if __name__ == '__main__':
         'obj': MyObject()
     }
             
-    def test_completion(line, expected, index = -1):
+    def test_completion(line, expected, index = -1, min_length=0):
         if index == -1:
             index = len(line)
         
         ts = TokenizedStatement()
         ts.set_lines([line])
-        completions = [n for n, _, _ in ts.find_completions(0, index, scope)]
+        completions = [n for n, _, _ in ts.find_completions(0, index, scope, min_length=min_length)]
         if completions != expected:
             print "For %s/%d, got %s, expected %s" % (line,index,completions,expected)
             failed = True
@@ -756,6 +765,8 @@ if __name__ == '__main__':
 
     test_completion("a", ['a', 'abcd'])
     test_completion("ab", ['abcd']) 
+    test_completion("ab", ['abcd'], min_length=2)
+    test_completion("ab", [], min_length=3)
     test_completion("ab", ['a', 'abcd'], index=1) 
     test_completion("foo.", []) 
     test_completion("(a + b)", []) 
