@@ -56,40 +56,7 @@ class Editor(gobject.GObject):
         if self._get_filename() != None:
             builder.name_entry.set_text(os.path.basename(self._get_filename()))
 
-        while True:
-            response = builder.dialog.run()
-            if response != gtk.RESPONSE_OK:
-                break
-
-            raw_name = builder.name_entry.get_text()
-
-            error_message = None
-            try:
-                raw_name = application.validate_name(raw_name)
-            except ValueError, e:
-                error_message = e.message
-
-            if not error_message:
-                extension = "." + self._get_extension()
-                if not (raw_name.lower().endswith(extension)):
-                    raw_name += extension
-
-            if not error_message:
-                fullname = os.path.join(self.notebook.folder, raw_name)
-                if os.path.exists(fullname):
-                    error_message = "'%s' already exists" % raw_name
-
-            if error_message:
-                dialog = gtk.MessageDialog(parent=self.widget.get_toplevel(), buttons=gtk.BUTTONS_OK,
-                                           type=gtk.MESSAGE_ERROR)
-                dialog.set_markup("<big><b>Please choose a different name</b></big>")
-                dialog.format_secondary_text(error_message)
-                dialog.run()
-                dialog.destroy()
-                continue
-
-            action(fullname)
-            break
+        builder.prompt_for_name(self.notebook.folder, self._get_extension(), action)
 
         builder.dialog.destroy()
 

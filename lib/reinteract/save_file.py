@@ -9,6 +9,7 @@
 import gtk
 import os
 
+from application import application
 from window_builder import WindowBuilder
 
 class SaveFileBuilder(WindowBuilder):
@@ -34,3 +35,38 @@ class SaveFileBuilder(WindowBuilder):
 
     def check_name(self, name):
         return name != ""
+
+    def prompt_for_name(self, folder, extension, action):
+        while True:
+            response = self.dialog.run()
+            if response != gtk.RESPONSE_OK:
+                break
+
+            raw_name = self.name_entry.get_text()
+
+            error_message = None
+            try:
+                raw_name = application.validate_name(raw_name)
+            except ValueError, e:
+                error_message = e.message
+
+            if not error_message:
+                if not (raw_name.lower().endswith("." + extension)):
+                    raw_name += "." + extension
+
+            if not error_message:
+                fullname = os.path.join(folder, raw_name)
+                if os.path.exists(fullname):
+                    error_message = "'%s' already exists" % raw_name
+
+            if error_message:
+                dialog = gtk.MessageDialog(parent=self.dialog, buttons=gtk.BUTTONS_OK,
+                                           type=gtk.MESSAGE_ERROR)
+                dialog.set_markup("<big><b>Please choose a different name</b></big>")
+                dialog.format_secondary_text(error_message)
+                dialog.run()
+                dialog.destroy()
+                continue
+
+            action(fullname)
+            break
