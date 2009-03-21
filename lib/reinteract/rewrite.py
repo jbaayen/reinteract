@@ -97,6 +97,33 @@ def _do_match(t, pattern, start_pos=0, start_pattern_index=0):
     else:
         return result
 
+_path_pattern = \
+                     (symbol.test,
+                      (symbol.or_test,
+                       (symbol.and_test,
+                        (symbol.not_test,
+                         (symbol.comparison,
+                          (symbol.expr,
+                           (symbol.xor_expr,
+                            (symbol.and_expr,
+                             (symbol.shift_expr,
+                              (symbol.arith_expr,
+                               (symbol.term,
+                                (symbol.factor,
+
+                                 (symbol.power,
+                                  '*path')))))))))))))
+
+def _is_test_path(t):
+    # Check if the given AST is "test" of the form 'a.b...c' (where there
+    # may be slices and method calls in the path). If it  matches,
+    # returns 'a.b...c, otherwise returns None
+    args = _do_match(t, _path_pattern)
+    if args == None:
+        return None
+    else:
+        return args['path']
+
 _method_call_pattern = \
                      (symbol.test,
                       (symbol.or_test,
@@ -121,8 +148,8 @@ _method_call_pattern = \
                                    '*'))))))))))))))
 
 def _is_test_method_call(t):
-    # Check if the given AST is a "test" of the form 'v.m()' If it
-    # matches, returns { 'variable': 'v', "method": m }, otherwise returns None
+    # Check if the given AST is a "test" of the form 'a...b.c()' If it
+    # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _method_call_pattern)
     if args == None:
         return None
@@ -151,8 +178,8 @@ _attribute_pattern = \
     
     
 def _is_test_attribute(t):
-    # Check if the given AST is a attribute of the form 'v.a' If it
-    # matches, returns v, otherwise returns None
+    # Check if the given AST is a "test" of the form 'a...b.c' If it
+    # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _attribute_pattern)
     
     if args == None:
@@ -183,8 +210,8 @@ _slice_pattern = \
 
 
 def _is_test_slice(t):
-    # Check if the given AST is a "test" of the form 'v[...]' If it
-    # matches, returns v, otherwise returns None
+    # Check if the given AST is a "test" of the form 'a...b[c]' If it
+    # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _slice_pattern)
 
     if args == None:
@@ -276,10 +303,10 @@ def _rewrite_expr_stmt(t, state):
             subnode = t[1]
             assert(len(subnode) == 2) # can only augassign one thing, despite the grammar
             
-            path = _is_test_slice(subnode[1])
-            if path == None:
-                path = _is_test_attribute(subnode[1])
-
+            # Depending on what a is, a += b can modify a. For example appending
+            # to an array with a += [3]. If a is immutable (a number say), then copying
+            # it is unnecessary, but cheap
+            path = _is_test_path(subnode[1])
             if path != None:
                 state.add_mutated(path)
         else:
@@ -883,7 +910,8 @@ if __name__ == '__main__':
                  'b = []; a = [b]',
                  'b == [] and a == [b]', 'b == [] and a == [[1]]')
 
-    test_mutated('a[0] += 1', ('a',))
+    test_mutated('a += 1', ('a',))
+    test_mutated('a[0] += 1', ('a', 'a[...]'))
 
     prepare = """
 class A:
@@ -900,9 +928,11 @@ a.a = A()
 
     test_mutated('a.b = 2', ('a',),
                  prepare, 'a.b == 1', 'a.b == 2')
-    test_mutated('a.b += 1', ('a',),
+    test_mutated('a.b = 2', ('a',),
                  prepare, 'a.b == 1', 'a.b == 2')
-    test_mutated('a.a.b += 1', ('a','a.a'),
+    test_mutated('a.a.b = 2', ('a','a.a'),
+                 prepare, 'a.a.b == 1', 'a.a.b == 2')
+    test_mutated('a.a.b += 1', ('a','a.a','a.a.b'),
                  prepare, 'a.a.b == 1', 'a.a.b == 2')
 
     test_mutated('a.addmul(1,2)', ('a',),
@@ -912,8 +942,8 @@ a.a = A()
 
     # These don't actually work properly since we don't know to copy a.a
     # So we just check the descriptions and not the execution
-    test_mutated('a.get_a().b += 1', ('a',))
-    test_mutated('a.get_a().a.b += 1', ('a', 'a.get_a(...).a'))
+    test_mutated('a.get_a().b = 2', ('a',))
+    test_mutated('a.get_a().a.b = 2', ('a', 'a.get_a(...).a'))
 
     #
     # Test handling of encoding
