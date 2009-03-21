@@ -47,11 +47,8 @@ class AboutDialog(gtk.AboutDialog):
 
         gtk.AboutDialog.__init__(self)
         self.set_name("Reinteract")
-        if global_settings.icon_file:
-            icon = gtk.gdk.pixbuf_new_from_file_at_size(global_settings.icon_file, 64, 64)
-            self.set_logo(icon)
-        else:
-            self.set_logo_icon_name("reinteract")
+        icon = gtk.gdk.pixbuf_new_from_file_at_size(global_settings.icon_file, 64, 64)
+        self.set_logo(icon)
         self.set_version(global_settings.version)
         self.set_copyright("Copyright \302\251 2007-2009 Owen Taylor, Red Hat, Inc., and others")
         self.set_website("http://www.reinteract.org")

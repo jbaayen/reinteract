@@ -153,6 +153,7 @@ int main(int argc, char *argv[])
     } else {
         dialogsDir = @DIALOGSDIR;
         examplesDir = @EXAMPLESDIR;
+        iconFile = @ICONDIR "/Reinteract.ico";
     }
 
     /* Set attributes in the global_settings objects */

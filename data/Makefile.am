@@ -7,6 +7,10 @@ desktop_DATA = reinteract.desktop
 mimedir = $(datadir)/mime/packages
 mime_DATA = reinteract.xml
 
+# Install the ICO to use in the About dialog
+pkgdata_DATA=					\
+	Reinteract.ico
+
 EXTRA_DIST=					\
 	$(desktop_DATA)				\
 	$(icon_DATA)				\
@@ -15,7 +19,6 @@ EXTRA_DIST=					\
 	MainMenu.nib/classes.nib		\
 	MainMenu.nib/info.nib			\
 	MainMenu.nib/keyedobjects.nib		\
-	Reinteract.ico				\
 	Reinteract.icns
 
 # Calling update-mime-database is necessary to get the associations

@@ -179,7 +179,8 @@ INCLUDES =					\
 	$(PYTHON_INCLUDES)			\
 	$(WRAPPER_CFLAGS)			\
 	-DEXAMPLESDIR=\"$(examplesdir)\"	\
-	-DDIALOGSDIR=\"$(pkgdatadir)/dialogs\"
+	-DDIALOGSDIR=\"$(pkgdatadir)/dialogs\"	\
+	-DICONDIR=\"$(pkgdatadir)\"
 
 ReinteractWrapper_LDFLAGS = -framework Cocoa $(PYTHON_LIBS)
 
