@@ -44,6 +44,15 @@ class ShellView(gtk.TextView):
             buf.worksheet.connect('chunk-changed', self.on_chunk_changed)
             buf.worksheet.connect('chunk-status-changed', self.on_chunk_status_changed)
             buf.worksheet.connect('notify::state', self.on_notify_state)
+
+            # Track changes to update completion
+            buf.connect_after('insert-text', self.on_after_insert_text)
+            buf.connect_after('delete-range', self.on_after_delete_range)
+            buf.connect_after('end-user-action', self.on_after_end_user_action)
+
+            self.__inserted_in_user_action = False
+            self.__deleted_in_user_action = False
+
         buf.connect('add-custom-result', self.on_add_custom_result)
         buf.connect('pair-location-changed', self.on_pair_location_changed)
             
@@ -348,10 +357,6 @@ class ShellView(gtk.TextView):
         if self.__completion_popup.showing:
             self.__completion_popup.popdown()
             
-    def __update_completion(self):
-        if self.__completion_popup.showing:
-            self.__completion_popup.update()
-            
     def do_focus_out_event(self, event):
         self.__hide_completion()
         self.__doc_popup.popdown()
@@ -483,30 +488,30 @@ class ShellView(gtk.TextView):
             buf.begin_user_action()
             self.__reindent_selection(outdent=False)
             buf.end_user_action()
-            
-            self.__update_completion()
+
             return True
         elif event.keyval == gtk.keysyms.ISO_Left_Tab and event.state & gtk.gdk.CONTROL_MASK == 0:
             buf.begin_user_action()
             self.__reindent_selection(outdent=True)
             buf.end_user_action()
-            
-            self.__update_completion()
+
             return True
         elif event.keyval == gtk.keysyms.space and event.state & gtk.gdk.CONTROL_MASK != 0:
             if self.__completion_popup.showing:
-                self.__completion_popup.popdown()
+                if self.__completion_popup.spontaneous:
+                    self.__completion_popup.popup(spontaneous=False)
+                else:
+                    self.__completion_popup.popdown()
             else:
                 if self.__doc_popup.showing:
                     self.__doc_popup.popdown()
-                self.__completion_popup.popup()
+                self.__completion_popup.popup(spontaneous=False)
             return True
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
                 (event.state & gtk.gdk.CONTROL_MASK) != 0 and \
                 (event.state & gtk.gdk.SHIFT_MASK) == 0:
             buf.worksheet.undo()
             
-            self.__update_completion()
             return True
         # This is the gedit/gtksourceview binding to cause your hands to fall off
         elif event.keyval in (gtk.keysyms.z, gtk.keysyms.Z) and \
@@ -514,20 +519,14 @@ class ShellView(gtk.TextView):
                 (event.state & gtk.gdk.SHIFT_MASK) != 0:
             buf.worksheet.redo()
             
-            self.__update_completion()
             return True
         # This is the familiar binding (Eclipse, etc). Firefox supports both
         elif event.keyval in (gtk.keysyms.y, gtk.keysyms.Y) and event.state & gtk.gdk.CONTROL_MASK != 0:
             buf.worksheet.redo()
 
-            self.__update_completion()            
             return True
         
-        if gtk.TextView.do_key_press_event(self, event):
-            self.__update_completion()
-            return True
-        else:
-            return False
+        return gtk.TextView.do_key_press_event(self, event)
 
     def __show_mouse_over(self):
         self.__mouse_over_timeout = None
@@ -630,6 +629,25 @@ class ShellView(gtk.TextView):
                 self.__watch_window.raise_()
             else:
                 self.__watch_window.hide()
+
+    def on_after_insert_text(self, buf, location, text, len):
+        if buf.worksheet.in_user_action() and not buf.in_modification():
+            self.__inserted_in_user_action = True
+
+    def on_after_delete_range(self, buf, start, end):
+        if buf.worksheet.in_user_action() and not buf.in_modification():
+            self.__deleted_in_user_action = True
+
+    def on_after_end_user_action(self, buf):
+        if not buf.worksheet.in_user_action():
+            if self.__completion_popup.showing:
+                if self.__inserted_in_user_action or self.__deleted_in_user_action:
+                    self.__completion_popup.update()
+            else:
+                if self.__inserted_in_user_action:
+                    self.__completion_popup.popup(spontaneous=True)
+            self.__inserted_in_user_action = False
+            self.__deleted_in_user_action = False
 
     def on_add_custom_result(self, buf, result, anchor):
         widget = result.create_widget()

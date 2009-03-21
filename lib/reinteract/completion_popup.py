@@ -21,6 +21,10 @@ VERTICAL_GAP = 5
 WIDTH = 300
 HEIGHT = 300
 
+# If the user is just typing, the number of characters we require before
+# we start suggesting completions
+SPONTANEOUS_MIN_LENGTH = 3
+
 class CompletionPopup(Popup):
     
     """Class implementing a completion popup for ShellView
@@ -66,9 +70,10 @@ class CompletionPopup(Popup):
         self.__doc_popup= DocPopup(fixed_width=True, fixed_height=True, max_height=HEIGHT, can_focus=False)
 
         self._in_change = False
+        self.spontaneous = False
         self.showing = False
 
-    def __update_completions(self):
+    def __update_completions(self, spontaneous=False):
         buf = self.__view.get_buffer()
 
         self.__in_change = True
@@ -77,7 +82,11 @@ class CompletionPopup(Popup):
         if line == None:
             completions = []
         else:
-            completions = buf.worksheet.find_completions(line, offset)
+            if spontaneous:
+                min_length = SPONTANEOUS_MIN_LENGTH
+            else:
+                min_length = 0
+            completions = buf.worksheet.find_completions(line, offset, min_length)
         for display, completion, obj in completions:
             self.__tree_model.append([display, completion, obj])
 
@@ -150,27 +159,33 @@ class CompletionPopup(Popup):
         self.__insert_completion(self.__tree_model.get_iter(path))
         self.popdown()
 
-    def popup(self):
+    def popup(self, spontaneous=False):
         """Pop up the completion popup.
 
         If there are no possibilities completion at the insert cursor
         location, the popup is not popped up. If there is exactly one
-        possibility, then completion is done immediately to that one
-        possibility.
+        possibility and the spontaneous parameter is not provided , then
+        completion is done immediately to that one possibility.
+
+        @param spontaneous set to True if we're popping this up as a result
+           of editing, rather than because of an explicit key shortcut.
 
         """
         
-        if self.showing:
+        self.__update_completions(spontaneous=spontaneous)
+        num_completions = len(self.__tree_model)
+        if num_completions == 0:
             return
-        
-        self.__update_completions()
-        if len(self.__tree_model) < 2:
-            if len(self.__tree_model) == 0:
-                return
+        elif num_completions == 1 and not spontaneous:
             self.__insert_selected()
             return
         
         self.__update_position()
+
+        self.spontaneous = spontaneous
+
+        if self.showing:
+            return
 
         self.show()
         self.showing = True
@@ -191,7 +206,7 @@ class CompletionPopup(Popup):
         if not self.showing:
             return
         
-        self.__update_completions()
+        self.__update_completions(spontaneous=self.spontaneous)
         if len(self.__tree_model) == 0:
             self.popdown()
             return

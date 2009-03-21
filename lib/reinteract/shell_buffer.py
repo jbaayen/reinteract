@@ -652,6 +652,15 @@ class ShellBuffer(gtk.TextBuffer):
         else:
             return None
 
+    def in_modification(self):
+        """Return True if the text buffer is modifying its contents itself
+
+        This can be useful to distinguish user edits from internal edits.
+
+        """
+
+        return self.__in_modification_count > 0
+
 ######################################################################
 # The tests we include here are tests of the interaction of editing
 # with results. Results don't appear inline in a Worksheet, so these
