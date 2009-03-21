@@ -8,9 +8,10 @@
 ########################################################################
 
 import gtk
-
 import os
 import sys
+
+from global_settings import global_settings
 
 def _find_program_in_path(progname):
     try:
@@ -47,6 +48,7 @@ class AboutDialog(gtk.AboutDialog):
         gtk.AboutDialog.__init__(self)
         self.set_name("Reinteract")
         self.set_logo_icon_name("reinteract")
+        self.set_version(global_settings.version)
         self.set_copyright("Copyright \302\251 2007-2008 Owen Taylor, Red Hat, Inc., and others")
         self.set_website("http://www.reinteract.org")
         self.connect("response", lambda d, r: d.destroy())

@@ -39,6 +39,7 @@ class GlobalSettings(gobject.GObject):
     notebooks_dir = gobject.property(type=str)
     mini_mode = gobject.property(type=bool, default=False)
     main_menu_mode = gobject.property(type=bool, default=False)
+    version = gobject.property(type=str)
 
     editor_font_is_custom = _bool_property('editor_font_is_custom', default=False)
     editor_font_name = _string_property('editor_font_name', default="Monospace 12")

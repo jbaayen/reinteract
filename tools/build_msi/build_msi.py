@@ -289,6 +289,21 @@ All rights reserved.
                 self.generate("  <ComponentRef Id='%s'/>" % (component_id,))
         self.generate("</Feature>")
 
+    def substitute_pyw(self, version):
+        origfile = os.path.join(self.topdir, "bin", "Reinteract.pyw")
+        f = open(origfile, "r")
+        contents = f.read()
+        f.close()
+
+        contents = contents.replace("@VERSION@", version)
+
+        destfile = os.path.join(self.tempdir, "Reinteract.pyw")
+        f = open(destfile, "w")
+        f.write(contents)
+        f.close()
+
+        self.add_file(destfile, 'bin', feature='core')
+
     def compile_wrapper(self):
         python_topdir = os.path.dirname(os.path.dirname(shutil.__file__))
         python_include = os.path.join(python_topdir, "include")
@@ -320,7 +335,8 @@ All rights reserved.
         self.component_namespace = uuid.uuid5(COMPONENT_NAMESPACE, version)
         self.add_files_from_am('', '', feature='core')
 
-        self.add_file('bin/Reinteract.pyw', 'bin', feature='core')
+        self.substitute_pyw(version)
+
         # This is a XDG icon-specification organized directory with a SVG in it, not useful
         shutil.rmtree(os.path.join(self.treedir, 'icons'))
         self.add_file('data/Reinteract.ico', '', feature='core')

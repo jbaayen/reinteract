@@ -163,6 +163,10 @@ int main(int argc, char *argv[])
     PyObject_SetAttrString(globalSettings, "examples_dir", pyExamplesDir);
     Py_DECREF(pyExamplesDir);
 
+    PyObject *pyVersion = PyString_FromString(VERSION);
+    PyObject_SetAttrString(globalSettings, "version", pyVersion);
+    Py_DECREF(pyVersion);
+
     PyObject_SetAttrString(globalSettings, "main_menu_mode", Py_True);
 
     /* Initialize reinteract.NativeMainMenu module; this provides two-way

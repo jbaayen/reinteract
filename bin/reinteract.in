@@ -17,6 +17,7 @@ prefix="@prefix@"
 datarootdir="@datarootdir@".replace("${prefix}", prefix)
 global_settings.dialogs_dir = os.path.join(datarootdir, "reinteract", "dialogs")
 global_settings.examples_dir = os.path.join(datarootdir, "reinteract", "examples")
+global_settings.version = "@VERSION@"
 
 if __name__ == "__main__":
     import reinteract.main

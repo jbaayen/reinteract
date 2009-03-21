@@ -25,6 +25,7 @@ from reinteract.global_settings import global_settings
 
 global_settings.dialogs_dir = builderdir
 global_settings.examples_dir = examplesdir
+global_settings.version = "@VERSION@"
 
 import reinteract.main
 reinteract.main.main()
