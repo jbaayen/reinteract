@@ -92,8 +92,11 @@ TEMPLATE = \
                Comments='Reinteract Installer for Windows'
                Manufacturer='Owen Taylor' InstallerVersion='200' Compressed='yes' />
 
+      <!-- We allow "upgrading" over the same version to support moving between
+           the Python-2.5 and Python-2.6 versions; this triggers a validation
+           warning but I'm not sure a better way to handle it -->
       <Upgrade Id='%(upgrade_code)s'>
-          <UpgradeVersion Maximum='%(version)s' IncludeMaximum='no' MigrateFeatures='yes' Property='PREVIOUSVERSIONS'/>
+          <UpgradeVersion Maximum='%(version)s' IncludeMaximum='yes' MigrateFeatures='yes' Property='PREVIOUSVERSIONS'/>
       </Upgrade>
 
       <InstallExecuteSequence>
@@ -304,7 +307,10 @@ All rights reserved.
 
         self.add_file(destfile, 'bin', feature='core')
 
-    def compile_wrapper(self):
+    def compile_wrapper_python25(self):
+        # On Python-2.5 we build with MingW32; this avoids creating
+        # a dependency on the Visual Studio runtime.
+        #
         python_topdir = os.path.dirname(os.path.dirname(shutil.__file__))
         python_include = os.path.join(python_topdir, "include")
         python_lib = os.path.join(python_topdir, "libs")
@@ -323,27 +329,87 @@ All rights reserved.
         check_call(['windres', '-O', 'COFF', '-o', wrapper_res_o, wrapper_rc])
                    
         wrapper = os.path.join(self.tempdir,  "Reinteract.exe")
-        check_call(['gcc', '-mwindows', '-o', wrapper, '-L', python_lib, wrapper_o, wrapper_res_o, '-lpython25'])
+        lpython = "-lpython%d%d" % (sys.version_info[0], sys.version_info[1])
+        check_call(['gcc', '-mwindows', '-o', wrapper, '-L', python_lib, wrapper_o, wrapper_res_o, lpython])
+
+        self.add_file(wrapper, 'bin', feature='core')
+
+    def compile_wrapper_python26(self):
+        # For Python-2.6 we build with Visual Studio; trying to get a
+        # MingW32-built .exe to load the extensions we bundle for Python-2.6
+        # seems very difficult. We hope that our version of Visual Studio
+        # was close enough to the version that Python is built with so
+        # that if Python runs, we run.
+        #
+        # We use some distutils internals to locate the Visual Studio
+        # command line tools
+        #
+        from distutils.msvc9compiler import MSVCCompiler
+        compiler = MSVCCompiler()
+        # This looks for the tools and then adds them to os.environ['Path']
+        compiler.initialize()
+
+        python_topdir = os.path.dirname(os.path.dirname(shutil.__file__))
+        python_include = os.path.join(python_topdir, "include")
+        python_lib = os.path.join(python_topdir, "libs")
+
+        wrapper_c = os.path.join(self.topdir, "tools", "build_msi", "wrapper.c")
+
+        wrapper_rc = os.path.join(self.tempdir, "wrapper.rc")
+        f = open(wrapper_rc, "w")
+        f.write("""LANGUAGE 0, 0
+100	 ICON	%s
+""" % os.path.join(self.treedir, "Reinteract.ico"))
+        f.close()
+
+        # We can use distutils to do the basic compilation
+        objects = compiler.compile([wrapper_c, wrapper_rc],
+                                   output_dir=self.tempdir, include_dirs=[python_include])
+
+        # But have to do the linking a bit more manually since distutils
+        # doesn't know how to handle creating .exe files
+        wrapper = os.path.join(self.tempdir,  "Reinteract.exe")
+        manifest = os.path.join(self.tempdir,  "Reinteract.exe.manifest")
+        extra_libs = [
+            'user32.lib', # For MessageBox
+        ]
+        check_call([compiler.linker,
+                    "/MANIFEST",
+                    "/MANIFESTFILE:" + manifest,
+                    "/LIBPATH:" + python_lib,
+                    "/OUT:" + wrapper]
+                   + objects + extra_libs)
+
+        # Embed the manifest into the executable
+        check_call(['mt.exe',
+                    '-manifest', manifest,
+                    '-outputresource:' + wrapper + ';1'])
 
         self.add_file(wrapper, 'bin', feature='core')
 
     def build(self):
         version = self.get_version()
-        output = self.output % { 'version' : version }
+        python_version = "python%d.%d" % (sys.version_info[0], sys.version_info[1])
+        full_version = version + "-" + python_version
+
+        output = self.output % { 'version' : full_version }
         _logger.info("Will write output to %s", output)
 
-        self.component_namespace = uuid.uuid5(COMPONENT_NAMESPACE, version)
+        self.component_namespace = uuid.uuid5(COMPONENT_NAMESPACE, full_version)
         self.add_files_from_am('', '', feature='core')
 
-        self.substitute_pyw(version)
+        self.substitute_pyw(full_version)
 
         # This is a XDG icon-specification organized directory with a SVG in it, not useful
         shutil.rmtree(os.path.join(self.treedir, 'icons'))
         self.add_file('data/Reinteract.ico', '', feature='core')
         self.add_feature_component('core', 'ReinteractShortcut')
 
-        self.compile_wrapper()
-        
+        if python_version == 'python2.5':
+            self.compile_wrapper_python25()
+        else:
+            self.compile_wrapper_python26()
+
         self.add_external_module('cairo', 'external', feature='pygtk')
         self.add_external_module('gobject', 'external', feature='pygtk')
         self.add_external_module('atk', 'external', feature='pygtk')
@@ -371,7 +437,7 @@ All rights reserved.
         self.generate_feature('scipy', allow_absent='yes', title='SciPy', description='Private copies of the numpy and matplotlib modules')
 
         wxs = TEMPLATE % {
-            'product_guid' : uuid.uuid5(PRODUCT_NAMESPACE, version),
+            'product_guid' : uuid.uuid5(PRODUCT_NAMESPACE, full_version),
             'version' : version,
             'upgrade_code' : UPGRADE_CODE,
             'shortcut_component_guid' : self.generate_component_guid("{shortcut}"),

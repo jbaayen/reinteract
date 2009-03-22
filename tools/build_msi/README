@@ -18,18 +18,21 @@ To make this work, you'll need:
 
    http://wix.sourceforge.net/
 
-* MinGW installed and added to your PATH. (This is used to compile the
-  Reinteract.exe wrapper script.) Get it from:
+* To build against Python-2.5, MinGW installed and added to your PATH.
+  (This is used to compile the Reinteract.exe wrapper script.) Get it from:
 
    http://www.mingw.org/
+
+* To build against Python-2.6, Visual Studio 2008 or 
+  Visual C++ 20008 Express Edition (a free download) installed.
   
 Then simply run 'python build_msi.py' from this directory, and:
   
-  Reinteract-<version>.msi
+  Reinteract-<version>-python2.N.msi
   
 file will be generated. The file
 
-  Reinteract-<version>.msi.manifest
+  Reinteract-<version>-python2.N.msi.manifest
 
 is a listing of all the files in the installer. This is meant for comparing
 with the previous version to make sure that files haven't gone missing.
