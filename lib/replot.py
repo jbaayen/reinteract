@@ -1,4 +1,5 @@
 # Copyright 2007, 2008 Owen Taylor
+# Copyright 2008 Kai Willadsen
 #
 # This file is part of Reinteract and distributed under the terms
 # of the BSD license. See the file COPYING in the Reinteract

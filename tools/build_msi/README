@@ -40,7 +40,7 @@ with the previous version to make sure that files haven't gone missing.
 Some portions of the installer user interface are derived from an
 installer I created for the Mugshot Windows client. Those portions are
 Copyright Red Hat, Inc, 2006. The rest of the user interface files and
-build_msi.py are Copyright Owen Taylor, 2008.
+build_msi.py are Copyright Owen Taylor, 2008-2009.
 
 All of the code and data in this directory may be used under the same 
 licensing terms as the rest of Reinteract.

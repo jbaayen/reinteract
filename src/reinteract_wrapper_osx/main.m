@@ -1,6 +1,6 @@
 /* -*- mode: ObjC; c-basic-offset: 4; indent-tabs-mode: nil; -*-
  *
- * Copyright 2008 Owen Taylor
+ * Copyright 2008-2009 Owen Taylor
  *
  * This file is part of Reinteract and distributed under the terms
  * of the BSD license. See the file COPYING in the Reinteract

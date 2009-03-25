@@ -1,4 +1,4 @@
-# Copyright 2007, 2008 Owen Taylor
+# Copyright 2007-2009 Owen Taylor
 # Copyright 2008 Kai Willadsen
 #
 # This file is part of Reinteract and distributed under the terms

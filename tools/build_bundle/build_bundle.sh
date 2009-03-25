@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2008 Owen Taylor
+# Copyright 2009 Owen Taylor
 #
 # This file is part of Reinteract and distributed under the terms
 # of the BSD license. See the file COPYING in the Reinteract
