@@ -24,11 +24,9 @@ from undo_stack import UndoStack, InsertOp, DeleteOp
 _debug = logging.getLogger("Worksheet").debug
 
 _DEFINE_GLOBALS = compile("""
-global reinteract_output, reinteract_print
+global reinteract_output
 def reinteract_output(*args):
    __reinteract_statement.do_output(*args)
-def reinteract_print(*args):
-   __reinteract_statement.do_print(*args)
 """, __name__, 'exec')
 
 BLANK_RE = re.compile(r'^\s*$')

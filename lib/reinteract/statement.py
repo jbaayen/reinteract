@@ -147,11 +147,6 @@ class Statement:
             self.results.append(repr(args))
             self.result_scope['_'] = args
 
-    def do_print(self, *args):
-        """Called by execution of print statements (see L{Rewriter})"""
-
-        self.results.append(" ".join(map(str, args)))
-
     def __stdout_write(self, str):
         if self.__stdout_buffer == None:
             self.__stdout_buffer = str
