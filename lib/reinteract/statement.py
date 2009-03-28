@@ -112,6 +112,10 @@ class Statement:
             self.error_offset = e.offset
             self.state = Statement.COMPILE_ERROR
             return False
+        except UnicodeDecodeError, e:
+            self.error_message = str(e)
+            self.state = Statement.COMPILE_ERROR
+            return False
         except UnsupportedSyntaxError, e:
             self.error_message = e.value
             self.state = Statement.COMPILE_ERROR
