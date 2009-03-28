@@ -90,8 +90,8 @@ class LibraryEditor(Editor):
         global_settings.disconnect(self.__font_is_custom_connection)
         global_settings.disconnect(self.__font_name_connection)
 
-    def load(self, filename):
-        self.buf.worksheet.load(filename)
+    def load(self, filename, escape=False):
+        self.buf.worksheet.load(filename, escape=escape)
         self.buf.place_cursor(self.buf.get_start_iter())
 
     def undo(self):

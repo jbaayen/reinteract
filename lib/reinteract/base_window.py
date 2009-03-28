@@ -20,6 +20,7 @@ from library_editor import LibraryEditor
 from notebook import Notebook, NotebookFile
 from worksheet_editor import WorksheetEditor
 from preferences_dialog import show_preferences
+import reunicode
 
 if global_settings.main_menu_mode:
     from main_menu import main_menu
@@ -138,7 +139,23 @@ class BaseWindow:
             return None
 
         try:
-            editor.load(filename)
+            try:
+                editor.load(filename, escape=False)
+            except reunicode.ConversionError, e:
+                dialog = gtk.MessageDialog(buttons=gtk.BUTTONS_NONE,
+                                           type=gtk.MESSAGE_QUESTION)
+                dialog.set_markup(format_escaped("<big><b>Convert conversion errors to escapes?</b></big>"))
+                dialog.format_secondary_text(
+"Conversion error opening '%s': %s. Do you want to convert to escapes? The file on disk will not be changed until you save."
+                                              % (os.path.basename(filename), e.message))
+
+                dialog.add_buttons("gtk-cancel", gtk.RESPONSE_CANCEL,
+                                   "Convert", gtk.RESPONSE_OK)
+                response = dialog.run()
+                dialog.destroy()
+                if response != gtk.RESPONSE_OK:
+                    return None
+                editor.load(filename, escape=True)
         except IOError, e:
             dialog = gtk.MessageDialog(buttons=gtk.BUTTONS_OK,
                                        type=gtk.MESSAGE_ERROR)

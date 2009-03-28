@@ -15,6 +15,7 @@ from custom_result import CustomResult
 import notebook
 from notebook import HelpResult
 from rewrite import Rewriter, UnsupportedSyntaxError
+import reunicode
 from stdout_capture import StdoutCapture
 
 class WarningResult(object):
@@ -134,6 +135,18 @@ class Statement:
         self.state = Statement.COMPILE_SUCCESS
         return True
 
+    def __coerce_to_unicode(self, s):
+        # Make sure we have a unicode object with only safe characters
+        if not isinstance(s, basestring):
+            s = str(s)
+
+        if isinstance(s, str):
+            s = reunicode.decode(s, escape=True)
+        elif isinstance(s, unicode):
+            s = reunicode.escape_unsafe(s)
+
+        return s
+
     def do_output(self, *args):
         """Called by execution of statements with non-None output (see L{Rewriter})"""
 
@@ -145,17 +158,19 @@ class Statement:
             elif isinstance(args[0], CustomResult) or isinstance(args[0], HelpResult):
                 self.results.append(args[0])
             else:
-                self.results.append(repr(args[0]))
+                self.results.append(self.__coerce_to_unicode(repr(args[0])))
                 self.result_scope['_'] = args[0]
         else:
-            self.results.append(repr(args))
+            self.results.append(self.__coerce_to_unicode(repr(args)))
             self.result_scope['_'] = args
 
-    def __stdout_write(self, str):
+    def __stdout_write(self, s):
+        s = self.__coerce_to_unicode(s)
+
         if self.__stdout_buffer == None:
-            self.__stdout_buffer = str
+            self.__stdout_buffer = s
         else:
-            self.__stdout_buffer += str
+            self.__stdout_buffer += s
 
         pos = 0
         while True:

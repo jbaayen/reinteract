@@ -137,7 +137,17 @@ class Editor(gobject.GObject):
         else:
             return False
 
-    def load(self, filename):
+    def load(self, filename, escape=False):
+        """Load a file from disk into the editor. Can raise IOError if the
+        file cannot be read, and reunicode.ConversionError if the file contains
+        invalid characters. (reunicode.ConversionError will not be raised if
+        escape is True)
+
+        @param filename the file to load
+        @param escape if true, invalid byte and character sequences in the input
+           will be converted into \\x<nn> and \\u<nnnn> escape sequences.
+
+        """
         raise NotImplementedError()
 
     def save(self, filename=None):
