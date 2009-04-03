@@ -202,7 +202,7 @@ class ShellView(gtk.TextView):
 
     def __expose_pair_location(self, event):
         pair_location = self.get_buffer().get_pair_location()
-        if pair_location == None:
+        if pair_location is None:
             return
         
         rect = self.get_iter_location(pair_location)
