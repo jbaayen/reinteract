@@ -7,6 +7,7 @@
 ########################################################################
 
 import parser
+import re
 import token
 import symbol
 import sys
@@ -142,19 +143,19 @@ _method_call_pattern = \
                                   '*path',
                                   (symbol.trailer,
                                    (token.DOT, ''),
-                                   (token.NAME, '')),
+                                   (token.NAME, 'method_name')),
                                   (symbol.trailer,
                                    (token.LPAR, ''),
                                    '*'))))))))))))))
 
 def _is_test_method_call(t):
     # Check if the given AST is a "test" of the form 'a...b.c()' If it
-    # matches, returns 'a...b', otherwise returns None
+    # matches, returns ('a...b', 'c'), otherwise returns None
     args = _do_match(t, _method_call_pattern)
     if args is None:
         return None
     else:
-        return args['path']
+        return args['path'], args['method_name']
 
 _attribute_pattern = \
                      (symbol.test,
@@ -302,6 +303,12 @@ def _rewrite_tree(t, state, actions):
                 
     return result
         
+# Method names that are considered not to be getters. The Python
+# standard library contains methods called isfoo() and getfoo()
+# (though not hasfoo()) so we don't for a word boundary. It could
+# be tightened if false positives becomes a problem.
+_GETTER_RE = re.compile("get|is|has")
+
 def _rewrite_expr_stmt(t, state):
     # expr_stmt: testlist (augassign (yield_expr|testlist) |
     #                      ('=' (yield_expr|testlist))*)
@@ -315,9 +322,11 @@ def _rewrite_expr_stmt(t, state):
         for i in xrange(1, len(subnode)):
             subsubnode = subnode[i]
             if subsubnode[0] == symbol.test:
-                path = _is_test_method_call(subsubnode)
-                if path is not None:
-                    state.add_mutated(path)
+                result = _is_test_method_call(subsubnode)
+                if result is not None:
+                    path, method_name = result
+                    if _GETTER_RE.match(method_name) is None:
+                        state.add_mutated(path)
 
         if state.output_func_name is not None:
             return _create_funccall_expr_stmt(state.output_func_name, filter(lambda x: type(x) != int and x[0] == symbol.test, subnode))
@@ -1004,6 +1013,11 @@ a.a = A()
                  prepare, 'a.b == 1', 'a.b == 3')
     test_mutated('a.a.addmul(1,2)', ('a', 'a.a'),
                  prepare, 'a.a.b == 1', 'a.a.b == 3')
+
+    # We exempt some methods as being most likely getters.
+    test_mutated('a.get_a()', ())
+    test_mutated('a.hasA()', ())
+    test_mutated('a.isa()', ())
 
     # These don't actually work properly since we don't know to copy a.a
     # So we just check the descriptions and not the execution
