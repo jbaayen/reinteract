@@ -96,7 +96,7 @@ class EditorWindow(BaseWindow):
         if response == gtk.RESPONSE_OK:
             filename = chooser.get_filename()
 
-        if filename != None:
+        if filename is not None:
             self.current_editor.save(filename)
             self.path = filename
             self.notebook.set_path([os.path.dirname(filename)])
@@ -111,7 +111,7 @@ class EditorWindow(BaseWindow):
     #######################################################
 
     def on_save(self, action):
-        if self.current_editor.filename == None:
+        if self.current_editor.filename is None:
             self.__save_as()
         else:
             self.current_editor.save()

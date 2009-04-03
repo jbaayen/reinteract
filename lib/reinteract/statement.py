@@ -118,7 +118,7 @@ class Statement:
             return False
 
         self.future_features = self.__parent_future_features
-        if self.imports != None:
+        if self.imports is not None:
             for module, symbols in self.imports:
                 if module == '__future__' and symbols != '*' and symbols[0][0] != '.':
                     merged = set()
@@ -153,7 +153,7 @@ class Statement:
         self.results.append(" ".join(map(str, args)))
 
     def __stdout_write(self, str):
-        if self.__stdout_buffer == None:
+        if self.__stdout_buffer is None:
             self.__stdout_buffer = str
         else:
             self.__stdout_buffer += str
@@ -247,7 +247,7 @@ class Statement:
 
         try:
             exec self.__compiled in scope, scope
-            if self.__stdout_buffer != None and self.__stdout_buffer != '':
+            if self.__stdout_buffer is not None and self.__stdout_buffer != '':
                 self.results.append(self.__stdout_buffer)
             self.state = Statement.EXECUTE_SUCCESS
         except KeyboardInterrupt, e:
@@ -333,12 +333,12 @@ if __name__=='__main__':
     # Tests of catching errors
     s1 = Statement("b = ", worksheet)
     assert_equals(s1.compile(), False)
-    assert s1.error_message != None
+    assert s1.error_message is not None
 
     s1 = Statement("b", worksheet)
     assert_equals(s1.compile(), True)
     assert_equals(s1.execute(), False)
-    assert s1.error_message != None
+    assert s1.error_message is not None
 
     # Tests of 'from __future__ import...'
     s1 = Statement("from __future__ import division", worksheet)

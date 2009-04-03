@@ -32,7 +32,7 @@ def _find_url_open_program():
 
     for progname in ['xdg-open', 'htmlview', 'gnome-open']:
         path = _find_program_in_path(progname)
-        if path != None:
+        if path is not None:
             return path
     return None
 
@@ -42,7 +42,7 @@ def _open_url(dialog, url):
 
 class AboutDialog(gtk.AboutDialog):
     def __init__(self):
-        if _find_url_open_program() != None:
+        if _find_url_open_program() is not None:
             gtk.about_dialog_set_url_hook(_open_url)
 
         gtk.AboutDialog.__init__(self)

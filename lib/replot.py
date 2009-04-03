@@ -169,7 +169,7 @@ def _validate_args(args):
             formati = i + 2
             i += 3
 
-        if xi != None:
+        if xi is not None:
             arg = args[xi]
             if isinstance(arg, numpy.ndarray):
                 xshape = arg.shape
@@ -183,7 +183,7 @@ def _validate_args(args):
 
         # y isn't optional, pretend it is to preserve code symmetry
             
-        if yi != None:
+        if yi is not None:
             arg = args[yi]
             if isinstance(arg, numpy.ndarray):
                 yshape = arg.shape
@@ -195,10 +195,10 @@ def _validate_args(args):
         else:
             yshape = None
 
-        if xshape != None and yshape != None and xshape != yshape:
+        if xshape is not None and yshape is not None and xshape != yshape:
             raise TypeError("Shapes of arguments %d and %d aren't compatible" % ((xi + 1), (yi + 1)))
         
-        if formati != None and not isinstance(args[formati], basestring):
+        if formati is not None and not isinstance(args[formati], basestring):
             raise TypeError("Expected format string for argument %d" % (formati + 1))
 
 class Axes(RecordedObject, custom_result.CustomResult):

@@ -160,7 +160,7 @@ class ShellView(gtk.TextView):
             if isinstance(chunk, StatementChunk):
                 if chunk.executing:
                     self.paint_chunk(cr, event.area, chunk, (0, 1, 0), (0, 0.5, 0))
-                elif chunk.error_message != None:
+                elif chunk.error_message is not None:
                     self.paint_chunk(cr, event.area, chunk, (1, 0, 0), (0.5, 0, 0))
                 elif chunk.needs_compile:
                     self.paint_chunk(cr, event.area, chunk, (1, 1, 0), (0.5, 0.5, 0))
@@ -202,7 +202,7 @@ class ShellView(gtk.TextView):
 
     def __expose_pair_location(self, event):
         pair_location = self.get_buffer().get_pair_location()
-        if pair_location == None:
+        if pair_location is None:
             return
         
         rect = self.get_iter_location(pair_location)
@@ -317,7 +317,7 @@ class ShellView(gtk.TextView):
         buf.delete(start, end)
         buf.insert(end, indent_text[common_len:])
 
-        if mark_to_start != None:
+        if mark_to_start is not None:
             end.set_line_offset(0)
             buf.move_mark(mark_to_start, end)
 
@@ -458,7 +458,7 @@ class ShellView(gtk.TextView):
 
             # Inserting return inside a ResultChunk would normally do nothing
             # but we want to make it insert a line after the chunk
-            if line == None and not buf.get_has_selection():
+            if line is None and not buf.get_has_selection():
                 line, pos = buf.iter_to_pos(insert, adjust=ADJUST_BEFORE)
                 iter = buf.pos_to_iter(line, -1)
                 buf.place_cursor(iter)
@@ -558,7 +558,7 @@ class ShellView(gtk.TextView):
             x, y = self.window_to_buffer_coords(gtk.TEXT_WINDOW_TEXT, int(event.x), int(event.y))
             iter, _ = self.get_iter_at_position(x, y)
             line, offset = buf.iter_to_pos(iter, adjust=ADJUST_NONE)
-            if line != None:
+            if line is not None:
                 obj, start_line, start_offset, _,_ = buf.worksheet.get_object_at_location(line, offset)
             else:
                 obj = None
@@ -566,7 +566,7 @@ class ShellView(gtk.TextView):
             if not obj is self.__mouse_over_object:
                 self.__stop_mouse_over()
                 self.__doc_popup.popdown()
-                if obj != None:
+                if obj is not None:
                     start = buf.pos_to_iter(start_line, start_offset)
                     buf.move_mark(self.__mouse_over_start, start)
 
@@ -719,12 +719,12 @@ class ShellView(gtk.TextView):
 
         insert = buf.get_iter_at_mark(buf.get_insert())
         line, offset = buf.iter_to_pos(insert, adjust=ADJUST_NONE)
-        if line != None:
+        if line is not None:
             obj, start_line, start_offset, _, _ = buf.worksheet.get_object_at_location(line, offset, include_adjacent=True)
         else:
             obj = None
 
-        if obj != None:
+        if obj is not None:
             start = buf.pos_to_iter(start_line, start_offset)
             self.__stop_mouse_over()
             self.__doc_popup.set_target(obj)

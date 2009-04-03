@@ -126,9 +126,9 @@ def _next_row_depthfirst(model, iter):
     if model.iter_has_child(iter):
         return model.iter_children(iter)
 
-    while iter != None:
+    while iter is not None:
         next = model.iter_next(iter)
-        if next != None:
+        if next is not None:
             return next
 
         iter = model.iter_parent(iter)
@@ -143,9 +143,9 @@ def _remove_row_depthfirst(model, iter):
     if model.remove(iter):
         return iter
 
-    while parent != None:
+    while parent is not None:
         next = model.iter_next(parent)
-        if next != None:
+        if next is not None:
             return next
 
         parent = model.iter_parent(parent)
@@ -215,7 +215,7 @@ class FileList(gtk.TreeView):
             event.button == 3 or (event.button == 1 and event.state == gtk.gdk.CONTROL_MASK)):
 
             info = self.get_path_at_pos(int(event.x), int(event.y))
-            if info == None:
+            if info is None:
                 return False
 
             path, column, cell_x, cell_y = info
@@ -428,7 +428,7 @@ class FileList(gtk.TreeView):
         for (item, new_depth) in self.__iter_items():
             # Delete old items that are logically before the next item
             found_item = False
-            while next_old != None:
+            while next_old is not None:
                 old_item = self.__model.get_value(next_old, 0)
                 c = cmp(item, old_item)
                 if c < 0:
@@ -472,7 +472,7 @@ class FileList(gtk.TreeView):
                 parent = iter
                 depth += 1
 
-        while next_old != None:
+        while next_old is not None:
             next_old = _remove_row_depthfirst(self.__model, next_old)
 
         self.set_show_expanders(seen_folders)
@@ -491,7 +491,7 @@ class FileList(gtk.TreeView):
         """
 
         iter = self.__iter_for_file(file)
-        if iter == None:
+        if iter is None:
             return
 
         self.set_cursor(self.__model.get_path(iter), self.get_column(0))

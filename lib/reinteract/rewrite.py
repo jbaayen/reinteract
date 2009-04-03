@@ -60,7 +60,7 @@ def _do_match(t, pattern, start_pos=0, start_pattern_index=0):
             if pos >= len(t):
                 return None
             subresult = _do_match(t[pos], pattern[i])
-            if subresult == None:
+            if subresult is None:
                 return None
             result.update(subresult)
         else:
@@ -72,7 +72,7 @@ def _do_match(t, pattern, start_pos=0, start_pattern_index=0):
                         tail_result = _do_match(t, pattern,
                                                 start_pos=tail_pos,
                                                 start_pattern_index=i + 1)
-                        if tail_result != None:
+                        if tail_result is not None:
                             result.update(tail_result)
                             break
                     else:
@@ -119,7 +119,7 @@ def _is_test_path(t):
     # may be slices and method calls in the path). If it  matches,
     # returns 'a.b...c, otherwise returns None
     args = _do_match(t, _path_pattern)
-    if args == None:
+    if args is None:
         return None
     else:
         return args['path']
@@ -151,7 +151,7 @@ def _is_test_method_call(t):
     # Check if the given AST is a "test" of the form 'a...b.c()' If it
     # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _method_call_pattern)
-    if args == None:
+    if args is None:
         return None
     else:
         return args['path']
@@ -182,7 +182,7 @@ def _is_test_attribute(t):
     # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _attribute_pattern)
     
-    if args == None:
+    if args is None:
         return None
     else:
         return args['path']
@@ -214,7 +214,7 @@ def _is_test_slice(t):
     # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _slice_pattern)
 
-    if args == None:
+    if args is None:
         return None
     else:
         return args['path']
@@ -243,7 +243,7 @@ _literal_string_pattern = \
 
 def _is_simple_stmt_literal_string(t):
     # Tests if the given string is a simple statement that is a literal string
-    return _do_match(t, _literal_string_pattern) != None
+    return _do_match(t, _literal_string_pattern) is not None
 
 def _do_create_funccall_expr_stmt(name, trailer):
     return (symbol.expr_stmt,
@@ -316,10 +316,10 @@ def _rewrite_expr_stmt(t, state):
             subsubnode = subnode[i]
             if subsubnode[0] == symbol.test:
                 path = _is_test_method_call(subsubnode)
-                if path != None:
+                if path is not None:
                     state.add_mutated(path)
 
-        if state.output_func_name != None:
+        if state.output_func_name is not None:
             return _create_funccall_expr_stmt(state.output_func_name, filter(lambda x: type(x) != int and x[0] == symbol.test, subnode))
         else:
             return t
@@ -333,7 +333,7 @@ def _rewrite_expr_stmt(t, state):
             # to an array with a += [3]. If a is immutable (a number say), then copying
             # it is unnecessary, but cheap
             path = _is_test_path(subnode[1])
-            if path != None:
+            if path is not None:
                 state.add_mutated(path)
         else:
             # testlist ('=' (yield_expr|testlist))+
@@ -345,10 +345,10 @@ def _rewrite_expr_stmt(t, state):
                         subsubnode = subnode[j]
                         if subsubnode[0] == symbol.test:
                             path = _is_test_slice(subsubnode)
-                            if path == None:
+                            if path is None:
                                 path = _is_test_attribute(subnode[1])
 
-                            if path != None:
+                            if path is not None:
                                 state.add_mutated(path)
         return t
 
@@ -1014,7 +1014,7 @@ a.a = A()
     # Test handling of encoding
     #
     def test_encoding(code, expected, encoding=None):
-        if encoding != None:
+        if encoding is not None:
             compiled, _ = rewrite_and_compile(code, encoding=encoding, output_func_name='reinteract_output')
         else:
             compiled, _ = rewrite_and_compile(code, output_func_name='reinteract_output')

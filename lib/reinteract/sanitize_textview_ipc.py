@@ -128,7 +128,7 @@ class _IPCSanitizer(object):
         if event.window != self.view.get_window(gtk.TEXT_WINDOW_TEXT):
             return False
 
-        if self.drag_start_position != None:
+        if self.drag_start_position is not None:
             # We need to call gtk_drag_begin() ourselves so that we can provide the correct
             # target list. To do that, we duplicate the drag-and-logic, and just before the
             # text view would start the drag, we jump in and do it ourselves

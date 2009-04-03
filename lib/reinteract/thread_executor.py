@@ -52,7 +52,7 @@ else:
     
     _pthread_kill = _pthreads_dll.pthread_kill
 
-if _pthread_kill != None:
+if _pthread_kill is not None:
     def _ignore_handler(signum, frame):
         pass
 
@@ -225,7 +225,7 @@ class ThreadExecutor(gobject.GObject):
         if not self.complete and not self.interrupted:
             self.interrupted = True
             _PyThreadState_SetAsyncExc(self.tid, ctypes.py_object(KeyboardInterrupt))
-            if _pthread_kill != None:
+            if _pthread_kill is not None:
                 _pthread_kill(self.tid, signal.SIGUSR1)
         self.lock.release()
 
@@ -334,7 +334,7 @@ if __name__ == '__main__': #pragma: no cover
         ])
 
     # Test interrupting a blocking syscall, if support on this platform
-    if _pthread_kill != None:
+    if _pthread_kill is not None:
         test_execute(
             [
                 ("import sys", Statement.EXECUTE_SUCCESS, []),

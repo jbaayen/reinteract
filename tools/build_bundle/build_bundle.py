@@ -326,7 +326,7 @@ output_type = "app" if options.app else "dmg"
 _logger = logging.getLogger("build_bundle")
 
 output = options.output
-if output == None:
+if output is None:
     if output_type == "app":
         output = join(os.getcwd(), "Reinteract.app")
     else:

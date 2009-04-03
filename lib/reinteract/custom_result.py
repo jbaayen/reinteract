@@ -39,7 +39,7 @@ def show_menu(widget, event, save_callback=None):
                         
         chooser.destroy()
 
-        if filename != None:
+        if filename is not None:
             save_callback(filename)
                     
     menu_item.connect('activate', on_activate)

@@ -192,7 +192,7 @@ All rights reserved.
         self.add_file(readme_freetype, 'share/doc/freetype', feature='gtk')
         
     def generate(self, s):
-        if self.generated == None:
+        if self.generated is None:
             self.generated = StringIO.StringIO()
             self.generated.write(s)
         else:
@@ -477,7 +477,7 @@ All rights reserved.
         light_cmd.extend(['-b', self.treedir])
         # File holding localization strings that we used to override some strings in
         # the WixUI dialogs
-        if localization_file != None:
+        if localization_file is not None:
             light_cmd.extend(['-loc', localization_file])
         # Where to write the output
         light_cmd.extend(['-o', output])
@@ -515,7 +515,7 @@ elif options.verbose:
 _logger = logging.getLogger("build_msi")
 
 output = options.output
-if output == None:
+if output is None:
     output = os.path.join(os.getcwd(), "Reinteract-%(version)s.msi")
 
 script = os.path.abspath(sys.argv[0])

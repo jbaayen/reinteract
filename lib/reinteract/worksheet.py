@@ -131,7 +131,7 @@ class Worksheet(gobject.GObject):
         __import__(self, name, globals, locals, fromlist, level)
 
     def iterate_chunks(self, start_line=0, end_line=None):
-        if end_line == None or end_line > len(self.__chunks):
+        if end_line is None or end_line > len(self.__chunks):
             end_line = len(self.__chunks)
         if start_line >= len(self.__chunks) or end_line <= start_line:
             return
@@ -231,7 +231,7 @@ class Worksheet(gobject.GObject):
                 chunk = self.__chunks[i]
                 break
 
-        if chunk != None:
+        if chunk is not None:
             if chunk.end > end:
                 # An old statement can only be turned into *one* new statement; once
                 # we've used the chunk, we can't use it again
@@ -323,9 +323,9 @@ class Worksheet(gobject.GObject):
         self.__changes.clear()
         self.__scan_adjacent = False
 
-        if self.__chunks[rescan_start] != None:
+        if self.__chunks[rescan_start] is not None:
             rescan_start = self.__chunks[rescan_start].start;
-        if self.__chunks[rescan_end - 1] != None:
+        if self.__chunks[rescan_end - 1] is not None:
             rescan_end = self.__chunks[rescan_end - 1].end;
 
         _debug("  Rescanning lines %s-%s", rescan_start, rescan_end)
@@ -357,7 +357,7 @@ class Worksheet(gobject.GObject):
         self.__assign_lines(chunk_start, chunk_lines, statement_end)
 
     def __set_line(self, line, text):
-        if self.__lines[line] != None:
+        if self.__lines[line] is not None:
             old_class = calc_line_class(self.__lines[line])
         else:
             old_class = None
@@ -559,11 +559,11 @@ class Worksheet(gobject.GObject):
         for chunk in self.iterate_chunks():
             if not isinstance(chunk, StatementChunk):
                 continue
-            if chunk.statement == None:
+            if chunk.statement is None:
                 continue
 
             imports = chunk.statement.imports
-            if imports == None:
+            if imports is None:
                 continue
 
             for module, _ in imports:
@@ -651,7 +651,7 @@ class Worksheet(gobject.GObject):
 
             # We intentionally don't check "needs_execute" ... if there is a result scope,
             # it's fair game for completion/help, even if it's old
-            if isinstance(previous_chunk, StatementChunk) and previous_chunk.statement != None and previous_chunk.statement.result_scope != None:
+            if isinstance(previous_chunk, StatementChunk) and previous_chunk.statement is not None and previous_chunk.statement.result_scope is not None:
                 return previous_chunk.statement.result_scope
                 break
 
@@ -706,7 +706,7 @@ class Worksheet(gobject.GObject):
         if not isinstance(chunk, StatementChunk):
             return None, None, None, None, None
 
-        if chunk.statement != None and chunk.statement.result_scope != None:
+        if chunk.statement is not None and chunk.statement.result_scope is not None:
             result_scope = chunk.statement.result_scope
         else:
             result_scope = None
@@ -716,7 +716,7 @@ class Worksheet(gobject.GObject):
                                                    self.__get_last_scope(chunk),
                                                    result_scope, include_adjacent)
 
-        if obj == None:
+        if obj is None:
             return None, None, None, None, None
 
         start_line += chunk.start
@@ -782,7 +782,7 @@ class Worksheet(gobject.GObject):
                 if i != len(self.__lines) - 1 or len(line_text) > 0:
                     si.write("\n")
 
-            if isinstance(chunk, StatementChunk) and chunk.results != None:
+            if isinstance(chunk, StatementChunk) and chunk.results is not None:
                 for result in chunk.results:
                     if isinstance(result, basestring):
                         si.write(result)
@@ -865,8 +865,8 @@ class Worksheet(gobject.GObject):
         self.__undo_stack.clear()
 
     def save(self, filename=None):
-        if filename == None:
-            if self.__filename == None:
+        if filename is None:
+            if self.__filename is None:
                 raise ValueError("No current or specified filename")
 
             filename = self.__filename

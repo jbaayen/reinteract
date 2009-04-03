@@ -57,16 +57,16 @@ class BaseNotebookWindow(BaseWindow):
             self.open_file(file)
 
         current_file_editor = None
-        if current_file != None:
+        if current_file is not None:
             filename = os.path.join(notebook.folder, current_file)
             for editor in self.editors:
                 if editor.filename == filename:
                     current_file_editor = editor
 
-        if current_file_editor == None and len(self.editors) > 0:
+        if current_file_editor is None and len(self.editors) > 0:
             current_file_editor = self.editors[0]
 
-        if current_file_editor != None:
+        if current_file_editor is not None:
             self._make_editor_current(current_file_editor)
             current_file_editor.view.grab_focus()
 
@@ -199,7 +199,7 @@ class BaseNotebookWindow(BaseWindow):
 
     def _update_current_file(self):
         file = self.current_editor.file
-        if file != None:
+        if file is not None:
             self.state.set_current_file(file.path)
         else:
             self.state.set_current_file(None)
