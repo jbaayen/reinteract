@@ -219,6 +219,32 @@ def _is_test_slice(t):
     else:
         return args['path']
 
+_literal_string_pattern = \
+         (symbol.simple_stmt,
+          (symbol.small_stmt,
+           (symbol.expr_stmt,
+            (symbol.testlist,
+             (symbol.test,
+              (symbol.or_test,
+               (symbol.and_test,
+                (symbol.not_test,
+                 (symbol.comparison,
+                  (symbol.expr,
+                   (symbol.xor_expr,
+                    (symbol.and_expr,
+                     (symbol.shift_expr,
+                      (symbol.arith_expr,
+                       (symbol.term,
+                        (symbol.factor,
+                         (symbol.power,
+                          (symbol.atom,
+                           (token.STRING,
+                            '*')))))))))))))))))))
+
+def _is_simple_stmt_literal_string(t):
+    # Tests if the given string is a simple statement that is a literal string
+    return _do_match(t, _literal_string_pattern) != None
+
 def _do_create_funccall_expr_stmt(name, trailer):
     return (symbol.expr_stmt,
             (symbol.testlist,
@@ -363,12 +389,43 @@ def _rewrite_block_stmt(t, state):
     return _rewrite_tree(t, state,
                          { symbol.suite:      _rewrite_suite })
 
+def _rewrite_docstring_suite(t, state):
+    # suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
+    if t[1][0] == symbol.simple_stmt:
+        # Check if the only child is a docstring
+        if _is_simple_stmt_literal_string(t[1]):
+            return t
+        else:
+            return _rewrite_suite(t, state)
+    else:
+        result = t
+        i = 3
+        assert t[i][0] == symbol.stmt
+        # Skip the first statement if it is a docstring
+        if _is_simple_stmt_literal_string(t[i][1]):
+            i += 1
+        while t[i][0] == symbol.stmt:
+            filtered = _rewrite_stmt(t[i], state)
+            if filtered != t[i]:
+                if result is t:
+                    result = list(t)
+                result[i] = filtered
+            i += 1
+
+        return result
+
+def _rewrite_docstring_block_stmt(t, state):
+    # Like _rewrite_block_stmt, but if the first statement is a literal
+    # string interpret it as a docstring and don't rewrite it to output
+    return _rewrite_tree(t, state,
+                         { symbol.suite:      _rewrite_docstring_suite })
+
 _rewrite_compound_stmt_actions = {
     symbol.if_stmt:    _rewrite_block_stmt,
     symbol.while_stmt: _rewrite_block_stmt,
     symbol.for_stmt:   _rewrite_block_stmt,
     symbol.try_stmt:   _rewrite_block_stmt,
-    symbol.funcdef:    _rewrite_block_stmt,
+    symbol.funcdef:    _rewrite_docstring_block_stmt,
     symbol.with_stmt:  _rewrite_block_stmt
 }
 
@@ -828,6 +885,14 @@ if __name__ == '__main__':
     test_output('1,2', (1,2))
     test_output('1;2', (2,))
     test_output('a=3; a', (3,))
+    test_output('def x():\n    1\ny = x()', (1,))
+
+    #
+    # Test that we don't intercept docstrings, even though they look like bare expressions
+    #
+    test_output('def x():\n    "x"\n    return 1\ny = x()', ())
+    test_output('def x():\n    """"x\n"""\n    return 1\ny = x()', ())
+    test_output('def x(): "x"\ny = x()', ())
 
     #
     # Test that our intercepting of print works
