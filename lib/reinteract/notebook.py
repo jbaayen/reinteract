@@ -231,7 +231,11 @@ class Notebook(gobject.GObject):
         
         assert not prefixed in sys.modules
         sys.modules[prefixed] = new
-        result = loader.load_module(prefixed)
+        try:
+            result = loader.load_module(prefixed)
+        except:
+            del sys.modules[prefixed]
+            raise
         assert result == new
         
         return result
@@ -462,8 +466,9 @@ if __name__ == '__main__':
         zip.writestr(name, contents)
         zip.close()
 
-    def do_test(import_text, evaluate_text, expected):
-        nb = Notebook(base)
+    def do_test(import_text, evaluate_text, expected, nb=None):
+        if nb is None:
+            nb = Notebook(base)
 
         scope = {}
         nb.setup_globals(scope)
@@ -504,6 +509,25 @@ if __name__ == '__main__':
 
         do_test("import zipmod", "zipmod.d", 4)
         do_test("import zippackage.mod2", "zippackage.mod2.e", 5)
+
+        # Test changing file contents and reloading the module
+        nb = Notebook(base)
+        write_file("mod4.py", "a = 1")
+        do_test("import mod4", "mod4.a", 1, nb=nb)
+        write_file("mod4.py", "a = 2")
+        nb.reset_module_by_filename(os.path.join(base, "mod4.py"))
+        do_test("import mod4", "mod4.a", 2, nb=nb)
+
+        # Test recovering from a syntax error
+        nb = Notebook(base)
+        write_file("mod4.py", "= 1")
+        try:
+            do_test("import mod4", "mod4.a", 1, nb=nb)
+        except SyntaxError, e:
+            pass
+        write_file("mod4.py", "a = 1")
+        nb.reset_module_by_filename(os.path.join(base, "mod4.py"))
+        do_test("import mod4", "mod4.a", 1, nb=nb)
 
         nb = Notebook(base)
         assert_equals(nb.file_for_absolute_path(os.path.dirname(base)), None)
