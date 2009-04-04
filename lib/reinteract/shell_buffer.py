@@ -165,7 +165,7 @@ class ShellBuffer(gtk.TextBuffer):
         if chunk.results_start_mark:
             raise RuntimeError("__insert_results called when we already have results")
 
-        if (chunk.results == None or len(chunk.results) == 0) and chunk.error_message == None:
+        if (chunk.results is None or len(chunk.results) == 0) and chunk.error_message is None:
             return
 
         self.__begin_modification()
@@ -222,7 +222,7 @@ class ShellBuffer(gtk.TextBuffer):
         chunk.results_end_mark = self.create_mark(None, location, True)
         chunk.results_start_mark.source = chunk
 
-        if saved_insert != None:
+        if saved_insert is not None:
             self.place_cursor(self.get_iter_at_mark(saved_insert))
             self.delete_mark(saved_insert)
 
@@ -258,7 +258,7 @@ class ShellBuffer(gtk.TextBuffer):
         changed = False
         old_location = None
 
-        if location == None:
+        if location is None:
             if self.__have_pair:
                 old_location = self.get_iter_at_mark(self.__pair_mark)
                 self.__have_pair = False
@@ -289,7 +289,7 @@ class ShellBuffer(gtk.TextBuffer):
         location = self.get_iter_at_mark(self.get_insert())
         line, offset = self.iter_to_pos(location, adjust=ADJUST_NONE)
 
-        if line == None:
+        if line is None:
             self.__set_pair_location(None)
             return
 
@@ -304,7 +304,7 @@ class ShellBuffer(gtk.TextBuffer):
 
         pair_line, pair_start = chunk.tokenized.get_pair_location(line - chunk.start, offset - 1)
 
-        if pair_line == None:
+        if pair_line is None:
             self.__set_pair_location(None)
             return
 
@@ -326,7 +326,7 @@ class ShellBuffer(gtk.TextBuffer):
             end = iter.copy()
             for token_type, start_index, end_index, _ in chunk.tokenized.get_tokens(l):
                 tag = self.__fontify_tags[token_type]
-                if tag != None:
+                if tag is not None:
                     iter.set_line_offset(start_index)
                     end.set_line_offset(end_index)
                     self.apply_tag(tag, iter, end)
@@ -349,7 +349,7 @@ class ShellBuffer(gtk.TextBuffer):
             return
 
         line, offset = self.iter_to_pos(location, adjust=ADJUST_NONE)
-        if line == None:
+        if line is None:
             return
 
         with _RevalidateIters(self, location):
@@ -637,9 +637,9 @@ class ShellBuffer(gtk.TextBuffer):
 
         """
 
-        if start == None:
+        if start is None:
             start = self.get_start_iter();
-        if end == None:
+        if end is None:
             end = self.get_end_iter();
 
         start_line, start_offset = self.iter_to_pos(start, adjust=ADJUST_AFTER)
@@ -713,7 +713,7 @@ if __name__ == '__main__': #pragma: no cover
             text = reunicode.decode(buf.get_slice(i, end))
 
             line, _ = buf.iter_to_pos(i, adjust=ADJUST_NONE)
-            if line != None:
+            if line is not None:
                 chunk = buf.worksheet.get_chunk(line)
             else:
                 chunk = None

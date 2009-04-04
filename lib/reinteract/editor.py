@@ -31,7 +31,7 @@ class Editor(gobject.GObject):
     #######################################################
 
     def _clear_unsaved(self):
-        if self._unsaved_index != None:
+        if self._unsaved_index is not None:
             application.free_unsaved_index(self._unsaved_index)
             self._unsaved_index = None
 
@@ -53,7 +53,7 @@ class Editor(gobject.GObject):
         builder = SaveFileBuilder(title, self._get_display_name(), save_button_text, check_name)
         builder.dialog.set_transient_for(self.widget.get_toplevel())
 
-        if self._get_filename() != None:
+        if self._get_filename() is not None:
             builder.name_entry.set_text(os.path.basename(self._get_filename()))
 
         builder.prompt_for_name(self.notebook.folder, self._get_extension(), action)
@@ -90,7 +90,7 @@ class Editor(gobject.GObject):
     #######################################################
 
     def close(self):
-        if self._unsaved_index != None:
+        if self._unsaved_index is not None:
             application.free_unsaved_index(self._unsaved_index)
             self._unsaved_index = None
 
@@ -107,7 +107,7 @@ class Editor(gobject.GObject):
             message_format = self.DISCARD_FORMAT
             continue_button_text = '_Discard'
 
-        if self._get_filename() == None:
+        if self._get_filename() is None:
             save_button_text = gtk.STOCK_SAVE_AS
         else:
             save_button_text = gtk.STOCK_SAVE
@@ -151,10 +151,10 @@ class Editor(gobject.GObject):
         raise NotImplementedError()
 
     def save(self, filename=None):
-        if filename == None:
+        if filename is None:
             filename = self._get_filename()
 
-        if filename == None:
+        if filename is None:
             def action(fullname):
                 self._save(fullname)
                 self._clear_unsaved()
@@ -165,7 +165,7 @@ class Editor(gobject.GObject):
             self._save(filename)
 
     def rename(self):
-        if self._get_filename() == None:
+        if self._get_filename() is None:
             self.save()
             return
 

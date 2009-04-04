@@ -37,7 +37,7 @@ def insert_docs(buf, iter, obj, bold_tag):
     pos = 0
     while True:
         m = BOLD_RE.search(document, pos)
-        if m == None:
+        if m is None:
             # Strip the trailing newline; this isn't very justifiable in general terms,
             # but matches what we need in Reinteract
             if document.endswith("\n"):

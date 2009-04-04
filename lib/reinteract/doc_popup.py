@@ -113,7 +113,7 @@ class DocPopup(Popup):
         buf = self.__view.get_buffer()
         buf.delete(buf.get_start_iter(), buf.get_end_iter())
 
-        if target != None:
+        if target is not None:
             if data_format.is_data_object(target):
                 data_format.insert_formatted(buf, buf.get_start_iter(), target, self.__heading_type_tag, self.__inline_type_tag, self.__value_tag)
             else:

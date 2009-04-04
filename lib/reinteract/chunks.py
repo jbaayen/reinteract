@@ -96,7 +96,7 @@ class StatementChunk(Chunk):
 
     def set_lines(self, lines):
         range = self.tokenized.set_lines(lines)
-        if range == None:
+        if range is None:
             return False
 
         if range[0] != range[1]: # non-empty range ... empty=truncation
@@ -112,7 +112,7 @@ class StatementChunk(Chunk):
         return True
 
     def mark_for_execute(self):
-        if self.statement != None and not self.needs_execute:
+        if self.statement is not None and not self.needs_execute:
             self.statement.mark_for_execute()
             self.needs_execute = True
             self.status_changed = True

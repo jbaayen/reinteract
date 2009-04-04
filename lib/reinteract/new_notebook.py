@@ -58,7 +58,7 @@ def run(parent=None):
             error_message = "<big><b>Please choose a different name</b></big>"
             error_detail = e.message
 
-        if error_message == None:
+        if error_message is None:
             if builder.other_folder_radio_button.get_active():
                 parent_folder = builder.other_folder_chooser.get_filename()
             else:
@@ -69,7 +69,7 @@ def run(parent=None):
                 error_message = "<big><b>Please choose a different name</b></big>"
                 error_detail = "'%s' already exists" % name
 
-        if error_message == None:
+        if error_message is None:
             try:
                 builder.dialog.hide()
                 description = builder.description_text_view.get_buffer().props.text.strip()

@@ -60,7 +60,7 @@ class WorksheetEditor(Editor):
     #######################################################
 
     def _get_display_name(self):
-        if self.buf.worksheet.filename == None:
+        if self.buf.worksheet.filename is None:
             return "Unsaved Worksheet %d" % self._unsaved_index
         else:
             return os.path.basename(self.buf.worksheet.filename)

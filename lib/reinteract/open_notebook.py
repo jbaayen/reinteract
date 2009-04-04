@@ -134,7 +134,7 @@ class OpenNotebookBuilder(WindowBuilder):
         return - cmp(a.get_last_opened(), b.get_last_opened())
 
     def __update_open_button_sensitivity(self, *args):
-        self.open_button.set_sensitive(self.get_selected_info() != None)
+        self.open_button.set_sensitive(self.get_selected_info() is not None)
 
     def on_row_activated(self, tree_view, path, column):
         self.dialog.response(gtk.RESPONSE_OK)

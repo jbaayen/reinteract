@@ -233,7 +233,7 @@ class TokenizedStatement(object):
                   
     def get_pair_location(self, line, index):
         iter = self._get_iter(line, index)
-        if iter == None:
+        if iter is None:
             return None, None
 
         # We don't do pair matching on strings; it's obvious from the
@@ -301,7 +301,7 @@ class TokenizedStatement(object):
 
     def __statement_is_import(self):
         iter = self._get_start_iter()
-        if iter != None:
+        if iter is not None:
             while iter.token_type == TOKEN_CONTINUATION:
                 try:
                     iter.next()
@@ -333,7 +333,7 @@ class TokenizedStatement(object):
         obj = None
         for name in names:
             # First name is resolved against the scope
-            if obj == None:
+            if obj is None:
                 try:
                     obj = scope[name]
                 except KeyError:
@@ -424,7 +424,7 @@ class TokenizedStatement(object):
         # even though that byte may note b a character start since we are just
         # interested in a position inside the token
         iter = self._get_iter(line, index - 1)
-        if iter != None and (iter.token_type == TOKEN_KEYWORD or
+        if iter is not None and (iter.token_type == TOKEN_KEYWORD or
                              iter.token_type == TOKEN_NAME or
                              iter.token_type == TOKEN_BUILTIN_CONSTANT):
             end = min(iter.end, index)
@@ -437,17 +437,17 @@ class TokenizedStatement(object):
             # For a TOKEN_DOT, we can be more forgiving and accept white space between the
             # token and the current position
             iter = self._get_iter_before(line, index)
-            if iter != None and iter.token_type == TOKEN_DOT:
+            if iter is not None and iter.token_type == TOKEN_DOT:
                 names = ['']
             elif min_length > 0:
                 return []
             # This is a non-exhaustive list of places where we know that we shouldn't complete to the
             # the scope. (We could do better by special casing actual completions for TOKEN_RSQB, TOKEN_RBRACE,
             # TOKEN_STRING)
-            elif iter != None and iter.token_type in (TOKEN_NAME, TOKEN_BUILTIN_CONSTANT, TOKEN_RPAREN, TOKEN_RSQB, TOKEN_RBRACE,
+            elif iter is not None and iter.token_type in (TOKEN_NAME, TOKEN_BUILTIN_CONSTANT, TOKEN_RPAREN, TOKEN_RSQB, TOKEN_RBRACE,
                                                       TOKEN_STRING, TOKEN_NUMBER):
                 return []
-            elif iter != None and self.__check_no_completion_after(iter):
+            elif iter is not None and self.__check_no_completion_after(iter):
                 return []
             else:
                 return self.__find_no_symbol_completions(scope)
@@ -474,7 +474,7 @@ class TokenizedStatement(object):
         # We resolve the leading portion of the name path
         if len(names) > 1:
             object = self.__resolve_names(names[0:-1], scope)
-            if object == None:
+            if object is None:
                 return []
         else:
             if len(names[0]) < min_length:
@@ -491,7 +491,7 @@ class TokenizedStatement(object):
         result = []
         
         to_complete = names[-1]
-        if object == None:
+        if object is None:
             for completion, obj in self.__list_scope(scope):
                 if completion.startswith(to_complete):
                     result.append((completion, completion[len(to_complete):], obj))
@@ -545,20 +545,20 @@ class TokenizedStatement(object):
         # that list of names against the scope
         
         iter = self._get_iter(line, index)
-        if iter != None and not (iter.token_type == TOKEN_KEYWORD or
+        if iter is not None and not (iter.token_type == TOKEN_KEYWORD or
                                  iter.token_type == TOKEN_NAME or
                                  iter.token_type == TOKEN_BUILTIN_CONSTANT):
             iter = None
         
-        if iter == None and include_adjacent and index > 0:
+        if iter is None and include_adjacent and index > 0:
             iter = self._get_iter(line, index - 1)
             
-            if iter != None and not (iter.token_type == TOKEN_KEYWORD or
+            if iter is not None and not (iter.token_type == TOKEN_KEYWORD or
                                      iter.token_type == TOKEN_NAME or
                                      iter.token_type == TOKEN_BUILTIN_CONSTANT):
                 iter = None
                 
-        if iter == None:
+        if iter is None:
             return NO_RESULT
 
         start_index = iter.start
@@ -581,7 +581,7 @@ class TokenizedStatement(object):
 
             names.insert(0, self.lines[iter.line][iter.start:iter.end])
 
-        if result_scope != None:
+        if result_scope is not None:
             while True:
                 try:
                     iter.next()
@@ -593,7 +593,7 @@ class TokenizedStatement(object):
                     break
 
         obj = self.__resolve_names(names, scope)
-        if obj != None:
+        if obj is not None:
             return obj, line, start_index, line, end_index
         else:
             return NO_RESULT
@@ -634,7 +634,7 @@ if __name__ == '__main__':
     assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == (0, 2)
     expect(ts, [['(', '1', '+', '2', ['(']], ['+', '3', '+', '4', ')']])
     
-    assert ts.set_lines(['(1 + 2','+ 3 + 4)']) == None
+    assert ts.set_lines(['(1 + 2','+ 3 + 4)']) is None
     expect(ts, [['(', '1', '+', '2', ['(']], ['+', '3', '+', '4', ')']])
 
     assert ts.set_lines(['(1 + 2','+ 5 + 6)']) == (1, 2)
@@ -655,8 +655,8 @@ if __name__ == '__main__':
     
     ts = TokenizedStatement()
     ts.set_lines(['(1 + ','2)'])
-    assert ts._get_iter(0, 2) == None
-    assert ts._get_iter(1, 2) == None
+    assert ts._get_iter(0, 2) is None
+    assert ts._get_iter(1, 2) is None
 
     i = ts._get_iter(0, 3)
     assert i.token_type == TOKEN_PUNCTUATION

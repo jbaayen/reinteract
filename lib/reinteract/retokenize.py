@@ -143,7 +143,7 @@ _NUMBER_RE = re.compile(r"""
 """, re.VERBOSE)
 
 def tokenize_line(str, stack=None):
-    if (stack == None):
+    if (stack is None):
         stack = []
     else:
         stack = list(stack)

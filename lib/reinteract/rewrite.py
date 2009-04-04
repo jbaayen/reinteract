@@ -7,6 +7,7 @@
 ########################################################################
 
 import parser
+import re
 import token
 import symbol
 import sys
@@ -60,7 +61,7 @@ def _do_match(t, pattern, start_pos=0, start_pattern_index=0):
             if pos >= len(t):
                 return None
             subresult = _do_match(t[pos], pattern[i])
-            if subresult == None:
+            if subresult is None:
                 return None
             result.update(subresult)
         else:
@@ -72,7 +73,7 @@ def _do_match(t, pattern, start_pos=0, start_pattern_index=0):
                         tail_result = _do_match(t, pattern,
                                                 start_pos=tail_pos,
                                                 start_pattern_index=i + 1)
-                        if tail_result != None:
+                        if tail_result is not None:
                             result.update(tail_result)
                             break
                     else:
@@ -119,7 +120,7 @@ def _is_test_path(t):
     # may be slices and method calls in the path). If it  matches,
     # returns 'a.b...c, otherwise returns None
     args = _do_match(t, _path_pattern)
-    if args == None:
+    if args is None:
         return None
     else:
         return args['path']
@@ -142,19 +143,19 @@ _method_call_pattern = \
                                   '*path',
                                   (symbol.trailer,
                                    (token.DOT, ''),
-                                   (token.NAME, '')),
+                                   (token.NAME, 'method_name')),
                                   (symbol.trailer,
                                    (token.LPAR, ''),
                                    '*'))))))))))))))
 
 def _is_test_method_call(t):
     # Check if the given AST is a "test" of the form 'a...b.c()' If it
-    # matches, returns 'a...b', otherwise returns None
+    # matches, returns ('a...b', 'c'), otherwise returns None
     args = _do_match(t, _method_call_pattern)
-    if args == None:
+    if args is None:
         return None
     else:
-        return args['path']
+        return args['path'], args['method_name']
 
 _attribute_pattern = \
                      (symbol.test,
@@ -182,7 +183,7 @@ def _is_test_attribute(t):
     # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _attribute_pattern)
     
-    if args == None:
+    if args is None:
         return None
     else:
         return args['path']
@@ -214,10 +215,36 @@ def _is_test_slice(t):
     # matches, returns 'a...b', otherwise returns None
     args = _do_match(t, _slice_pattern)
 
-    if args == None:
+    if args is None:
         return None
     else:
         return args['path']
+
+_literal_string_pattern = \
+         (symbol.simple_stmt,
+          (symbol.small_stmt,
+           (symbol.expr_stmt,
+            (symbol.testlist,
+             (symbol.test,
+              (symbol.or_test,
+               (symbol.and_test,
+                (symbol.not_test,
+                 (symbol.comparison,
+                  (symbol.expr,
+                   (symbol.xor_expr,
+                    (symbol.and_expr,
+                     (symbol.shift_expr,
+                      (symbol.arith_expr,
+                       (symbol.term,
+                        (symbol.factor,
+                         (symbol.power,
+                          (symbol.atom,
+                           (token.STRING,
+                            '*')))))))))))))))))))
+
+def _is_simple_stmt_literal_string(t):
+    # Tests if the given string is a simple statement that is a literal string
+    return _do_match(t, _literal_string_pattern) is not None
 
 def _do_create_funccall_expr_stmt(name, trailer):
     return (symbol.expr_stmt,
@@ -276,6 +303,12 @@ def _rewrite_tree(t, state, actions):
                 
     return result
         
+# Method names that are considered not to be getters. The Python
+# standard library contains methods called isfoo() and getfoo()
+# (though not hasfoo()) so we don't for a word boundary. It could
+# be tightened if false positives becomes a problem.
+_GETTER_RE = re.compile("get|is|has")
+
 def _rewrite_expr_stmt(t, state):
     # expr_stmt: testlist (augassign (yield_expr|testlist) |
     #                      ('=' (yield_expr|testlist))*)
@@ -289,11 +322,13 @@ def _rewrite_expr_stmt(t, state):
         for i in xrange(1, len(subnode)):
             subsubnode = subnode[i]
             if subsubnode[0] == symbol.test:
-                path = _is_test_method_call(subsubnode)
-                if path != None:
-                    state.add_mutated(path)
+                result = _is_test_method_call(subsubnode)
+                if result is not None:
+                    path, method_name = result
+                    if _GETTER_RE.match(method_name) is None:
+                        state.add_mutated(path)
 
-        if state.output_func_name != None:
+        if state.output_func_name is not None:
             return _create_funccall_expr_stmt(state.output_func_name, filter(lambda x: type(x) != int and x[0] == symbol.test, subnode))
         else:
             return t
@@ -307,7 +342,7 @@ def _rewrite_expr_stmt(t, state):
             # to an array with a += [3]. If a is immutable (a number say), then copying
             # it is unnecessary, but cheap
             path = _is_test_path(subnode[1])
-            if path != None:
+            if path is not None:
                 state.add_mutated(path)
         else:
             # testlist ('=' (yield_expr|testlist))+
@@ -319,10 +354,10 @@ def _rewrite_expr_stmt(t, state):
                         subsubnode = subnode[j]
                         if subsubnode[0] == symbol.test:
                             path = _is_test_slice(subsubnode)
-                            if path == None:
+                            if path is None:
                                 path = _is_test_attribute(subnode[1])
 
-                            if path != None:
+                            if path is not None:
                                 state.add_mutated(path)
         return t
 
@@ -363,12 +398,43 @@ def _rewrite_block_stmt(t, state):
     return _rewrite_tree(t, state,
                          { symbol.suite:      _rewrite_suite })
 
+def _rewrite_docstring_suite(t, state):
+    # suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
+    if t[1][0] == symbol.simple_stmt:
+        # Check if the only child is a docstring
+        if _is_simple_stmt_literal_string(t[1]):
+            return t
+        else:
+            return _rewrite_suite(t, state)
+    else:
+        result = t
+        i = 3
+        assert t[i][0] == symbol.stmt
+        # Skip the first statement if it is a docstring
+        if _is_simple_stmt_literal_string(t[i][1]):
+            i += 1
+        while t[i][0] == symbol.stmt:
+            filtered = _rewrite_stmt(t[i], state)
+            if filtered != t[i]:
+                if result is t:
+                    result = list(t)
+                result[i] = filtered
+            i += 1
+
+        return result
+
+def _rewrite_docstring_block_stmt(t, state):
+    # Like _rewrite_block_stmt, but if the first statement is a literal
+    # string interpret it as a docstring and don't rewrite it to output
+    return _rewrite_tree(t, state,
+                         { symbol.suite:      _rewrite_docstring_suite })
+
 _rewrite_compound_stmt_actions = {
     symbol.if_stmt:    _rewrite_block_stmt,
     symbol.while_stmt: _rewrite_block_stmt,
     symbol.for_stmt:   _rewrite_block_stmt,
     symbol.try_stmt:   _rewrite_block_stmt,
-    symbol.funcdef:    _rewrite_block_stmt,
+    symbol.funcdef:    _rewrite_docstring_block_stmt,
     symbol.with_stmt:  _rewrite_block_stmt
 }
 
@@ -828,6 +894,14 @@ if __name__ == '__main__':
     test_output('1,2', (1,2))
     test_output('1;2', (2,))
     test_output('a=3; a', (3,))
+    test_output('def x():\n    1\ny = x()', (1,))
+
+    #
+    # Test that we don't intercept docstrings, even though they look like bare expressions
+    #
+    test_output('def x():\n    "x"\n    return 1\ny = x()', ())
+    test_output('def x():\n    """"x\n"""\n    return 1\ny = x()', ())
+    test_output('def x(): "x"\ny = x()', ())
 
     #
     # Test that our intercepting of print works
@@ -940,6 +1014,11 @@ a.a = A()
     test_mutated('a.a.addmul(1,2)', ('a', 'a.a'),
                  prepare, 'a.a.b == 1', 'a.a.b == 3')
 
+    # We exempt some methods as being most likely getters.
+    test_mutated('a.get_a()', ())
+    test_mutated('a.hasA()', ())
+    test_mutated('a.isa()', ())
+
     # These don't actually work properly since we don't know to copy a.a
     # So we just check the descriptions and not the execution
     test_mutated('a.get_a().b = 2', ('a',))
@@ -949,7 +1028,7 @@ a.a = A()
     # Test handling of encoding
     #
     def test_encoding(code, expected, encoding=None):
-        if encoding != None:
+        if encoding is not None:
             compiled, _ = rewrite_and_compile(code, encoding=encoding, output_func_name='reinteract_output')
         else:
             compiled, _ = rewrite_and_compile(code, output_func_name='reinteract_output')

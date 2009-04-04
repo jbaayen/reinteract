@@ -60,7 +60,7 @@ def __format_separate(sequence, open, close, nl):
     lines = 1
     last_str, last_lines = None, 0
     for str, item_lines in sequence:
-        if last_str != None:
+        if last_str is not None:
             # Process the last item, we'll have one more after it
             new_lines = lines + last_lines
 
@@ -79,7 +79,7 @@ def __format_separate(sequence, open, close, nl):
         last_str = str
         last_lines = item_lines
 
-    if last_str != None:
+    if last_str is not None:
         buf.write(last_str)
 
     buf.write(close)
@@ -105,7 +105,7 @@ def __format_wrapped(sequence, open, close, nl):
         if len(str) > _MAX_WRAPPED_ITEM_LEN:
             return None
 
-        if last_str != None:
+        if last_str is not None:
             # Process the last item, we'll have one more after it
             new_available_width = available_width - (len(last_str) + 1) # len(last_str) + len(",")
             if count_on_line > 0:
@@ -138,7 +138,7 @@ def __format_wrapped(sequence, open, close, nl):
         last_str = str
         last_lines = item_lines
 
-    if last_str != None:
+    if last_str is not None:
         new_available_width = available_width - (len(last_str) + len(close))
 
         if count_on_line > 0:
@@ -172,7 +172,7 @@ def __format_sequence(obj, open, close, nl, object_stack):
     
     seq = (__format(x, nl, object_stack) for x in obj)
     result = __format_wrapped(seq, open, close, nl)
-    if result == None:
+    if result is None:
         seq = (__format(x, nl, object_stack) for x in obj)
         result = __format_separate(seq, open, close, nl)
 

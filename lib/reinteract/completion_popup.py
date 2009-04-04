@@ -79,7 +79,7 @@ class CompletionPopup(Popup):
         self.__in_change = True
         self.__tree_model.clear()
         line, offset = buf.iter_to_pos(buf.get_iter_at_mark(buf.get_insert()), adjust=ADJUST_NONE)
-        if line == None:
+        if line is None:
             completions = []
         else:
             if spontaneous:
@@ -117,7 +117,7 @@ class CompletionPopup(Popup):
         # object, but it's distracting to show the class docs on int
         # for every integer constant, etc, which is what the DocPopup
         # does currently.
-        if (obj == None or is_data_object(obj)):
+        if (obj is None or is_data_object(obj)):
             self.__doc_popup.popdown()
             return
         

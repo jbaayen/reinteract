@@ -154,7 +154,7 @@ class MiniWindow(BaseNotebookWindow):
 
         open_editors = {}
         for editor in self.editors:
-            if editor.file == None:
+            if editor.file is None:
                 items.append(self.__create_editor_item(editor))
             else:
                 open_editors[editor.file.path] = editor

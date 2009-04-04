@@ -43,7 +43,7 @@ class _Helper:
         return "Type help(object) for help about object"
 
     def __call__(self, arg=None):
-        if arg == None:
+        if arg is None:
             return self
         
         return HelpResult(arg)
@@ -145,7 +145,7 @@ class Notebook(gobject.GObject):
         files_added = False
 
         for f in os.listdir(full_folder):
-            if folder == None and f == "index.rnb":
+            if folder is None and f == "index.rnb":
                 continue
 
             # We handle filenames starting with . as hidden on all platforms,
@@ -231,7 +231,11 @@ class Notebook(gobject.GObject):
         
         assert not prefixed in sys.modules
         sys.modules[prefixed] = new
-        result = loader.load_module(prefixed)
+        try:
+            result = loader.load_module(prefixed)
+        except:
+            del sys.modules[prefixed]
+            raise
         assert result == new
         
         return result
@@ -252,8 +256,8 @@ class Notebook(gobject.GObject):
         # The 'imp' module doesn't support PEP 302 extensions like
         # sys.path_hooks (used for zipped eggs), so we use (undocumented)
         # functionality from pkgutil instead.
-        if parent == None:
-            assert local == None
+        if parent is None:
+            assert local is None
             try:
                 loader = self.__find_loader_in_path(fullname, self.__path)
                 local = True
@@ -263,7 +267,7 @@ class Notebook(gobject.GObject):
                     raise ImportError("no module named " + fullname)
                 local = False
         else:
-            assert local != None
+            assert local is not None
             if hasattr(parent, '__path__'):
                 loader = self.__find_loader_in_path(fullname, parent.__path__)
             else:
@@ -275,7 +279,7 @@ class Notebook(gobject.GObject):
         else:
             module =  loader.load_module(fullname)
 
-        if parent != None:
+        if parent is not None:
             parent.__dict__[name] = module
 
         return module, local
@@ -325,7 +329,7 @@ class Notebook(gobject.GObject):
 
             module, local =  self.__import_recurse(names)
 
-            if fromlist != None:
+            if fromlist is not None:
                 # In 'from a.b import c', if a.b.c doesn't exist after loading a.b, The built-in
                 # __import__ will try to load a.b.c as a module; do the same here.
                 for fromname in fromlist:
@@ -397,7 +401,7 @@ class Notebook(gobject.GObject):
             if basename == '': # At root directory (or input had trailing slash)
                 return None
 
-            if relpath == None:
+            if relpath is None:
                 relpath = basename
             else:
                 relpath = os.path.join(basename, relpath)
@@ -462,8 +466,9 @@ if __name__ == '__main__':
         zip.writestr(name, contents)
         zip.close()
 
-    def do_test(import_text, evaluate_text, expected):
-        nb = Notebook(base)
+    def do_test(import_text, evaluate_text, expected, nb=None):
+        if nb is None:
+            nb = Notebook(base)
 
         scope = {}
         nb.setup_globals(scope)
@@ -504,6 +509,25 @@ if __name__ == '__main__':
 
         do_test("import zipmod", "zipmod.d", 4)
         do_test("import zippackage.mod2", "zippackage.mod2.e", 5)
+
+        # Test changing file contents and reloading the module
+        nb = Notebook(base)
+        write_file("mod4.py", "a = 1")
+        do_test("import mod4", "mod4.a", 1, nb=nb)
+        write_file("mod4.py", "a = 2")
+        nb.reset_module_by_filename(os.path.join(base, "mod4.py"))
+        do_test("import mod4", "mod4.a", 2, nb=nb)
+
+        # Test recovering from a syntax error
+        nb = Notebook(base)
+        write_file("mod4.py", "= 1")
+        try:
+            do_test("import mod4", "mod4.a", 1, nb=nb)
+        except SyntaxError, e:
+            pass
+        write_file("mod4.py", "a = 1")
+        nb.reset_module_by_filename(os.path.join(base, "mod4.py"))
+        do_test("import mod4", "mod4.a", 1, nb=nb)
 
         nb = Notebook(base)
         assert_equals(nb.file_for_absolute_path(os.path.dirname(base)), None)

@@ -124,7 +124,7 @@ class Application():
                     return None, None
 
             tmp = parent
-            if relative == None:
+            if relative is None:
                 relative = basename
             else:
                 relative = os.path.join(basename, relative)
@@ -163,7 +163,7 @@ class Application():
     def create_notebook(self, path, description=None):
         os.makedirs(path)
         notebook = Notebook(path)
-        if description != None:
+        if description is not None:
             notebook.info.description = description
         window = self.__make_notebook_window(notebook)
         window.show()

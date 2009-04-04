@@ -16,7 +16,7 @@ class SaveFileBuilder(WindowBuilder):
     def __init__(self, title, display_name, save_button_text, check_name=None):
         WindowBuilder.__init__(self, 'save-file')
 
-        if check_name != None:
+        if check_name is not None:
             self.check_name = check_name
 
         self.dialog.set_title(title)
