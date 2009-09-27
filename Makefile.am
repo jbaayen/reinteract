@@ -64,6 +64,9 @@ replay_PYTHON = lib/replay.py
 replotdir = $(pythondir)
 replot_PYTHON = lib/replot.py
 
+relatexdir = $(pythondir)
+relatex_PYTHON = lib/relatex.py
+
 examplesdir = $(pkgdatadir)/examples
 examples_DATA =					\
              examples/basics.rws		\

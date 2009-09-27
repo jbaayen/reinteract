@@ -20,7 +20,7 @@ from stdout_capture import StdoutCapture
 class WarningResult(object):
     def __init__(self, message):
         self.message = message
-    
+
 class Statement:
     """
 
@@ -135,14 +135,27 @@ class Statement:
 
         if len(args) == 1:
             arg = args[0]
-            
+
             if args[0] is None:
                 return
             elif isinstance(args[0], CustomResult) or isinstance(args[0], HelpResult):
                 self.results.append(args[0])
             else:
-                self.results.append(repr(args[0]))
-                self.result_scope['_'] = args[0]
+                done = False
+                try:
+                    import sympy
+                    import relatex
+
+                    if isinstance(args[0], sympy.Basic):
+                        self.results.append(relatex.LatexMath(args[0]))
+                        done = True
+                    elif isinstance(args[0], sympy.Matrix):
+                        self.results.append(relatex.LatexMath(args[0]))
+                        done = True
+
+                if not done:
+                    self.results.append(repr(args[0]))
+                    self.result_scope['_'] = args[0]
         else:
             self.results.append(repr(args))
             self.result_scope['_'] = args
@@ -165,7 +178,7 @@ class Statement:
                 break
             self.results.append(self.__stdout_buffer[pos:next])
             pos = next + 1
-            
+
         if pos > 0:
             self.__stdout_buffer = self.__stdout_buffer[pos:]
 
@@ -324,7 +337,7 @@ if __name__=='__main__':
     s3.compile()
     s3.execute()
     assert_equals(s3.results[0], "1")
-    
+
     s2a = Statement("b[0]", worksheet, parent=s1)
     s2a.compile()
     s2a.execute()
