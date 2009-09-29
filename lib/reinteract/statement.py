@@ -143,14 +143,13 @@ class Statement:
             else:
                 done = False
                 try:
-                    import remathml as math_backend
+                    import relatex as math_backend
 
                     if math_backend.supports_class(args[0]):
                         self.results.append(math_backend.MathRenderer(args[0]))
                         done = True
-                except Exception as e:
-                    print e
-                    #pass
+                except:
+                    pass
 
                 if not done:
                     self.results.append(repr(args[0]))
