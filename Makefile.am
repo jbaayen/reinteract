@@ -67,6 +67,9 @@ replot_PYTHON = lib/replot.py
 relatexdir = $(pythondir)
 relatex_PYTHON = lib/relatex.py
 
+remathmldir = $(pythondir)
+remathml_PYTHON = lib/remathml.py
+
 examplesdir = $(pkgdatadir)/examples
 examples_DATA =					\
              examples/basics.rws		\
