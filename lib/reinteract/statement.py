@@ -143,15 +143,14 @@ class Statement:
             else:
                 done = False
                 try:
-                    import sympy
-                    import relatex
+                    import remathml as math_backend
 
-                    if isinstance(args[0], sympy.Basic):
-                        self.results.append(relatex.LatexMath(args[0]))
+                    if math_backend.supports_class(args[0]):
+                        self.results.append(math_backend.MathRenderer(args[0]))
                         done = True
-                    elif isinstance(args[0], sympy.Matrix):
-                        self.results.append(relatex.LatexMath(args[0]))
-                        done = True
+                except Exception as e:
+                    print e
+                    #pass
 
                 if not done:
                     self.results.append(repr(args[0]))

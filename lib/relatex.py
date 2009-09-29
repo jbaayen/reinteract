@@ -7,19 +7,27 @@
 ########################################################################
 
 import gtk
-import sympy
+from sympy import latex
+from sympy.printing.latex import LatexPrinter
 import latexmath2png
 import os
 
 from reinteract.recorded_object import RecordedObject, default_filter
 import reinteract.custom_result as custom_result
 
-class LatexMath(RecordedObject, custom_result.CustomResult):
+class MathRenderer(RecordedObject, custom_result.CustomResult):
     def __init__(self, expr):
         self.expr = expr
 
     def create_widget(self):
-        latexmath2png.math2png([sympy.latex(self.expr, inline=False)], os.getcwd(), prefix = '/tmp/reinteract')
+        latexmath2png.math2png([latex(self.expr, inline=False)], os.getcwd(), prefix = '/tmp/reinteract')
         widget = gtk.image_new_from_file('/tmp/reinteract1.png')
         os.remove('/tmp/reinteract1.png')
         return widget
+
+def supports_class(expr):
+    for cls in type(expr).__mro__:
+        printmethod = '_print_' + cls.__name__
+        if hasattr(LatexPrinter, printmethod):
+            return True
+    return False
