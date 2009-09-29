@@ -12,10 +12,9 @@ from sympy.printing.latex import LatexPrinter
 import latexmath2png
 import os
 
-from reinteract.recorded_object import RecordedObject, default_filter
 import reinteract.custom_result as custom_result
 
-class MathRenderer(RecordedObject, custom_result.CustomResult):
+class MathRenderer(custom_result.CustomResult):
     def __init__(self, expr):
         self.expr = expr
 
