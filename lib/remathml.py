@@ -14,8 +14,9 @@ from sympy.utilities.mathml import c2p
 import gtkmathview
 
 import reinteract.custom_result as custom_result
+import reinteract.statement as statement
 
-class MathRenderer(custom_result.CustomResult):
+class SympyMathMLRenderer(custom_result.CustomResult):
     def __init__(self, expr):
         self.expr = expr
 
@@ -24,9 +25,12 @@ class MathRenderer(custom_result.CustomResult):
 		widget.load_buffer(c2p(mathml(self.expr), simple=True))
 		return widget
 
-def supports_class(expr):
-    for cls in type(expr).__mro__:
-        printmethod = '_print_' + cls.__name__
-        if hasattr(MathMLPrinter, printmethod):
-            return True
-    return False
+    @staticmethod
+    def can_render_class(expr):
+        for cls in type(expr).__mro__:
+            printmethod = '_print_' + cls.__name__
+            if hasattr(MathMLPrinter, printmethod):
+                return True
+        return False
+
+statement.Statement.external_renderers.append(SympyMathMLRenderer)

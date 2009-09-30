@@ -37,6 +37,9 @@ class Statement:
     EXECUTE_ERROR = 5
     INTERRUPTED = 6
 
+    # External renderers should register themselves here
+    external_renderers = []
+
     def __init__(self, text, worksheet, parent=None):
         self.__text = text
         self.__worksheet = worksheet
@@ -141,19 +144,13 @@ class Statement:
             elif isinstance(args[0], CustomResult) or isinstance(args[0], HelpResult):
                 self.results.append(args[0])
             else:
-                done = False
-                try:
-                    import relatex as math_backend
+                for renderer in Statement.external_renderers:
+                    if renderer.can_render_class(args[0]):
+                        self.results.append(renderer(args[0]))
+                        return
 
-                    if math_backend.supports_class(args[0]):
-                        self.results.append(math_backend.MathRenderer(args[0]))
-                        done = True
-                except:
-                    pass
-
-                if not done:
-                    self.results.append(repr(args[0]))
-                    self.result_scope['_'] = args[0]
+                self.results.append(repr(args[0]))
+                self.result_scope['_'] = args[0]
         else:
             self.results.append(repr(args))
             self.result_scope['_'] = args
