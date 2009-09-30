@@ -23,11 +23,17 @@ class SympyLatexRenderer(custom_result.CustomResult):
     def __init__(self, expr):
         self.expr = expr
 
+        self.parent_style_set_id = 0
+
     def _on_parent_set(self, widget, parent):
         if widget.parent:
-            widget.parent.connect("style-set", self._on_style_set)
+            self.parent_style_set_id = \
+                widget.parent.connect("style-set", self._on_style_set)
 
             self._update()
+        else:
+            if self.parent_style_set_id > 0:
+                parent.handler_disconnect(self.parent_style_set_id)
 
     def _on_style_set(self, widget, style):
         self._update()
