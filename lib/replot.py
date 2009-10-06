@@ -8,10 +8,12 @@
 ########################################################################
 
 import cairo
+import pango
 import gtk
 import matplotlib
 import sys
 from matplotlib.figure import Figure
+from matplotlib.offsetbox import DrawingArea
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
 import numpy
 
@@ -27,6 +29,8 @@ class _PlotResultCanvas(FigureCanvasCairo):
 
 class PlotWidget(gtk.DrawingArea):
     __gsignals__ = {
+        'parent-set': 'override',
+        'screen-changed' : 'override',
         'button-press-event': 'override',
         'button-release-event': 'override',
         'expose-event': 'override',
@@ -36,7 +40,7 @@ class PlotWidget(gtk.DrawingArea):
 
     def __init__(self, result):
         gtk.DrawingArea.__init__(self)
-        self.figure = Figure(facecolor='white', figsize=(6,4.5))
+        self.figure = Figure(facecolor='white', figsize=(4,3))
         self.canvas = _PlotResultCanvas(self.figure)
 
         self.axes = self.figure.add_subplot(111)
@@ -44,6 +48,31 @@ class PlotWidget(gtk.DrawingArea):
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
 
         self.cached_contents = None
+
+    def do_screen_changed(self, previous_screen):
+        self.figure.set_dpi(self.get_screen().get_resolution())
+
+    def do_parent_set(self, parent):
+        # We follow the parent GtkTextView text size.
+        if self.parent:
+            self.parent_style_set_id = \
+                self.parent.connect("style-set", self._on_parent_style_set)
+            self._sync_font_style()
+        else:
+            if self.parent_style_set_id > 0:
+                parent.handler_disconnect(self.parent_style_set_id)
+
+    def _on_parent_style_set(self, widget, style):
+        # New GtkStyle set on parent GtkTextView.
+        self.cached_contents = None
+
+        self._sync_font_size()
+
+        self.queue_resize()
+
+    def _sync_font_style(self):
+        # Use the parent GtkTextView font size in matplotlib.
+        matplotlib.rcParams['font.size'] = self.parent.style.font_desc.get_size() / pango.SCALE
 
     def do_expose_event(self, event):
         cr = self.window.cairo_create()
@@ -102,7 +131,6 @@ class PlotWidget(gtk.DrawingArea):
             requisition.width = self.figure.bbox.width
             requisition.height = self.figure.bbox.height
 
-
     def __save(self, filename):
         # The save/restore here was added to matplotlib's after 0.90. We duplicate
         # it for compatibility with older versions. (The code would need modification
@@ -124,6 +152,39 @@ class PlotWidget(gtk.DrawingArea):
                 self.figure.set_facecolor(orig_facecolor)
                 self.figure.set_edgecolor(orig_edgecolor)
                 self.figure.set_canvas(self.canvas)
+
+    def print_widget(self, print_context, render=True):
+        # Set printer dpi.
+        orig_dpi = self.figure.get_dpi()
+        self.figure.set_dpi(print_context.get_dpi_x())
+
+        # Don't draw the frame, please.
+        self.figure.set_frameon(False)
+
+        # Get dimensions.
+        width, height = self.figure.bbox.width, self.figure.bbox.height
+
+        # Render to cairo context (if given).
+        if render:
+            cr = print_context.get_cairo_context()
+
+            cr.save()
+            cr.translate(*cr.get_current_point())
+
+            renderer = RendererCairo(self.figure.dpi)
+            renderer.set_width_height(width, height)
+            renderer.gc.ctx = cr
+
+            self.figure.draw(renderer)
+
+            cr.restore()
+
+        # Restore original settings.
+        self.figure.set_frameon(True)
+        self.figure.set_dpi(orig_dpi)
+
+        # Return dimensions to caller.
+        return width, height
 
 #    def do_size_allocate(self, allocation):
 #        gtk.DrawingArea.do_size_allocate(self, allocation)
