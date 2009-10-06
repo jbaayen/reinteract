@@ -13,7 +13,6 @@ import gtk
 import matplotlib
 import sys
 from matplotlib.figure import Figure
-from matplotlib.offsetbox import DrawingArea
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
 import numpy
 
