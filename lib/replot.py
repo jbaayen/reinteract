@@ -230,5 +230,5 @@ def _create_method(method_name):
         return axes
     return _func
 
-for method_name in ('bar', 'boxplot', 'errorbar', 'contour', 'hist', 'imshow', 'specgram', 'quiver'):
+for method_name in ('bar', 'boxplot', 'errorbar', 'contour', 'hist', 'imshow', 'plot', 'quiver', 'specgram'):
     setattr(sys.modules[__name__], method_name, _create_method(method_name))
