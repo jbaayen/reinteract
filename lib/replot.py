@@ -10,6 +10,7 @@
 import cairo
 import gtk
 import matplotlib
+import sys
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
 import numpy
@@ -82,7 +83,7 @@ class PlotWidget(gtk.DrawingArea):
             return True
         else:
             return True
-    
+
     def do_button_release_event(self, event):
         return True
 
@@ -90,7 +91,7 @@ class PlotWidget(gtk.DrawingArea):
         gtk.DrawingArea.do_realize(self)
         cursor = gtk.gdk.Cursor(gtk.gdk.LEFT_PTR)
         self.window.set_cursor(cursor)
-    
+
     def do_size_request(self, requisition):
         try:
             # matplotlib < 0.98
@@ -100,7 +101,7 @@ class PlotWidget(gtk.DrawingArea):
             # matplotlib >= 0.98
             requisition.width = self.figure.bbox.width
             requisition.height = self.figure.bbox.height
-            
+
 
     def __save(self, filename):
         # The save/restore here was added to matplotlib's after 0.90. We duplicate
@@ -126,7 +127,7 @@ class PlotWidget(gtk.DrawingArea):
 
 #    def do_size_allocate(self, allocation):
 #        gtk.DrawingArea.do_size_allocate(self, allocation)
-#        
+#
 #        dpi = self.figure.dpi.get()
 #        self.figure.set_size_inches (allocation.width / dpi, allocation.height / dpi)
 
@@ -136,7 +137,7 @@ def _validate_args(args):
     #
     #  plot(x, y, 'fmt', y2)
     #  plot(x1, y2, x2, y2, 'fmt', y3)
-    # 
+    #
     # Are valid, but
     #
     #  plot(x, y, y2)
@@ -149,7 +150,7 @@ def _validate_args(args):
         xi = None
         yi = None
         formati = None
-        
+
         remaining = l - i
         if remaining == 0:
             break
@@ -182,7 +183,7 @@ def _validate_args(args):
             xshape = None
 
         # y isn't optional, pretend it is to preserve code symmetry
-            
+
         if yi is not None:
             arg = args[yi]
             if isinstance(arg, numpy.ndarray):
@@ -197,7 +198,7 @@ def _validate_args(args):
 
         if xshape is not None and yshape is not None and xshape != yshape:
             raise TypeError("Shapes of arguments %d and %d aren't compatible" % ((xi + 1), (yi + 1)))
-        
+
         if formati is not None and not isinstance(args[formati], basestring):
             raise TypeError("Expected format string for argument %d" % (formati + 1))
 
@@ -221,13 +222,13 @@ def filter_method(baseclass, name):
 
 Axes._set_target_class(matplotlib.axes.Axes, filter_method)
 
+# Create wrappers for the various matplotlib plotting commands.
+def _create_method(method_name):
+    def _func(*args, **kwargs):
+        axes = Axes()
+        getattr(axes, method_name)(*args, **kwargs)
+        return axes
+    return _func
 
-def plot(*args, **kwargs):
-    axes = Axes()
-    axes.plot(*args, **kwargs)
-    return axes
-
-def imshow(*args, **kwargs):
-    axes = Axes()
-    axes.imshow(*args, **kwargs)
-    return axes
+for method_name in ('bar', 'boxplot', 'errorbar', 'contour', 'hist', 'imshow', 'specgram', 'quiver'):
+    setattr(sys.modules[__name__], method_name, _create_method(method_name))
