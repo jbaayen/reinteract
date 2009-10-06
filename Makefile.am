@@ -40,6 +40,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/open_notebook.py                           \
                     lib/reinteract/popup.py                                   \
                     lib/reinteract/preferences_dialog.py                      \
+                    lib/reinteract/print_operation.py                         \
                     lib/reinteract/recorded_object.py                         \
                     lib/reinteract/retokenize.py                              \
                     lib/reinteract/rewrite.py                                 \
@@ -64,11 +65,8 @@ replay_PYTHON = lib/replay.py
 replotdir = $(pythondir)
 replot_PYTHON = lib/replot.py
 
-relatexdir = $(pythondir)
-relatex_PYTHON = lib/relatex.py
-
-remathmldir = $(pythondir)
-remathml_PYTHON = lib/remathml.py
+resympydir = $(pythondir)
+resympy_PYTHON = lib/resympy.py
 
 examplesdir = $(pkgdatadir)/examples
 examples_DATA =					\

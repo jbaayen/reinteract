@@ -18,6 +18,7 @@ from notebook import NotebookFile
 from shell_buffer import ShellBuffer
 from shell_view import ShellView
 from save_file import SaveFileBuilder
+from print_operation import PrintOperation
 
 class Editor(gobject.GObject):
     def __init__(self, notebook):
@@ -174,6 +175,10 @@ class Editor(gobject.GObject):
             self.notebook.refresh()
 
         self.__prompt_for_name(title=title, save_button_text="_Rename", action=action, check_name=check_name)
+
+    def print_contents(self):
+        print_op = PrintOperation(self)
+        print_op.run(gtk.PRINT_OPERATION_ACTION_PRINT_DIALOG, self.widget.get_toplevel())
 
     @property
     def needs_calculate(self):
