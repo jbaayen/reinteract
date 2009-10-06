@@ -160,3 +160,9 @@ for cls in (sympy.Basic, sympy.Matrix, sympy.SMatrix):
     cls.__bases__ += (CustomResult,)
     # Provide a create_widget() method for display.
     cls.create_widget = lambda result : SympyRenderer(result)
+
+# We wrap the sympy latex function using a print call in order to have
+# any string escapes carried out, so that the displayed string will be ready to
+# copy and paste.
+def latex(*args, **kwargs):
+    print(sympy.latex(*args, **kwargs))
