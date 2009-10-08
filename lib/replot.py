@@ -39,7 +39,7 @@ class PlotWidget(gtk.DrawingArea):
 
     def __init__(self, result):
         gtk.DrawingArea.__init__(self)
-        self.figure = Figure(facecolor='white', figsize=(4,3))
+        self.figure = Figure(facecolor='white', figsize=(6,4.5))
         self.canvas = _PlotResultCanvas(self.figure)
 
         self.axes = self.figure.add_subplot(111)
