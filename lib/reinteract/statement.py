@@ -37,9 +37,6 @@ class Statement:
     EXECUTE_ERROR = 5
     INTERRUPTED = 6
 
-    # External renderers should register themselves here
-    external_renderers = []
-
     def __init__(self, text, worksheet, parent=None):
         self.__text = text
         self.__worksheet = worksheet
@@ -144,11 +141,6 @@ class Statement:
             elif isinstance(args[0], CustomResult) or isinstance(args[0], HelpResult):
                 self.results.append(args[0])
             else:
-                for renderer in Statement.external_renderers:
-                    if renderer.can_render_class(args[0]):
-                        self.results.append(renderer(args[0]))
-                        return
-
                 self.results.append(repr(args[0]))
                 self.result_scope['_'] = args[0]
         else:
