@@ -29,6 +29,7 @@ class SympyRenderer(gtk.Widget):
 
         self.cached_contents = None
         self.parent_style_set_id = 0
+        self.notify_resolution_id = 0
 
         # Construct Lasem document and view.
         # TODO use 'itex=True' here once this lands in sympy master; see
@@ -39,9 +40,15 @@ class SympyRenderer(gtk.Widget):
         self.view = self.doc.create_view()
 
     def do_screen_changed(self, previous_screen):
-        self._sync_document_dpi()
+        if self.get_screen():
+            self.notify_resolution_id = \
+                self.get_screen().connect("notify::resolution", self._on_notify_resolution)
+            self._sync_document_dpi()
+        else:
+            if self.notify_resolution_id > 0:
+                previous_screen.handler_disconnect(self.notify_resolution_id)
 
-    def do_parent_set(self, parent):
+    def do_parent_set(self, previous_parent):
         # We follow the parent GtkTextView text size.
         if self.parent:
             self.parent_style_set_id = \
@@ -49,9 +56,12 @@ class SympyRenderer(gtk.Widget):
             self._sync_document_style()
         else:
             if self.parent_style_set_id > 0:
-                parent.handler_disconnect(self.parent_style_set_id)
+                previous_parent.handler_disconnect(self.parent_style_set_id)
 
-    def _on_parent_style_set(self, widget, style):
+    def _on_notify_resolution(self, screen, param_spec):
+        self._sync_document_dpi()
+
+    def _on_parent_style_set(self, widget, previous_style):
         # New GtkStyle set on parent GtkTextView.
         self.cached_contents = None
 

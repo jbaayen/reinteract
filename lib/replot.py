@@ -47,21 +47,32 @@ class PlotWidget(gtk.DrawingArea):
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
 
         self.cached_contents = None
+        self.parent_style_set_id = 0
+        self.notify_resolution_id = 0
 
     def do_screen_changed(self, previous_screen):
-        self.figure.set_dpi(self.get_screen().get_resolution())
+        if self.get_screen():
+            self.notify_resolution_id = \
+                self.get_screen().connect("notify::resolution", self._on_notify_resolution)
+            self.figure.set_dpi(self.get_screen().get_resolution())
+        else:
+            if self.notify_resolution_id > 0:
+                previous_screen.handler_disconnect(self.notify_resolution_id)
 
-    def do_parent_set(self, parent):
+    def do_parent_set(self, previous_parent):
         # We follow the parent GtkTextView text size.
         if self.parent:
             self.parent_style_set_id = \
                 self.parent.connect("style-set", self._on_parent_style_set)
-            self._sync_font_style()
+            self._sync_font_size()
         else:
             if self.parent_style_set_id > 0:
-                parent.handler_disconnect(self.parent_style_set_id)
+                previous_parent.handler_disconnect(self.parent_style_set_id)
 
-    def _on_parent_style_set(self, widget, style):
+    def _on_notify_resolution(self, screen, param_spec):
+        self.figure.set_dpi(self.get_screen().get_resolution())
+
+    def _on_parent_style_set(self, widget, previous_style):
         # New GtkStyle set on parent GtkTextView.
         self.cached_contents = None
 
@@ -69,7 +80,7 @@ class PlotWidget(gtk.DrawingArea):
 
         self.queue_resize()
 
-    def _sync_font_style(self):
+    def _sync_font_size(self):
         # Use the parent GtkTextView font size in matplotlib.
         matplotlib.rcParams['font.size'] = self.parent.style.font_desc.get_size() / pango.SCALE
 
