@@ -226,14 +226,6 @@ class ShellView(gtk.TextView):
         
         return False
 
-    def __get_line_text(self, iter):
-        start = iter.copy()
-        start.set_line_index(0)
-        end = iter.copy()
-        end.forward_to_line_end()
-        
-        return start.get_slice(end)
-    
     # This is likely overengineered, since we're going to try as hard as possible not to
     # have tabs in our worksheets. We don't do the funky handling of \f.
     def __count_indent(self, text):
@@ -284,7 +276,11 @@ class ShellView(gtk.TextView):
     def __reindent_line(self, iter, indent_text):
         buf = self.get_buffer()
 
-        line_text = self.__get_line_text(iter)
+        line, pos = buf.iter_to_pos(iter, adjust=ADJUST_NONE)
+        if line == None:
+            return
+
+        line_text = buf.worksheet.get_line(line)
         prefix = re.match(r"^[\t ]*", line_text).group(0)
 
         diff = self.__count_indent(indent_text) - self.__count_indent(prefix)
@@ -351,7 +347,7 @@ class ShellView(gtk.TextView):
                 return
 
             iter = buf.pos_to_iter(line)
-            current_indent = self.__count_indent(self.__get_line_text(iter))
+            current_indent = self.__count_indent(buf.worksheet.get_line(line))
             self.__reindent_line(iter, max(0, " " * (current_indent + diff)))
 
     def __hide_completion(self):

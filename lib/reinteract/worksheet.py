@@ -17,6 +17,7 @@ from StringIO import StringIO
 from change_range import ChangeRange
 from chunks import *
 from notebook import Notebook, NotebookFile
+import reunicode
 from statement import Statement
 from thread_executor import ThreadExecutor
 from undo_stack import UndoStack, InsertOp, DeleteOp
@@ -24,11 +25,9 @@ from undo_stack import UndoStack, InsertOp, DeleteOp
 _debug = logging.getLogger("Worksheet").debug
 
 _DEFINE_GLOBALS = compile("""
-global reinteract_output, reinteract_print
+global reinteract_output
 def reinteract_output(*args):
    __reinteract_statement.do_output(*args)
-def reinteract_print(*args):
-   __reinteract_statement.do_print(*args)
 """, __name__, 'exec')
 
 BLANK_RE = re.compile(r'^\s*$')
@@ -854,14 +853,27 @@ class Worksheet(gobject.GObject):
         self.code_modified = modified
         self.thaw_notify()
 
-    def load(self, filename):
+    def load(self, filename, escape=False):
+        """Load a file from disk into the worksheet. Can raise IOError if the
+        file cannot be read, and reunicode.ConversionError if the file contains
+        invalid characters. (reunicode.ConversionError will not be raised if
+        escape is True)
+
+        @param filename the file to load
+        @param escape if true, invalid byte and character sequences in the input
+           will be converted into \\x<nn> and \\u<nnnn> escape sequences.
+
+        """
         f = open(filename)
         text = f.read()
         f.close()
 
         self.__do_clear()
-        self.__set_filename_and_modified(filename, False)
-        self.insert(0, 0, text)
+        self.insert(0, 0, reunicode.decode(text, escape=escape))
+        # A bit of a hack - we assume that if escape was passed we *did* escape.
+        # this is the way that things work currently - first the GUI loads with
+        # escape=False, and if that fails, prompts the user and loads with escape=True
+        self.__set_filename_and_modified(filename, escape)
         self.__undo_stack.clear()
 
     def save(self, filename=None):
@@ -889,7 +901,7 @@ class Worksheet(gobject.GObject):
                 if not first:
                     f.write("\n")
                 first = False
-                f.write(line)
+                f.write(line.encode("utf8"))
 
             f.close()
             # Windows can't save over an existing filename; we might want to check os.name to

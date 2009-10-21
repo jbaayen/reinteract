@@ -17,6 +17,7 @@ from custom_result import CustomResult
 from chunks import StatementChunk,CommentChunk
 import doc_format
 from notebook import HelpResult
+import reunicode
 from statement import WarningResult
 import retokenize
 from worksheet import Worksheet, NEW_LINE_RE
@@ -326,8 +327,8 @@ class ShellBuffer(gtk.TextBuffer):
             for token_type, start_index, end_index, _ in chunk.tokenized.get_tokens(l):
                 tag = self.__fontify_tags[token_type]
                 if tag is not None:
-                    iter.set_line_index(start_index)
-                    end.set_line_index(end_index)
+                    iter.set_line_offset(start_index)
+                    end.set_line_offset(end_index)
                     self.apply_tag(tag, iter, end)
 
     #######################################################
@@ -352,8 +353,10 @@ class ShellBuffer(gtk.TextBuffer):
             return
 
         with _RevalidateIters(self, location):
-            self.worksheet.insert(line, offset, text[0:text_len])
-
+            # If we get "unsafe" text from GTK+, it will be a non-BMP character.
+            # Inserting this as an escape isn't entirely unexpected and is
+            # the best we can do.
+            self.worksheet.insert(line, offset, reunicode.decode(text[0:text_len], escape="True"))
     def do_delete_range(self, start, end):
         if self.__in_modification_count > 0:
             gtk.TextBuffer.do_delete_range(self, start, end)
@@ -707,7 +710,7 @@ if __name__ == '__main__': #pragma: no cover
             end = i.copy()
             if not end.ends_line():
                 end.forward_to_line_end()
-            text = buf.get_slice(i, end)
+            text = reunicode.decode(buf.get_slice(i, end))
 
             line, _ = buf.iter_to_pos(i, adjust=ADJUST_NONE)
             if line is not None:
