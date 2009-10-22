@@ -233,6 +233,7 @@ class PrintOperation(gtk.PrintOperation):
                         first_line = False
                     else:
                         cr.move_to(self.margin_left + indentation, y + line_height)
+                        x, y = cr.get_current_point()
 
                     cr.show_layout_line(line)
             else:
