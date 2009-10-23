@@ -125,7 +125,7 @@ class BaseNotebookWindow(BaseWindow):
         BaseWindow._add_actions(self, action_group)
 
         action_group.add_actions([
-            ('notebook-properties', gtk.STOCK_PROPERTIES, "Notebook _Properties", None,         None, self.on_notebook_properties),
+            ('notebook-properties', gtk.STOCK_PROPERTIES, "Notebook Prop_erties", None,         None, self.on_notebook_properties),
             ('new-worksheet',       gtk.STOCK_NEW,        "_New Worksheet",       "<control>n", None, self.on_new_worksheet),
             ('new-library',         gtk.STOCK_NEW,        "New _Library",         "",           None, self.on_new_library),
             ('calculate-all',       gtk.STOCK_REFRESH,    "Calculate _All",       "<control><shift>Return",  None, self.on_calculate_all),
@@ -312,4 +312,3 @@ class BaseNotebookWindow(BaseWindow):
                 some_need_calculate = True
 
         self._set_action_sensitive('calculate-all', some_need_calculate)
-

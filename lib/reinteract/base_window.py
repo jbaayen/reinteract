@@ -83,7 +83,7 @@ class BaseWindow:
             ('open',          gtk.STOCK_OPEN,  None,             None,         None, self.on_open),
             ('save',          gtk.STOCK_SAVE,  None,             None,         None, self.on_save),
             ('rename',        None,            "_Rename...",     None,         None, self.on_rename),
-            ('print',         gtk.STOCK_PRINT, "Pr_int...",      "<control>p", None, self.on_print),
+            ('print',         gtk.STOCK_PRINT, "_Print...",      "<control>p", None, self.on_print),
             ('close',         gtk.STOCK_CLOSE, None,             "<control>w", None, self.on_close),
 
             ('quit',          gtk.STOCK_QUIT, None,                None,         None, self.on_quit),

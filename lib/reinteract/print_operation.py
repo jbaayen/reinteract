@@ -59,9 +59,9 @@ class PrintOperation(gtk.PrintOperation):
             if tag.get_property("indent_set"):
                 layout.set_indent(tag.get_property("indent"))
             if tag.get_property("left_margin_set"):
-                indentation = tag.get_property("left-margin") / screen_dpiX * dpiX
+                indentation = tag.get_property("left-margin") / screen_dpi_x * dpi_x
             if tag.get_property("right_margin_set"):
-                indentation = tag.get_property("right-margin") / screen_dpiX * dpiX
+                indentation = tag.get_property("right-margin") / screen_dpi_x * dpi_x
             if tag.get_property("font_desc") is not None:
                 attributes.append(pango.AttrFontDesc(tag.get_property("font_desc"), si, ei))
             if tag.get_property("family_set"):
@@ -204,6 +204,7 @@ class PrintOperation(gtk.PrintOperation):
             paragraph_number = position.get_line()
             layout, indentation = self._create_paragraph_layout(context, position, line_end)
 
+            cr.rel_move_to(indentation, 0)
             x, y = cr.get_current_point()
 
             child_anchor = position.get_child_anchor()
