@@ -8,6 +8,7 @@
 ########################################################################
 
 import cairo
+import pango
 import gtk
 import matplotlib
 from matplotlib.figure import Figure
@@ -26,6 +27,8 @@ class _PlotResultCanvas(FigureCanvasCairo):
 
 class PlotWidget(gtk.DrawingArea):
     __gsignals__ = {
+        'parent-set': 'override',
+        'screen-changed' : 'override',
         'button-press-event': 'override',
         'button-release-event': 'override',
         'expose-event': 'override',
@@ -43,6 +46,42 @@ class PlotWidget(gtk.DrawingArea):
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
 
         self.cached_contents = None
+        self.parent_style_set_id = 0
+        self.notify_resolution_id = 0
+
+    def do_screen_changed(self, previous_screen):
+        if self.get_screen():
+            self.notify_resolution_id = \
+                self.get_screen().connect("notify::resolution", self._on_notify_resolution)
+            self.figure.set_dpi(self.get_screen().get_resolution())
+        else:
+            if self.notify_resolution_id > 0:
+                previous_screen.handler_disconnect(self.notify_resolution_id)
+
+    def do_parent_set(self, previous_parent):
+        # We follow the parent GtkTextView text size.
+        if self.parent:
+            self.parent_style_set_id = \
+                self.parent.connect("style-set", self._on_parent_style_set)
+            self._sync_font_size()
+        else:
+            if self.parent_style_set_id > 0:
+                previous_parent.handler_disconnect(self.parent_style_set_id)
+
+    def _on_notify_resolution(self, screen, param_spec):
+        self.figure.set_dpi(self.get_screen().get_resolution())
+
+    def _on_parent_style_set(self, widget, previous_style):
+        # New GtkStyle set on parent GtkTextView.
+        self.cached_contents = None
+
+        self._sync_font_size()
+
+        self.queue_resize()
+
+    def _sync_font_size(self):
+        # Use the parent GtkTextView font size in matplotlib.
+        matplotlib.rcParams['font.size'] = self.parent.style.font_desc.get_size() / pango.SCALE
 
     def do_expose_event(self, event):
         cr = self.window.cairo_create()
@@ -82,7 +121,7 @@ class PlotWidget(gtk.DrawingArea):
             return True
         else:
             return True
-    
+
     def do_button_release_event(self, event):
         return True
 
@@ -90,7 +129,7 @@ class PlotWidget(gtk.DrawingArea):
         gtk.DrawingArea.do_realize(self)
         cursor = gtk.gdk.Cursor(gtk.gdk.LEFT_PTR)
         self.window.set_cursor(cursor)
-    
+
     def do_size_request(self, requisition):
         try:
             # matplotlib < 0.98
@@ -100,7 +139,7 @@ class PlotWidget(gtk.DrawingArea):
             # matplotlib >= 0.98
             requisition.width = self.figure.bbox.width
             requisition.height = self.figure.bbox.height
-            
+
 
     def __save(self, filename):
         # The save/restore here was added to matplotlib's after 0.90. We duplicate
@@ -124,9 +163,42 @@ class PlotWidget(gtk.DrawingArea):
                 self.figure.set_edgecolor(orig_edgecolor)
                 self.figure.set_canvas(self.canvas)
 
+    def print_widget(self, print_context, render=True):
+        # Set printer dpi.
+        orig_dpi = self.figure.get_dpi()
+        self.figure.set_dpi(print_context.get_dpi_x())
+
+        # Don't draw the frame, please.
+        self.figure.set_frameon(False)
+
+        # Get dimensions.
+        width, height = self.figure.bbox.width, self.figure.bbox.height
+
+        # Render to cairo context (if given).
+        if render:
+            cr = print_context.get_cairo_context()
+
+            cr.save()
+            cr.translate(*cr.get_current_point())
+
+            renderer = RendererCairo(self.figure.dpi)
+            renderer.set_width_height(width, height)
+            renderer.gc.ctx = cr
+
+            self.figure.draw(renderer)
+
+            cr.restore()
+
+        # Restore original settings.
+        self.figure.set_frameon(True)
+        self.figure.set_dpi(orig_dpi)
+
+        # Return dimensions to caller.
+        return width, height
+
 #    def do_size_allocate(self, allocation):
 #        gtk.DrawingArea.do_size_allocate(self, allocation)
-#        
+#
 #        dpi = self.figure.dpi.get()
 #        self.figure.set_size_inches (allocation.width / dpi, allocation.height / dpi)
 
@@ -136,7 +208,7 @@ def _validate_args(args):
     #
     #  plot(x, y, 'fmt', y2)
     #  plot(x1, y2, x2, y2, 'fmt', y3)
-    # 
+    #
     # Are valid, but
     #
     #  plot(x, y, y2)
@@ -149,7 +221,7 @@ def _validate_args(args):
         xi = None
         yi = None
         formati = None
-        
+
         remaining = l - i
         if remaining == 0:
             break
@@ -182,7 +254,7 @@ def _validate_args(args):
             xshape = None
 
         # y isn't optional, pretend it is to preserve code symmetry
-            
+
         if yi is not None:
             arg = args[yi]
             if isinstance(arg, numpy.ndarray):
@@ -197,7 +269,7 @@ def _validate_args(args):
 
         if xshape is not None and yshape is not None and xshape != yshape:
             raise TypeError("Shapes of arguments %d and %d aren't compatible" % ((xi + 1), (yi + 1)))
-        
+
         if formati is not None and not isinstance(args[formati], basestring):
             raise TypeError("Expected format string for argument %d" % (formati + 1))
 
