@@ -32,9 +32,7 @@ class SympyRenderer(gtk.Widget):
         self.notify_resolution_id = 0
 
         # Construct Lasem document and view.
-        # TODO use 'itex=True' here once this lands in sympy master; see
-        # http://code.google.com/p/sympy/issues/detail?id=1663.
-        tex = str("$%s$" % sympy.latex(result, inline=True))
+        tex = sympy.latex(result, inline=False, itex=True)
         self.doc = lasem.mathml_document_new_from_itex(tex, len(tex))
 
         self.view = self.doc.create_view()
