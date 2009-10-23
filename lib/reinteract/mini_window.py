@@ -31,6 +31,7 @@ class MiniWindow(BaseNotebookWindow):
          <menuitem action="new-library"/>
          <menuitem action="save"/>
          <menuitem action="rename"/>
+         <menuitem action="print"/>
          <menuitem action="close"/>
       </menu>
       <menu action="edit">

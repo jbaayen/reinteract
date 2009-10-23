@@ -40,6 +40,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/open_notebook.py                           \
                     lib/reinteract/popup.py                                   \
                     lib/reinteract/preferences_dialog.py                      \
+                    lib/reinteract/print_operation.py                         \
                     lib/reinteract/recorded_object.py                         \
                     lib/reinteract/retokenize.py                              \
                     lib/reinteract/rewrite.py                                 \
