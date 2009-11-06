@@ -14,6 +14,7 @@ import matplotlib
 import sys
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
+from mpl_toolkits.mplot3d import axes3d
 import numpy
 
 from reinteract.recorded_object import RecordedObject, default_filter
@@ -32,6 +33,7 @@ class PlotWidget(gtk.DrawingArea):
         'screen-changed' : 'override',
         'button-press-event': 'override',
         'button-release-event': 'override',
+        'motion-notify-event': 'override',
         'expose-event': 'override',
         'size-allocate': 'override',
         'unrealize': 'override'
@@ -41,14 +43,27 @@ class PlotWidget(gtk.DrawingArea):
         gtk.DrawingArea.__init__(self)
         self.figure = Figure(facecolor='white', figsize=(6,4.5))
         self.canvas = _PlotResultCanvas(self.figure)
+        self.canvas.draw = self.do_draw
 
-        self.axes = self.figure.add_subplot(111)
+        if isinstance(result, Axes3D):
+            self.axes = axes3d.Axes3D(self.figure)
+        else:
+            self.axes = self.figure.add_subplot(111)
 
-        self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE)
+        self.add_events(gtk.gdk.BUTTON_PRESS_MASK   | \
+                        gtk.gdk.BUTTON_RELEASE_MASK | \
+                        gtk.gdk.POINTER_MOTION_MASK | \
+                        gtk.gdk.POINTER_MOTION_HINT_MASK)
 
-        self.cached_contents = None
+        self.caching_surface = None
         self.parent_style_set_id = 0
         self.notify_resolution_id = 0
+
+    def do_draw(self):
+        # Canvas requests a redraw.
+        self.need_redraw = True
+
+        self.window.invalidate_rect(None, False)
 
     def do_screen_changed(self, previous_screen):
         if self.get_screen():
@@ -74,7 +89,7 @@ class PlotWidget(gtk.DrawingArea):
 
     def _on_parent_style_set(self, widget, previous_style):
         # New GtkStyle set on parent GtkTextView.
-        self.cached_contents = None
+        self.caching_surface = None
 
         self._sync_font_size()
 
@@ -87,43 +102,71 @@ class PlotWidget(gtk.DrawingArea):
     def do_expose_event(self, event):
         cr = self.window.cairo_create()
 
-        if not self.cached_contents:
-            self.cached_contents = cr.get_target().create_similar(cairo.CONTENT_COLOR,
-                                                                  self.allocation.width, self.allocation.height)
+        if not self.caching_surface:
+            self.caching_surface = cr.get_target().create_similar(cairo.CONTENT_COLOR,
+                                                                  self.allocation.width,
+                                                                  self.allocation.height)
 
-            renderer = RendererCairo(self.figure.dpi)
-            renderer.set_width_height(self.allocation.width, self.allocation.height)
-            renderer.set_ctx_from_surface(self.cached_contents)
+            self.renderer = RendererCairo(self.figure.dpi)
+            self.renderer.set_width_height(self.allocation.width, self.allocation.height)
+            self.renderer.set_ctx_from_surface(self.caching_surface)
 
-            self.figure.draw(renderer)
+            self.need_redraw = True
+
+        if self.need_redraw:
+            self.figure.draw(self.renderer)
+
+            self.need_redraw = False
 
         # event.region is not bound: http://bugzilla.gnome.org/show_bug.cgi?id=487158
 #        gdk_context = gtk.gdk.CairoContext(renderer.ctx)
 #        gdk_context.region(event.region)
 #        gdk_context.clip()
 
-        cr.set_source_surface(self.cached_contents, 0, 0)
+        cr.set_source_surface(self.caching_surface, 0, 0)
         cr.paint()
 
     def do_size_allocate(self, allocation):
         if allocation.width != self.allocation.width or allocation.height != self.allocation.height:
-            self.cached_contents = None
+            self.caching_surface = None
 
         gtk.DrawingArea.do_size_allocate(self, allocation)
 
     def do_unrealize(self):
         gtk.DrawingArea.do_unrealize(self)
 
-        self.cached_contents = None
+        self.caching_surface = None
 
     def do_button_press_event(self, event):
         if event.button == 3:
             custom_result.show_menu(self, event, save_callback=self.__save)
             return True
         else:
+            x = event.x
+            # Flip so that y=0 is bottom of canvas
+            y = self.allocation.height - event.y
+            self.canvas.button_press_event(x, y, event.button, guiEvent=event)
             return True
 
     def do_button_release_event(self, event):
+        if event.button == 3:
+            return True
+        else:
+            x = event.x
+            # Flip so that y=0 is bottom of canvas.
+            y = self.allocation.height - event.y
+            self.canvas.button_release_event(x, y, event.button, guiEvent=event)
+            return True
+
+    def do_motion_notify_event(self, event):
+        if event.is_hint:
+            x, y, state = event.window.get_pointer()
+        else:
+            x, y, state = event.x, event.y, event.state
+
+        # Flip so that y=0 is bottom of canvas
+        y = self.allocation.height - y
+        self.canvas.motion_notify_event(x, y, guiEvent=event)
         return True
 
     def do_realize(self):
@@ -273,15 +316,6 @@ def _validate_args(args):
         if formati is not None and not isinstance(args[formati], basestring):
             raise TypeError("Expected format string for argument %d" % (formati + 1))
 
-class Axes(RecordedObject, custom_result.CustomResult):
-    def _check_plot(self, name, args, kwargs, spec):
-        _validate_args(args)
-
-    def create_widget(self):
-        widget = PlotWidget(self)
-        self._replay(widget.axes)
-        return widget
-
 def filter_method(baseclass, name):
     if not default_filter(baseclass, name):
         return False
@@ -291,15 +325,38 @@ def filter_method(baseclass, name):
         return False
     return True
 
+class Axes(RecordedObject, custom_result.CustomResult):
+    def _check_plot(self, name, args, kwargs, spec):
+        _validate_args(args)
+
+    def create_widget(self):
+        widget = PlotWidget(self)
+        self._replay(widget.axes)
+        return widget
+
 Axes._set_target_class(matplotlib.axes.Axes, filter_method)
 
+class Axes3D(RecordedObject, custom_result.CustomResult):
+    def _check_plot(self, name, args, kwargs, spec):
+        _validate_args(args)
+
+    def create_widget(self):
+        widget = PlotWidget(self)
+        self._replay(widget.axes)
+        return widget
+
+Axes3D._set_target_class(axes3d.Axes3D, filter_method)
+
 # Create wrappers for the various matplotlib plotting commands.
-def _create_method(method_name):
+def _create_method(cls, method_name):
     def _func(*args, **kwargs):
-        axes = Axes()
+        axes = cls()
         getattr(axes, method_name)(*args, **kwargs)
         return axes
     return _func
 
 for method_name in ('bar', 'boxplot', 'errorbar', 'contour', 'hist', 'imshow', 'plot', 'quiver', 'specgram'):
-    setattr(sys.modules[__name__], method_name, _create_method(method_name))
+    setattr(sys.modules[__name__], method_name, _create_method(Axes, method_name))
+
+for method_name in ('plot_wireframe', 'plot_surface'):
+    setattr(sys.modules[__name__], method_name, _create_method(Axes3D, method_name))
