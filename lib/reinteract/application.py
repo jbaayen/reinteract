@@ -23,7 +23,7 @@ import sys
 from application_state import ApplicationState
 from global_settings import global_settings
 
-_VALID_CHAR = re.compile("[A-Za-z0-9._ -]")
+_VALID_CHAR = re.compile("(?u)[\w._ -]")
 
 class Application():
     def __init__(self):
@@ -65,7 +65,7 @@ class Application():
         name = name.replace("\s+", " ")
 
         bad_chars = set()
-        for c in name:
+        for c in name.decode("utf8"):
             if not _VALID_CHAR.match(c):
                 bad_chars.add(c)
 
