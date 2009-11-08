@@ -14,7 +14,7 @@ import matplotlib
 import sys
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
-from mpl_toolkits.mplot3d import axes3d
+import mpl_toolkits.mplot3d as mplot3d
 import numpy
 
 from reinteract.recorded_object import RecordedObject, default_filter
@@ -46,7 +46,7 @@ class PlotWidget(gtk.DrawingArea):
         self.canvas.draw = self.do_draw
 
         if isinstance(result, Axes3D):
-            self.axes = axes3d.Axes3D(self.figure)
+            self.axes = mplot3d.axes3d.Axes3D(self.figure)
         else:
             self.axes = self.figure.add_subplot(111)
 
@@ -340,27 +340,25 @@ def filter_method(baseclass, name):
         return False
     return True
 
-class Axes(RecordedObject, custom_result.CustomResult):
-    def _check_plot(self, name, args, kwargs, spec):
-        _validate_args(args)
+def _create_axes_class(class_name):
+    class AxesTemplate(RecordedObject, custom_result.CustomResult):
+        def _check_plot(self, name, args, kwargs, spec):
+            _validate_args(args)
 
-    def create_widget(self):
-        widget = PlotWidget(self)
-        self._replay(widget.axes)
-        return widget
+        def create_widget(self):
+            widget = PlotWidget(self)
+            self._replay(widget.axes)
+            return widget
 
+    cls = AxesTemplate
+    cls.__name__ = class_name
+    return cls
+
+Axes = _create_axes_class('Axes')
 Axes._set_target_class(matplotlib.axes.Axes, filter_method)
 
-class Axes3D(RecordedObject, custom_result.CustomResult):
-    def _check_plot(self, name, args, kwargs, spec):
-        _validate_args(args)
-
-    def create_widget(self):
-        widget = PlotWidget(self)
-        self._replay(widget.axes)
-        return widget
-
-Axes3D._set_target_class(axes3d.Axes3D, filter_method)
+Axes3D = _create_axes_class('Axes3D')
+Axes3D._set_target_class(mplot3d.axes3d.Axes3D, filter_method)
 
 # Create wrappers for the various matplotlib plotting commands.
 def _create_method(cls, method_name):
