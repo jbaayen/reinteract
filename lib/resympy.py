@@ -4,15 +4,15 @@ import cairo
 
 try:
     import lasem
-except:
-    raise Exception("Could not import module 'lasem'. " \
-                    "Please install pylasem from http://github.com/jbaayen/pylasem")
+except ImportError:
+    raise ImportError("Could not import module 'lasem'. " \
+                      "Please install pylasem from http://github.com/jbaayen/pylasem")
 
 try:
     import sympy
-except:
-    raise Exception("Could not import module 'sympy'. " \
-                    "Please install sympy from http://sympy.org.")
+except ImportError:
+    raise ImportError("Could not import module 'sympy'. " \
+                      "Please install sympy from http://sympy.org.")
 
 from reinteract.custom_result import CustomResult
 from replot import Axes
