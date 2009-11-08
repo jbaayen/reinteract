@@ -43,6 +43,7 @@ reinteractpkg_PYTHON =                                                        \
                     lib/reinteract/print_operation.py                         \
                     lib/reinteract/recorded_object.py                         \
                     lib/reinteract/retokenize.py                              \
+                    lib/reinteract/reunicode.py				      \
                     lib/reinteract/rewrite.py                                 \
                     lib/reinteract/sanitize_textview_ipc.py                   \
                     lib/reinteract/save_file.py                               \
