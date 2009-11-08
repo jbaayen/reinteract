@@ -14,7 +14,6 @@ import matplotlib
 import sys
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_cairo import RendererCairo, FigureCanvasCairo
-import mpl_toolkits.mplot3d as mplot3d
 import numpy
 
 from reinteract.recorded_object import RecordedObject, default_filter
@@ -340,7 +339,7 @@ def filter_method(baseclass, name):
         return False
     return True
 
-class AxesTemplate(RecordedObject, custom_result.CustomResult):
+class AxesBase(RecordedObject, custom_result.CustomResult):
     def _check_plot(self, name, args, kwargs, spec):
         _validate_args(args)
 
@@ -349,19 +348,29 @@ class AxesTemplate(RecordedObject, custom_result.CustomResult):
         self._replay(widget.axes)
         return widget
 
-class Axes(AxesTemplate):
+class Axes(AxesBase):
     pass
 Axes._set_target_class(matplotlib.axes.Axes, filter_method)
 
-class Axes3D(AxesTemplate):
+class Axes3D(AxesBase):
     pass
-Axes3D._set_target_class(mplot3d.axes3d.Axes3D, filter_method)
+try:
+    import mpl_toolkits.mplot3d as mplot3d
+    Axes3D._set_target_class(mplot3d.axes3d.Axes3D, filter_method)
+except ImportError:
+    # Fail quietly if we were not able to set up the 3D stuff.
+    # (older versions of matplotlib do not include mplot3d)
+    pass
 
 # Create wrappers for the various matplotlib plotting commands.
 def _create_method(cls, method_name):
     def _func(*args, **kwargs):
         axes = cls()
-        getattr(axes, method_name)(*args, **kwargs)
+        try:
+            getattr(axes, method_name)(*args, **kwargs)
+        except AttributeError:
+            raise Exception("Plotting command not implemented. " \
+                            "Try upgrading to a newer version of matplotlib.")
         return axes
     return _func
 
