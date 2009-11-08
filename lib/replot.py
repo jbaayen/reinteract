@@ -226,9 +226,23 @@ class PlotWidget(gtk.DrawingArea):
 
             renderer = RendererCairo(self.figure.dpi)
             renderer.set_width_height(width, height)
-            renderer.gc.ctx = cr
+            if hasattr(renderer, 'gc'):
+                # matplotlib-0.99 and newer
+                renderer.gc.ctx = cr
+            else:
+                # matplotlib-0.98
+
+                # RendererCairo.new_gc() does a restore to get the context back
+                # to its original state after changes
+                cr.save()
+                renderer.ctx = cr
 
             self.figure.draw(renderer)
+
+            if not hasattr(renderer, 'gc'):
+                # matplotlib-0.98
+                # Reverse the save() we did before drawing
+                cr.restore()
 
             cr.restore()
 
