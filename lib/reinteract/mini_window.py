@@ -124,7 +124,7 @@ class MiniWindow(BaseNotebookWindow):
         editor._menu_item_status.props.icon_size = gtk.ICON_SIZE_MENU
         editor._menu_item_status.props.stock = NotebookFile.stock_id_for_state(editor.state)
         item.set_image(editor._menu_item_status)
-
+ 
         return item
 
     def __create_file_item(self, file):
