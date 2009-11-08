@@ -275,3 +275,4 @@ class BaseWindow:
 
         # This seems more annoying than useful. gedit doesn't desensitize save
         # self._set_action_sensitive('save', self.current_editor is not None and self.current_editor.modified)
+

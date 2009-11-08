@@ -312,3 +312,4 @@ class BaseNotebookWindow(BaseWindow):
                 some_need_calculate = True
 
         self._set_action_sensitive('calculate-all', some_need_calculate)
+
