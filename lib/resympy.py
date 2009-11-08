@@ -6,7 +6,6 @@ import lasem
 import sympy
 
 from reinteract.custom_result import CustomResult
-from replot import Axes
 
 class SympyRenderer(gtk.Widget):
     __gsignals__ = {
@@ -175,14 +174,3 @@ for cls in (sympy.Basic, sympy.Matrix, sympy.SMatrix):
 # copy and paste.
 def latex(*args, **kwargs):
     print(sympy.latex(*args, **kwargs))
-
-# Add hooks for sympy plotting functions.
-def plot(*args):
-    axes = Axes()
-    sympy.plot(*args, axes=axes)
-    return axes
-
-def cplot(*args):
-    axes = Axes()
-    sympy.cplot(*args, axes=axes)
-    return axes
