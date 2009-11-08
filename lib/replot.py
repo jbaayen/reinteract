@@ -340,24 +340,21 @@ def filter_method(baseclass, name):
         return False
     return True
 
-def _create_axes_class(class_name):
-    class AxesTemplate(RecordedObject, custom_result.CustomResult):
-        def _check_plot(self, name, args, kwargs, spec):
-            _validate_args(args)
+class AxesTemplate(RecordedObject, custom_result.CustomResult):
+    def _check_plot(self, name, args, kwargs, spec):
+        _validate_args(args)
 
-        def create_widget(self):
-            widget = PlotWidget(self)
-            self._replay(widget.axes)
-            return widget
+    def create_widget(self):
+        widget = PlotWidget(self)
+        self._replay(widget.axes)
+        return widget
 
-    cls = AxesTemplate
-    cls.__name__ = class_name
-    return cls
-
-Axes = _create_axes_class('Axes')
+class Axes(AxesTemplate):
+    pass
 Axes._set_target_class(matplotlib.axes.Axes, filter_method)
 
-Axes3D = _create_axes_class('Axes3D')
+class Axes3D(AxesTemplate):
+    pass
 Axes3D._set_target_class(mplot3d.axes3d.Axes3D, filter_method)
 
 # Create wrappers for the various matplotlib plotting commands.
