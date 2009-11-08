@@ -23,8 +23,6 @@ import sys
 from application_state import ApplicationState
 from global_settings import global_settings
 
-_VALID_CHAR = re.compile("(?u)[\w._ -]")
-
 class Application():
     def __init__(self):
         self.__unsaved_indices = []
@@ -54,31 +52,6 @@ class Application():
         paths = list(set((os.path.normpath(path) for path in paths)))
 
         return [NotebookInfo(p) for p in paths]
-
-    def validate_name(self, name):
-        # Remove surrounding whitespace
-        name = name.strip()
-        if name == "":
-            raise ValueError("Name cannot be empty")
-
-        # Replace series of whitespace with a single space
-        name = name.replace("\s+", " ")
-
-        bad_chars = set()
-        for c in name.decode("utf8"):
-            if not _VALID_CHAR.match(c):
-                bad_chars.add(c)
-
-        bad = ", ".join(("'" + c + "'" for c in bad_chars))
-
-        if len(bad_chars) == 1:
-            raise ValueError("Name contains invalid character: %s" % bad)
-        elif len(bad_chars) > 0:
-            raise ValueError("Name contains invalid characters: %s" % bad)
-        elif name.startswith("."):
-            raise ValueError("Name cannot start with a '.'")
-
-        return name
 
     def __make_notebook_window(self, notebook):
         if global_settings.mini_mode:

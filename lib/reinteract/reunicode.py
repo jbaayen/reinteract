@@ -34,6 +34,7 @@
 
 import re
 import sys
+import unicodedata
 import StringIO
 
 # An unsafe character is one outside the range that everybody can handle; we
@@ -42,6 +43,9 @@ import StringIO
 _UNSAFE_CHARACTERS = re.compile(u"[^\u0001-\ud7ff\ue000-\ufdcf\ufdf0-\ufffd]+")
 
 _NON_ASCII_BYTE = re.compile("[\x80-\xff]")
+
+_VALID_NAME_ASCII_CHAR = re.compile("[A-Za-z0-9._ -]")
+_VALID_NAME_CATEGORIES = re.compile("^[LMNPS]")
 
 class ConversionError(Exception):
     pass
@@ -116,6 +120,37 @@ def escape_unsafe(u):
     valid characters."""
 
     return _UNSAFE_CHARACTERS.sub(_escape, u)
+
+def validate_name(name):
+    # Remove surrounding whitespace
+    name = name.strip()
+    if name == "":
+        raise ValueError("Name cannot be empty")
+
+    # Replace series of whitespace with a single space
+    p = re.compile(r"\s+")
+    name = p.sub(" ", name)
+
+    bad_chars = set()
+    for c in name.decode("utf8"):
+        if not _VALID_NAME_ASCII_CHAR.match(c):
+            if _UNSAFE_CHARACTERS.match(c):
+                bad_chars.add(c)
+            else:
+                category = unicodedata.category(c)
+                if not _VALID_NAME_CATEGORIES.match(category):
+                    bad_chars.add(c)
+
+    bad = ", ".join(("'" + c + "'" for c in bad_chars))
+
+    if len(bad_chars) == 1:
+        raise ValueError("Name contains invalid character: %s" % bad)
+    elif len(bad_chars) > 0:
+        raise ValueError("Name contains invalid characters: %s" % bad)
+    elif name.startswith("."):
+        raise ValueError("Name cannot start with a '.'")
+
+    return name
 
 ######################################################################
 

@@ -12,6 +12,7 @@ import os
 from application import application
 from global_settings import global_settings
 from window_builder import WindowBuilder
+import reunicode
 
 class CreateNotebookBuilder(WindowBuilder):
     def __init__(self):
@@ -53,7 +54,7 @@ def run(parent=None):
         error_message = None
         error_detail = None
         try:
-            name = application.validate_name(builder.name_entry.get_text())
+            name = reunicode.validate_name(builder.name_entry.get_text())
         except ValueError, e:
             error_message = "<big><b>Please choose a different name</b></big>"
             error_detail = e.message

@@ -11,6 +11,7 @@ import os
 
 from application import application
 from window_builder import WindowBuilder
+import reunicode
 
 class SaveFileBuilder(WindowBuilder):
     def __init__(self, title, display_name, save_button_text, check_name=None):
@@ -46,7 +47,7 @@ class SaveFileBuilder(WindowBuilder):
 
             error_message = None
             try:
-                raw_name = application.validate_name(raw_name)
+                raw_name = reunicode.validate_name(raw_name)
             except ValueError, e:
                 error_message = e.message
 
