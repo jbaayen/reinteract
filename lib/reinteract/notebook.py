@@ -316,8 +316,15 @@ class Notebook(gobject.GObject):
             getattr(module, fromname)
         except AttributeError:
             self.__find_and_load(fullname + "." + fromname, fromname, parent=module, local=local)
-        
-    def do_import(self, name, globals=None, locals=None, fromlist=None, level=None):
+
+
+    def __add_wrapper(self, globals_, module):
+        if hasattr(module, '__reinteract_wrap__'):
+            old = globals_['__reinteract_wrappers']
+            globals_['__reinteract_wrappers'] = [getattr(module, '__reinteract_wrap__')]
+            globals_['__reinteract_wrappers'].extend(old)
+
+    def do_import(self, name, globals_=None, locals_=None, fromlist=None, level=None):
         # Holding the import lock around the whole import process matches what
         # Python does internally. This does mean that the machinery of loading a slow
         # import blocks the import of an already loaded module in a different thread.
@@ -340,14 +347,18 @@ class Notebook(gobject.GObject):
                                 self.__ensure_from_list_item(name, allname, module, local)
                         except AttributeError:
                             pass
+
+                        self.__add_wrapper(globals_, module)
                     else:
                         self.__ensure_from_list_item(name, fromname, module, local)
 
                 return module
-            elif local:
-                return self.__modules[names[0]]
             else:
-                return sys.modules[names[0]]
+                self.__add_wrapper(globals_, module)
+                if local:
+                    return self.__modules[names[0]]
+                else:
+                    return sys.modules[names[0]]
         finally:
             imp.release_lock()
 
@@ -386,6 +397,7 @@ class Notebook(gobject.GObject):
     def setup_globals(self, globals):
         globals['__reinteract_notebook'] = self
         globals['__reinteract_copy'] = copy.copy
+        globals['__reinteract_wrappers'] = []
         globals['help'] = _Helper()
 
     def file_for_absolute_path(self, absolute_path):

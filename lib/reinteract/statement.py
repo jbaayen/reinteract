@@ -153,13 +153,20 @@ class Statement:
         if len(args) == 1:
             arg = args[0]
 
-            if args[0] is None:
+            if arg is None:
                 return
-            elif isinstance(args[0], CustomResult) or isinstance(args[0], HelpResult):
-                self.results.append(args[0])
+
+            for wrapper in self.result_scope['__reinteract_wrappers']:
+                wrapped = wrapper(arg)
+                if wrapped != None:
+                    arg = wrapped
+                    break
+
+            if isinstance(arg, CustomResult) or isinstance(arg, HelpResult):
+                self.results.append(arg)
             else:
-                self.results.append(self.__coerce_to_unicode(repr(args[0])))
-                self.result_scope['_'] = args[0]
+                self.results.append(self.__coerce_to_unicode(repr(arg)))
+                self.result_scope['_'] = arg
         else:
             self.results.append(self.__coerce_to_unicode(repr(args)))
             self.result_scope['_'] = args
