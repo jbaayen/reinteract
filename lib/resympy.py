@@ -1,16 +1,28 @@
 import gtk
 import pango
 import cairo
-import lasem
 
-import sympy
+try:
+    import lasem
+except:
+    raise Exception("Could not import module 'lasem'. " \
+                    "Please install pylasem from http://github.com/jbaayen/pylasem")
+
+try:
+    import sympy
+except:
+    raise Exception("Could not import module 'sympy'. " \
+                    "Please install sympy from http://sympy.org.")
 
 from reinteract.custom_result import CustomResult
+from replot import Axes
 
-class SympyRenderer(gtk.Widget):
+class SympyRenderer(gtk.EventBox):
     __gsignals__ = {
         'parent-set': 'override',
         'screen-changed' : 'override',
+        'button-press-event': 'override',
+        'button-release-event': 'override',
         'expose-event': 'override',
         'size-allocate': 'override',
         'unrealize': 'override'
@@ -23,16 +35,19 @@ class SympyRenderer(gtk.Widget):
 
     def __init__(self, result):
         # Gtk widget setup.
-        gtk.Widget.__init__(self)
+        gtk.EventBox.__init__(self)
 
-        self.set_flags(gtk.NO_WINDOW)
+        self.set_visible_window(False)
+
+        self.add_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE_MASK)
 
         self.cached_contents = None
         self.parent_style_set_id = 0
         self.notify_resolution_id = 0
 
         # Construct Lasem document and view.
-        tex = sympy.latex(result, inline=False, itex=True)
+        self.result = result
+        tex = sympy.latex(self.result, inline=False, itex=True)
         self.doc = lasem.mathml_document_new_from_itex(tex, len(tex))
 
         self.view = self.doc.create_view()
@@ -104,17 +119,53 @@ class SympyRenderer(gtk.Widget):
         if allocation.width != self.allocation.width or allocation.height != self.allocation.height:
             self.cached_contents = None
 
-        gtk.Widget.do_size_allocate(self, allocation)
+        gtk.EventBox.do_size_allocate(self, allocation)
 
     def do_unrealize(self):
-        gtk.Widget.do_unrealize(self)
+        gtk.EventBox.do_unrealize(self)
 
         self.cached_contents = None
+
+    def do_button_press_event(self, event):
+        if event.button == 3:
+            self._show_menu(event)
+
+        return True
+
+    def do_button_release_event(self, event):
+        return True
 
     def do_size_request(self, requisition):
     	requisition.width, requisition.height = self.view.get_size_pixels()
     	requisition.height += self.margin_top + self.margin_bottom
     	requisition.width += self.margin_left + self.margin_right
+
+    def _copy_to_clipboard(self, inline):
+        for selection in (gtk.gdk.SELECTION_CLIPBOARD, gtk.gdk.SELECTION_PRIMARY):
+            clipboard = self.get_clipboard(selection)
+            clipboard.set_text(sympy.latex(self.result, inline=inline, itex=False))
+
+    def _show_menu(self, event):
+        # Create a menu offering to copy the result to the clipboard as a LaTeX
+        # string.
+        menu = gtk.Menu()
+        menu.attach_to_widget(self, None)
+
+        menu_item = gtk.MenuItem(label="Copy as _LaTeX")
+        menu_item.connect('activate', lambda menu : self._copy_to_clipboard(False))
+        menu_item.show()
+        menu.add(menu_item)
+
+        menu_item = gtk.MenuItem(label="Copy as LaTeX (_inline)")
+        menu_item.connect('activate', lambda menu : self._copy_to_clipboard(True))
+        menu_item.show()
+        menu.add(menu_item)
+
+        def on_selection_done(menu):
+            menu.destroy()
+        menu.connect('selection-done', on_selection_done)
+
+        menu.popup(None, None, None, event.button, event.time)
 
     def print_widget(self, print_context, render=True):
         # Set printer dpi.
@@ -147,30 +198,33 @@ class SympyRenderer(gtk.Widget):
         # Return dimensions to caller.
         return width, height
 
-# The __bases__ trickery used below fails when a class is a direct descendent
-# of object, as is sympy.Matrix.  Adding another layer solves the problem.
-# However, modifying the new Matrix will not change the descendants of Matrix
-# (namely SMatrix), so we'll have to get them separately.
-# TODO This breaks when Matrix has been imported into other namespaces
-# beforehand. See also http://bugs.python.org/issue672115 for the __bases__
-# failure bug.
-class Matrix(sympy.Matrix):
-    pass
-sympy.Matrix = Matrix
-sympy.matrices.Matrix = Matrix
+class SympyResult(CustomResult):
+    def __init__(self, expr):
+        self.expr = expr
 
-# Most sympy objects (that we care about) inherit from sympy.Basic.  So if we
-# modify this one class, we can influence most objects at once.  Known
-# exceptions: Matrix, and its erstwhile descendant SMatrix.  'Course,
-# latex(SMatrix) throws a hissy fit
-for cls in (sympy.Basic, sympy.Matrix, sympy.SMatrix):
-    # Add CustomResult as an ancestor, so Reinteract will treat it specially.
-    cls.__bases__ += (CustomResult,)
-    # Provide a create_widget() method for display.
-    cls.create_widget = lambda result : SympyRenderer(result)
+    def create_widget(self):
+        return SympyRenderer(self.expr)
 
-# We wrap the sympy latex function using a print call in order to have
-# any string escapes carried out, so that the displayed string will be ready to
-# copy and paste.
-def latex(*args, **kwargs):
-    print(sympy.latex(*args, **kwargs))
+def __reinteract_wrap__(obj):
+    sympy_classes = (sympy.Basic, sympy.Matrix, sympy.SMatrix)
+
+    if isinstance(obj, sympy_classes):
+        return SympyResult(obj)
+    elif isinstance(obj, (list, tuple)):
+        for item in obj:
+            if not isinstance(item, sympy_classes):
+                return None
+        return SympyResult(obj)
+    else:
+        return None
+
+# Add hooks for sympy plotting functions.
+def plot(*args):
+    axes = Axes()
+    sympy.plot(*args, axes=axes)
+    return axes
+
+def cplot(*args):
+    axes = Axes()
+    sympy.cplot(*args, axes=axes)
+    return axes
