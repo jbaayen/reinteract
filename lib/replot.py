@@ -147,7 +147,7 @@ class PlotWidget(gtk.DrawingArea):
             y = self.allocation.height - event.y
             self.canvas.button_press_event(x, y, event.button, guiEvent=event)
             return True
-
+    
     def do_button_release_event(self, event):
         if event.button == 3:
             return True
@@ -173,7 +173,7 @@ class PlotWidget(gtk.DrawingArea):
         gtk.DrawingArea.do_realize(self)
         cursor = gtk.gdk.Cursor(gtk.gdk.LEFT_PTR)
         self.window.set_cursor(cursor)
-
+    
     def do_size_request(self, requisition):
         try:
             # matplotlib < 0.98
@@ -183,6 +183,7 @@ class PlotWidget(gtk.DrawingArea):
             # matplotlib >= 0.98
             requisition.width = self.figure.bbox.width
             requisition.height = self.figure.bbox.height
+            
 
     def __save(self, filename):
         # The save/restore here was added to matplotlib's after 0.90. We duplicate
@@ -255,7 +256,7 @@ class PlotWidget(gtk.DrawingArea):
 
 #    def do_size_allocate(self, allocation):
 #        gtk.DrawingArea.do_size_allocate(self, allocation)
-#
+#        
 #        dpi = self.figure.dpi.get()
 #        self.figure.set_size_inches (allocation.width / dpi, allocation.height / dpi)
 
@@ -265,7 +266,7 @@ def _validate_args(args):
     #
     #  plot(x, y, 'fmt', y2)
     #  plot(x1, y2, x2, y2, 'fmt', y3)
-    #
+    # 
     # Are valid, but
     #
     #  plot(x, y, y2)
@@ -278,7 +279,7 @@ def _validate_args(args):
         xi = None
         yi = None
         formati = None
-
+        
         remaining = l - i
         if remaining == 0:
             break
@@ -311,7 +312,7 @@ def _validate_args(args):
             xshape = None
 
         # y isn't optional, pretend it is to preserve code symmetry
-
+            
         if yi is not None:
             arg = args[yi]
             if isinstance(arg, numpy.ndarray):
@@ -326,7 +327,7 @@ def _validate_args(args):
 
         if xshape is not None and yshape is not None and xshape != yshape:
             raise TypeError("Shapes of arguments %d and %d aren't compatible" % ((xi + 1), (yi + 1)))
-
+        
         if formati is not None and not isinstance(args[formati], basestring):
             raise TypeError("Expected format string for argument %d" % (formati + 1))
 
