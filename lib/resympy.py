@@ -210,7 +210,7 @@ def __reinteract_wrap__(obj):
 
     if isinstance(obj, sympy_classes):
         return SympyResult(obj)
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, (list, tuple, dict)):
         for item in obj:
             if not isinstance(item, sympy_classes):
                 return None
