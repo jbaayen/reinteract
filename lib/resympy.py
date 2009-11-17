@@ -205,16 +205,22 @@ class SympyResult(CustomResult):
     def create_widget(self):
         return SympyRenderer(self.expr)
 
-def __reinteract_wrap__(obj):
-    sympy_classes = (sympy.Basic, sympy.Matrix, sympy.SMatrix)
+_wrapped_sympy_classes = (sympy.Basic, sympy.Matrix, sympy.SMatrix)
 
-    if isinstance(obj, sympy_classes):
+try:
+    import sympy.galgebra.GA
+    _wrapped_sympy_classes += (sympy.galgebra.GA.MV,)
+except:
+    pass
+
+def __reinteract_wrap__(obj):
+    if isinstance(obj, _wrapped_sympy_classes):
         return SympyResult(obj)
     elif isinstance(obj, (list, tuple, dict)):
         if len(obj) == 0:
             return None
         for item in obj:
-            if not isinstance(item, sympy_classes):
+            if not isinstance(item, _wrapped_sympy_classes):
                 return None
         return SympyResult(obj)
     else:
